@@ -16,8 +16,8 @@ include_directories(includes/glfw/deps)
 include_directories(includes/glfw/include)
 
 # GLFW executables.
-set(GLAD "${GLFW_SOURCE_DIR}/deps/glad/gl.h"
-         "${GLFW_SOURCE_DIR}/deps/glad_gl.c")
+set(GLAD "${GLFW_SOURCE_DIR}/deps/glad/glad.h"
+         "${GLFW_SOURCE_DIR}/deps/glad.c")
 
 # STB loaders
 include_directories(includes/stb)
@@ -42,8 +42,10 @@ set(IMGUI_SOURCES
 )
 
 # Sources files
-set(SOURCE_FILES src/main.cpp)
+file(GLOB SOURCE_FILES
+    "src/*.h"
+    "src/*.cpp"
+)
 
 add_executable(NarvalEngine ${SOURCE_FILES} ${GLAD} ${IMGUI_SOURCES})
-
 target_link_libraries(NarvalEngine glfw ${GLFW_LIBRARIES})

@@ -1,0 +1,8 @@
+﻿  Engine3D.cpp
+  main.cpp
+  Generating Code...
+d:\nextcloud\hd\projetos - sources- doc\narvalengine\src\engine3d.h(52): warning C4715: 'Engine3D::startGLFW': not all control paths return a value
+  glad.c
+C:\Program Files (x86)\Windows Kits\8.1\Include\shared\minwindef.h(130): warning C4005: 'APIENTRY': macro redefinition
+  D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\glfw\deps\glad/glad.h(32): note: see previous definition of 'APIENTRY'
+  NarvalEngine.vcxproj -> D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\build\Debug\NarvalEngine.exe

@@ -1,0 +1,280 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="MinSizeRel|Win32">
+      <Configuration>MinSizeRel</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="RelWithDebInfo|Win32">
+      <Configuration>RelWithDebInfo</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{3490504F-91A1-3D04-95CA-3C3C5B1E95D1}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <Platform>Win32</Platform>
+    <ProjectName>GLAD</ProjectName>
+    <VCProjectUpgraderObjectName>NoUpgrade</VCProjectUpgraderObjectName>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v141</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v141</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v141</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v141</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.20506.1</_ProjectFileVersion>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\build\Debug\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">GLAD.dir\Debug\</IntDir>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">GLAD</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.lib</TargetExt>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\build\Release\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">GLAD.dir\Release\</IntDir>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">GLAD</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">.lib</TargetExt>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|Win32'">D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\build\MinSizeRel\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|Win32'">GLAD.dir\MinSizeRel\</IntDir>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|Win32'">GLAD</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|Win32'">.lib</TargetExt>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|Win32'">D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\build\RelWithDebInfo\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|Win32'">GLAD.dir\RelWithDebInfo\</IntDir>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|Win32'">GLAD</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|Win32'">.lib</TargetExt>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\glfw;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\glfw\deps;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\glfw\include;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\stb;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\glm;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\imgui;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\imgui\examples;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AssemblerListingLocation>Debug/</AssemblerListingLocation>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <CompileAs>CompileAsC</CompileAs>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <ExceptionHandling>
+      </ExceptionHandling>
+      <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
+      <Optimization>Disabled</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <UseFullPaths>false</UseFullPaths>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;IMGUI_IMPL_OPENGL_LOADER_GLAD;CMAKE_INTDIR="Debug";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;IMGUI_IMPL_OPENGL_LOADER_GLAD;CMAKE_INTDIR=\"Debug\";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\glfw;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\glfw\deps;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\glfw\include;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\stb;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\glm;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\imgui;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\imgui\examples;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\glfw;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\glfw\deps;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\glfw\include;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\stb;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\glm;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\imgui;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\imgui\examples;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <Lib>
+      <AdditionalOptions>%(AdditionalOptions) /machine:X86</AdditionalOptions>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\glfw;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\glfw\deps;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\glfw\include;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\stb;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\glm;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\imgui;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\imgui\examples;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AssemblerListingLocation>Release/</AssemblerListingLocation>
+      <CompileAs>CompileAsC</CompileAs>
+      <ExceptionHandling>
+      </ExceptionHandling>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <Optimization>MaxSpeed</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <UseFullPaths>false</UseFullPaths>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;IMGUI_IMPL_OPENGL_LOADER_GLAD;CMAKE_INTDIR="Release";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <DebugInformationFormat>
+      </DebugInformationFormat>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;IMGUI_IMPL_OPENGL_LOADER_GLAD;CMAKE_INTDIR=\"Release\";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\glfw;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\glfw\deps;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\glfw\include;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\stb;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\glm;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\imgui;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\imgui\examples;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\glfw;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\glfw\deps;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\glfw\include;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\stb;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\glm;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\imgui;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\imgui\examples;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <Lib>
+      <AdditionalOptions>%(AdditionalOptions) /machine:X86</AdditionalOptions>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|Win32'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\glfw;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\glfw\deps;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\glfw\include;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\stb;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\glm;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\imgui;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\imgui\examples;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AssemblerListingLocation>MinSizeRel/</AssemblerListingLocation>
+      <CompileAs>CompileAsC</CompileAs>
+      <ExceptionHandling>
+      </ExceptionHandling>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <Optimization>MinSpace</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <UseFullPaths>false</UseFullPaths>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;IMGUI_IMPL_OPENGL_LOADER_GLAD;CMAKE_INTDIR="MinSizeRel";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <DebugInformationFormat>
+      </DebugInformationFormat>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;IMGUI_IMPL_OPENGL_LOADER_GLAD;CMAKE_INTDIR=\"MinSizeRel\";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\glfw;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\glfw\deps;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\glfw\include;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\stb;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\glm;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\imgui;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\imgui\examples;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\glfw;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\glfw\deps;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\glfw\include;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\stb;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\glm;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\imgui;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\imgui\examples;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <Lib>
+      <AdditionalOptions>%(AdditionalOptions) /machine:X86</AdditionalOptions>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|Win32'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\glfw;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\glfw\deps;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\glfw\include;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\stb;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\glm;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\imgui;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\imgui\examples;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AssemblerListingLocation>RelWithDebInfo/</AssemblerListingLocation>
+      <CompileAs>CompileAsC</CompileAs>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <ExceptionHandling>
+      </ExceptionHandling>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <Optimization>MaxSpeed</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <UseFullPaths>false</UseFullPaths>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;IMGUI_IMPL_OPENGL_LOADER_GLAD;CMAKE_INTDIR="RelWithDebInfo";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;IMGUI_IMPL_OPENGL_LOADER_GLAD;CMAKE_INTDIR=\"RelWithDebInfo\";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\glfw;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\glfw\deps;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\glfw\include;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\stb;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\glm;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\imgui;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\imgui\examples;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\glfw;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\glfw\deps;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\glfw\include;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\stb;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\glm;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\imgui;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\imgui\examples;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <Lib>
+      <AdditionalOptions>%(AdditionalOptions) /machine:X86</AdditionalOptions>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\CMakeLists.txt">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Building Custom Rule D:/NextCloud/HD/Projetos - Sources- Doc/NarvalEngine/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">setlocal
+"C:\Program Files\CMake\bin\cmake.exe" "-SD:/NextCloud/HD/Projetos - Sources- Doc/NarvalEngine" "-BD:/NextCloud/HD/Projetos - Sources- Doc/NarvalEngine/build" --check-stamp-file "D:/NextCloud/HD/Projetos - Sources- Doc/NarvalEngine/build/CMakeFiles/generate.stamp"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">C:\Program Files\CMake\share\cmake-3.14\Modules\CMakeCInformation.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\CMakeCXXInformation.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\CMakeCommonLanguageInclude.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\CMakeGenericSystem.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\CMakeInitializeConfigs.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\CMakeLanguageInformation.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\CMakeRCInformation.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\CMakeSystemSpecificInformation.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\CMakeSystemSpecificInitialize.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\Compiler\CMakeCommonCompilerMacros.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\Compiler\MSVC-C.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\Compiler\MSVC-CXX.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\Platform\Windows-MSVC-C.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\Platform\Windows-MSVC-CXX.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\Platform\Windows-MSVC.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\Platform\Windows.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\Platform\WindowsPaths.cmake;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\build\CMakeFiles\3.14.5\CMakeCCompiler.cmake;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\build\CMakeFiles\3.14.5\CMakeCXXCompiler.cmake;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\build\CMakeFiles\3.14.5\CMakeRCCompiler.cmake;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\build\CMakeFiles\3.14.5\CMakeSystem.cmake;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\build\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Building Custom Rule D:/NextCloud/HD/Projetos - Sources- Doc/NarvalEngine/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">setlocal
+"C:\Program Files\CMake\bin\cmake.exe" "-SD:/NextCloud/HD/Projetos - Sources- Doc/NarvalEngine" "-BD:/NextCloud/HD/Projetos - Sources- Doc/NarvalEngine/build" --check-stamp-file "D:/NextCloud/HD/Projetos - Sources- Doc/NarvalEngine/build/CMakeFiles/generate.stamp"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">C:\Program Files\CMake\share\cmake-3.14\Modules\CMakeCInformation.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\CMakeCXXInformation.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\CMakeCommonLanguageInclude.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\CMakeGenericSystem.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\CMakeInitializeConfigs.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\CMakeLanguageInformation.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\CMakeRCInformation.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\CMakeSystemSpecificInformation.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\CMakeSystemSpecificInitialize.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\Compiler\CMakeCommonCompilerMacros.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\Compiler\MSVC-C.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\Compiler\MSVC-CXX.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\Platform\Windows-MSVC-C.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\Platform\Windows-MSVC-CXX.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\Platform\Windows-MSVC.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\Platform\Windows.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\Platform\WindowsPaths.cmake;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\build\CMakeFiles\3.14.5\CMakeCCompiler.cmake;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\build\CMakeFiles\3.14.5\CMakeCXXCompiler.cmake;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\build\CMakeFiles\3.14.5\CMakeRCCompiler.cmake;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\build\CMakeFiles\3.14.5\CMakeSystem.cmake;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\build\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|Win32'">Building Custom Rule D:/NextCloud/HD/Projetos - Sources- Doc/NarvalEngine/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|Win32'">setlocal
+"C:\Program Files\CMake\bin\cmake.exe" "-SD:/NextCloud/HD/Projetos - Sources- Doc/NarvalEngine" "-BD:/NextCloud/HD/Projetos - Sources- Doc/NarvalEngine/build" --check-stamp-file "D:/NextCloud/HD/Projetos - Sources- Doc/NarvalEngine/build/CMakeFiles/generate.stamp"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|Win32'">C:\Program Files\CMake\share\cmake-3.14\Modules\CMakeCInformation.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\CMakeCXXInformation.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\CMakeCommonLanguageInclude.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\CMakeGenericSystem.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\CMakeInitializeConfigs.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\CMakeLanguageInformation.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\CMakeRCInformation.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\CMakeSystemSpecificInformation.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\CMakeSystemSpecificInitialize.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\Compiler\CMakeCommonCompilerMacros.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\Compiler\MSVC-C.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\Compiler\MSVC-CXX.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\Platform\Windows-MSVC-C.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\Platform\Windows-MSVC-CXX.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\Platform\Windows-MSVC.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\Platform\Windows.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\Platform\WindowsPaths.cmake;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\build\CMakeFiles\3.14.5\CMakeCCompiler.cmake;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\build\CMakeFiles\3.14.5\CMakeCXXCompiler.cmake;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\build\CMakeFiles\3.14.5\CMakeRCCompiler.cmake;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\build\CMakeFiles\3.14.5\CMakeSystem.cmake;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|Win32'">D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\build\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|Win32'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|Win32'">Building Custom Rule D:/NextCloud/HD/Projetos - Sources- Doc/NarvalEngine/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|Win32'">setlocal
+"C:\Program Files\CMake\bin\cmake.exe" "-SD:/NextCloud/HD/Projetos - Sources- Doc/NarvalEngine" "-BD:/NextCloud/HD/Projetos - Sources- Doc/NarvalEngine/build" --check-stamp-file "D:/NextCloud/HD/Projetos - Sources- Doc/NarvalEngine/build/CMakeFiles/generate.stamp"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|Win32'">C:\Program Files\CMake\share\cmake-3.14\Modules\CMakeCInformation.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\CMakeCXXInformation.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\CMakeCommonLanguageInclude.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\CMakeGenericSystem.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\CMakeInitializeConfigs.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\CMakeLanguageInformation.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\CMakeRCInformation.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\CMakeSystemSpecificInformation.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\CMakeSystemSpecificInitialize.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\Compiler\CMakeCommonCompilerMacros.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\Compiler\MSVC-C.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\Compiler\MSVC-CXX.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\Platform\Windows-MSVC-C.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\Platform\Windows-MSVC-CXX.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\Platform\Windows-MSVC.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\Platform\Windows.cmake;C:\Program Files\CMake\share\cmake-3.14\Modules\Platform\WindowsPaths.cmake;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\build\CMakeFiles\3.14.5\CMakeCCompiler.cmake;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\build\CMakeFiles\3.14.5\CMakeCXXCompiler.cmake;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\build\CMakeFiles\3.14.5\CMakeRCCompiler.cmake;D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\build\CMakeFiles\3.14.5\CMakeSystem.cmake;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|Win32'">D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\build\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|Win32'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\glad\src\glad.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\build\ZERO_CHECK.vcxproj">
+      <Project>{629C994A-F39D-3679-9188-FC444DBF2364}</Project>
+      <Name>ZERO_CHECK</Name>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

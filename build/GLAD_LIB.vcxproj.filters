@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\includes\glad\src\glad.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{60418A85-3D16-3C57-99F1-C9D44A8397D2}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

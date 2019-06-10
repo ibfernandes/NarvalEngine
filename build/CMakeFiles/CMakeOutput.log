@@ -9,7 +9,7 @@ The output was:
 Microsoft(R) Build Engine versÆo 15.9.21+g9802d43bc3 para .NET Framework 
 Copyright (C) Microsoft Corporation. Todos os direitos reservados.
 
-Compila‡Æo de 09/06/2019 00:34:06 iniciada.
+Compila‡Æo de 09/06/2019 14:59:56 iniciada.
 Projeto "D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\build\CMakeFiles\3.14.5\CompilerIdC\CompilerIdC.vcxproj" no n¢ 1 (destinos padrÆo).
 PrepareForBuild:
   Criando o diret¢rio "Debug\".
@@ -35,7 +35,7 @@ Compila‡Æo com ˆxito.
     0 Aviso(s)
     0 Erro(s)
 
-Tempo Decorrido 00:00:00.78
+Tempo Decorrido 00:00:00.52
 
 
 Compilation of the C compiler identification source "CMakeCCompilerId.c" produced "CompilerIdC.exe"
@@ -54,7 +54,7 @@ The output was:
 Microsoft(R) Build Engine versÆo 15.9.21+g9802d43bc3 para .NET Framework 
 Copyright (C) Microsoft Corporation. Todos os direitos reservados.
 
-Compila‡Æo de 09/06/2019 00:34:07 iniciada.
+Compila‡Æo de 09/06/2019 14:59:57 iniciada.
 Projeto "D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\build\CMakeFiles\3.14.5\CompilerIdCXX\CompilerIdCXX.vcxproj" no n¢ 1 (destinos padrÆo).
 PrepareForBuild:
   Criando o diret¢rio "Debug\".
@@ -80,7 +80,7 @@ Compila‡Æo com ˆxito.
     0 Aviso(s)
     0 Erro(s)
 
-Tempo Decorrido 00:00:00.53
+Tempo Decorrido 00:00:00.41
 
 
 Compilation of the CXX compiler identification source "CMakeCXXCompilerId.cpp" produced "CompilerIdCXX.exe"
@@ -92,33 +92,33 @@ The CXX compiler identification is MSVC, found in "D:/NextCloud/HD/Projetos - So
 Determining if the C compiler works passed with the following output:
 Change Dir: D:/NextCloud/HD/Projetos - Sources- Doc/NarvalEngine/build/CMakeFiles/CMakeTmp
 
-Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/MSBuild/15.0/Bin/MSBuild.exe cmTC_77b4a.vcxproj /p:Configuration=Debug /p:Platform=Win32 /p:VisualStudioVersion=15.0 /v:m 
+Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/MSBuild/15.0/Bin/MSBuild.exe cmTC_44ce3.vcxproj /p:Configuration=Debug /p:Platform=Win32 /p:VisualStudioVersion=15.0 /v:m 
 Microsoft(R) Build Engine versÃ£o 15.9.21+g9802d43bc3 para .NET Framework 
 Copyright (C) Microsoft Corporation. Todos os direitos reservados.
 
   Microsoft (R) C/C++ Optimizing Compiler VersÃ£o 19.16.27026.1 para x86
   Copyright (C) Microsoft Corporation. Todos os direitos reservados.
   
-  cl /c /Zi /W3 /WX- /diagnostics:classic /Od /Ob0 /Oy- /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_77b4a.dir\Debug\\" /Fd"cmTC_77b4a.dir\Debug\vc141.pdb" /Gd /TC /analyze- /errorReport:queue "D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\build\CMakeFiles\CMakeTmp\testCCompiler.c"
+  cl /c /Zi /W3 /WX- /diagnostics:classic /Od /Ob0 /Oy- /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_44ce3.dir\Debug\\" /Fd"cmTC_44ce3.dir\Debug\vc141.pdb" /Gd /TC /analyze- /errorReport:queue "D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\build\CMakeFiles\CMakeTmp\testCCompiler.c"
   testCCompiler.c
   
-  cmTC_77b4a.vcxproj -> D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\build\CMakeFiles\CMakeTmp\Debug\cmTC_77b4a.exe
+  cmTC_44ce3.vcxproj -> D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\build\CMakeFiles\CMakeTmp\Debug\cmTC_44ce3.exe
 
 
 Detecting C compiler ABI info compiled with the following output:
 Change Dir: D:/NextCloud/HD/Projetos - Sources- Doc/NarvalEngine/build/CMakeFiles/CMakeTmp
 
-Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/MSBuild/15.0/Bin/MSBuild.exe cmTC_0503a.vcxproj /p:Configuration=Debug /p:Platform=Win32 /p:VisualStudioVersion=15.0 /v:m 
+Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/MSBuild/15.0/Bin/MSBuild.exe cmTC_c9452.vcxproj /p:Configuration=Debug /p:Platform=Win32 /p:VisualStudioVersion=15.0 /v:m 
 Microsoft(R) Build Engine versÃ£o 15.9.21+g9802d43bc3 para .NET Framework 
 Copyright (C) Microsoft Corporation. Todos os direitos reservados.
 
   Microsoft (R) C/C++ Optimizing Compiler VersÃ£o 19.16.27026.1 para x86
   Copyright (C) Microsoft Corporation. Todos os direitos reservados.
   
-  cl /c /Zi /W3 /WX- /diagnostics:classic /Od /Ob0 /Oy- /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_0503a.dir\Debug\\" /Fd"cmTC_0503a.dir\Debug\vc141.pdb" /Gd /TC /analyze- /errorReport:queue "C:\Program Files\CMake\share\cmake-3.14\Modules\CMakeCCompilerABI.c"
-  CMakeCCompilerABI.c
+  cl /c /Zi /W3 /WX- /diagnostics:classic /Od /Ob0 /Oy- /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_c9452.dir\Debug\\" /Fd"cmTC_c9452.dir\Debug\vc141.pdb" /Gd /TC /analyze- /errorReport:queue "C:\Program Files\CMake\share\cmake-3.14\Modules\CMakeCCompilerABI.c"
   
-  cmTC_0503a.vcxproj -> D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\build\CMakeFiles\CMakeTmp\Debug\cmTC_0503a.exe
+  CMakeCCompilerABI.c
+  cmTC_c9452.vcxproj -> D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\build\CMakeFiles\CMakeTmp\Debug\cmTC_c9452.exe
 
 
 
@@ -126,17 +126,17 @@ Copyright (C) Microsoft Corporation. Todos os direitos reservados.
 Detecting C [] compiler features compiled with the following output:
 Change Dir: D:/NextCloud/HD/Projetos - Sources- Doc/NarvalEngine/build/CMakeFiles/CMakeTmp
 
-Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/MSBuild/15.0/Bin/MSBuild.exe cmTC_0cd07.vcxproj /p:Configuration=Debug /p:Platform=Win32 /p:VisualStudioVersion=15.0 /v:m 
+Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/MSBuild/15.0/Bin/MSBuild.exe cmTC_72dfc.vcxproj /p:Configuration=Debug /p:Platform=Win32 /p:VisualStudioVersion=15.0 /v:m 
 Microsoft(R) Build Engine versÃ£o 15.9.21+g9802d43bc3 para .NET Framework 
 Copyright (C) Microsoft Corporation. Todos os direitos reservados.
 
   Microsoft (R) C/C++ Optimizing Compiler VersÃ£o 19.16.27026.1 para x86
   Copyright (C) Microsoft Corporation. Todos os direitos reservados.
   
-  cl /c /Zi /W3 /WX- /diagnostics:classic /Od /Ob0 /Oy- /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_0cd07.dir\Debug\\" /Fd"cmTC_0cd07.dir\Debug\vc141.pdb" /Gd /TC /analyze- /errorReport:queue "D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\build\CMakeFiles\feature_tests.c"
+  cl /c /Zi /W3 /WX- /diagnostics:classic /Od /Ob0 /Oy- /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_72dfc.dir\Debug\\" /Fd"cmTC_72dfc.dir\Debug\vc141.pdb" /Gd /TC /analyze- /errorReport:queue "D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\build\CMakeFiles\feature_tests.c"
   feature_tests.c
   
-  cmTC_0cd07.vcxproj -> D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\build\CMakeFiles\CMakeTmp\Debug\cmTC_0cd07.exe
+  cmTC_72dfc.vcxproj -> D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\build\CMakeFiles\CMakeTmp\Debug\cmTC_72dfc.exe
 
 
     Feature record: C_FEATURE:1c_function_prototypes
@@ -144,33 +144,33 @@ Copyright (C) Microsoft Corporation. Todos os direitos reservados.
 Determining if the CXX compiler works passed with the following output:
 Change Dir: D:/NextCloud/HD/Projetos - Sources- Doc/NarvalEngine/build/CMakeFiles/CMakeTmp
 
-Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/MSBuild/15.0/Bin/MSBuild.exe cmTC_ae00d.vcxproj /p:Configuration=Debug /p:Platform=Win32 /p:VisualStudioVersion=15.0 /v:m 
+Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/MSBuild/15.0/Bin/MSBuild.exe cmTC_02c95.vcxproj /p:Configuration=Debug /p:Platform=Win32 /p:VisualStudioVersion=15.0 /v:m 
 Microsoft(R) Build Engine versÃ£o 15.9.21+g9802d43bc3 para .NET Framework 
 Copyright (C) Microsoft Corporation. Todos os direitos reservados.
 
   Microsoft (R) C/C++ Optimizing Compiler VersÃ£o 19.16.27026.1 para x86
   Copyright (C) Microsoft Corporation. Todos os direitos reservados.
   
-  cl /c /Zi /W3 /WX- /diagnostics:classic /Od /Ob0 /Oy- /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /GR /Fo"cmTC_ae00d.dir\Debug\\" /Fd"cmTC_ae00d.dir\Debug\vc141.pdb" /Gd /TP /analyze- /errorReport:queue "D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\build\CMakeFiles\CMakeTmp\testCXXCompiler.cxx"
+  cl /c /Zi /W3 /WX- /diagnostics:classic /Od /Ob0 /Oy- /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /GR /Fo"cmTC_02c95.dir\Debug\\" /Fd"cmTC_02c95.dir\Debug\vc141.pdb" /Gd /TP /analyze- /errorReport:queue "D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\build\CMakeFiles\CMakeTmp\testCXXCompiler.cxx"
   testCXXCompiler.cxx
   
-  cmTC_ae00d.vcxproj -> D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\build\CMakeFiles\CMakeTmp\Debug\cmTC_ae00d.exe
+  cmTC_02c95.vcxproj -> D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\build\CMakeFiles\CMakeTmp\Debug\cmTC_02c95.exe
 
 
 Detecting CXX compiler ABI info compiled with the following output:
 Change Dir: D:/NextCloud/HD/Projetos - Sources- Doc/NarvalEngine/build/CMakeFiles/CMakeTmp
 
-Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/MSBuild/15.0/Bin/MSBuild.exe cmTC_c7afb.vcxproj /p:Configuration=Debug /p:Platform=Win32 /p:VisualStudioVersion=15.0 /v:m 
+Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/MSBuild/15.0/Bin/MSBuild.exe cmTC_80781.vcxproj /p:Configuration=Debug /p:Platform=Win32 /p:VisualStudioVersion=15.0 /v:m 
 Microsoft(R) Build Engine versÃ£o 15.9.21+g9802d43bc3 para .NET Framework 
 Copyright (C) Microsoft Corporation. Todos os direitos reservados.
 
   Microsoft (R) C/C++ Optimizing Compiler VersÃ£o 19.16.27026.1 para x86
   Copyright (C) Microsoft Corporation. Todos os direitos reservados.
   
-  cl /c /Zi /W3 /WX- /diagnostics:classic /Od /Ob0 /Oy- /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /GR /Fo"cmTC_c7afb.dir\Debug\\" /Fd"cmTC_c7afb.dir\Debug\vc141.pdb" /Gd /TP /analyze- /errorReport:queue "C:\Program Files\CMake\share\cmake-3.14\Modules\CMakeCXXCompilerABI.cpp"
+  cl /c /Zi /W3 /WX- /diagnostics:classic /Od /Ob0 /Oy- /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /GR /Fo"cmTC_80781.dir\Debug\\" /Fd"cmTC_80781.dir\Debug\vc141.pdb" /Gd /TP /analyze- /errorReport:queue "C:\Program Files\CMake\share\cmake-3.14\Modules\CMakeCXXCompilerABI.cpp"
   CMakeCXXCompilerABI.cpp
   
-  cmTC_c7afb.vcxproj -> D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\build\CMakeFiles\CMakeTmp\Debug\cmTC_c7afb.exe
+  cmTC_80781.vcxproj -> D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\build\CMakeFiles\CMakeTmp\Debug\cmTC_80781.exe
 
 
 
@@ -178,17 +178,17 @@ Copyright (C) Microsoft Corporation. Todos os direitos reservados.
 Detecting CXX [] compiler features compiled with the following output:
 Change Dir: D:/NextCloud/HD/Projetos - Sources- Doc/NarvalEngine/build/CMakeFiles/CMakeTmp
 
-Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/MSBuild/15.0/Bin/MSBuild.exe cmTC_0c682.vcxproj /p:Configuration=Debug /p:Platform=Win32 /p:VisualStudioVersion=15.0 /v:m 
+Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/MSBuild/15.0/Bin/MSBuild.exe cmTC_f364e.vcxproj /p:Configuration=Debug /p:Platform=Win32 /p:VisualStudioVersion=15.0 /v:m 
 Microsoft(R) Build Engine versÃ£o 15.9.21+g9802d43bc3 para .NET Framework 
 Copyright (C) Microsoft Corporation. Todos os direitos reservados.
 
   Microsoft (R) C/C++ Optimizing Compiler VersÃ£o 19.16.27026.1 para x86
   Copyright (C) Microsoft Corporation. Todos os direitos reservados.
   
-  cl /c /Zi /W3 /WX- /diagnostics:classic /Od /Ob0 /Oy- /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /GR /Fo"cmTC_0c682.dir\Debug\\" /Fd"cmTC_0c682.dir\Debug\vc141.pdb" /Gd /TP /analyze- /errorReport:queue "D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\build\CMakeFiles\feature_tests.cxx"
+  cl /c /Zi /W3 /WX- /diagnostics:classic /Od /Ob0 /Oy- /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /GR /Fo"cmTC_f364e.dir\Debug\\" /Fd"cmTC_f364e.dir\Debug\vc141.pdb" /Gd /TP /analyze- /errorReport:queue "D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\build\CMakeFiles\feature_tests.cxx"
   feature_tests.cxx
   
-  cmTC_0c682.vcxproj -> D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\build\CMakeFiles\CMakeTmp\Debug\cmTC_0c682.exe
+  cmTC_f364e.vcxproj -> D:\NextCloud\HD\Projetos - Sources- Doc\NarvalEngine\build\CMakeFiles\CMakeTmp\Debug\cmTC_f364e.exe
 
 
     Feature record: CXX_FEATURE:1cxx_aggregate_default_initializers
