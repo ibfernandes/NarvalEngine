@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.9)
 project(NarvalEngine)
 
+configure_file(src/defines.h.in src/defines.h)
+include_directories(${CMAKE_BINARY_DIR}/src)
+
 # Using cpp17
 set(CMAKE_CXX_STANDARD 17)
 

@@ -16,4 +16,3 @@
 <li>STB 1034f5e</li>
 <li>GLAD 0.1.30</li>
 </ul>
-

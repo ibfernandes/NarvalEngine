@@ -4,7 +4,6 @@
 Engine3D::Engine3D(){
 	this->startTime = glfwGetTime();
 	this->previousUpdateTime = startTime;
-
 }
 
 
