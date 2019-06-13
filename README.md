@@ -1,3 +1,4 @@
+<img src="resources/logo.png" />
 <h1>Steps to compile:</h2> </br>
 <ol>
 <li>git submodule init</li>

@@ -1,5 +1,7 @@
 #pragma once
+#include "ResourceManager.h"
 #include "GameStateManager.h"
+#include "Renderer.h"
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
@@ -23,6 +25,18 @@ class Engine3D{
 		int const IS_VSYNC_ON = 0;
 		GLint WIDTH = 864, HEIGHT = 486;
 		GLFWwindow *window;
+
+		Renderer renderer;
+
+		void init() {
+			startGLFW();
+
+			glEnable(GL_TEXTURE_2D);
+			glFrontFace(GL_CW);
+			//glEnable(GL_CULL_FACE);
+			//glCullFace(GL_BACK);
+			//glEnable(GL_DEPTH_TEST);
+		}
 
 		int startGLFW() {
 			glfwInit();
@@ -52,19 +66,20 @@ class Engine3D{
 		}
 
 		void mainLoop() {
+			while (!glfwWindowShouldClose(window)) {
 
-			if (glfwGetTime() - startTime >= 1.0) {
-				std::cout << "------------------------" << std::endl;
-				std::cout << "UPS: " << UPSCount << std::endl;
-				std::cout << "FPS: " << FPSCount << std::endl;
-				startTime = glfwGetTime();
-				UPSCount = 0;
-				FPSCount = 0;
+				if (glfwGetTime() - startTime >= 1.0) {
+					std::cout << "------------------------" << std::endl;
+					std::cout << "UPS: " << UPSCount << std::endl;
+					std::cout << "FPS: " << FPSCount << std::endl;
+					startTime = glfwGetTime();
+					UPSCount = 0;
+					FPSCount = 0;
+				}
+
+				update();
+				render();
 			}
-
-			update();
-			render();
-
 		}
 
 		void update() {
@@ -73,12 +88,39 @@ class Engine3D{
 				GSM.update();
 				UPSCount++;
 			}
+			glfwPollEvents();
 		}
 
 		void render() {
+			glClearColor(0, 0, 0, 1);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+			glm::mat4 cam(1);
+			glm::mat4 model(1);
+			glm::mat4 proj(1);
+			model = glm::translate(model, { 10,0, 20 });
+			model = glm::scale(model, { 300,300, 30 });
+			float nearPlane = 1;
+			float farPlane = 7000;
+			float projAngle = 45;
+			proj = glm::perspective(glm::radians(projAngle), (GLfloat)WIDTH / (GLfloat)HEIGHT, nearPlane, farPlane);
+			glm::vec3 cameraPos = {0, 0.0f, 6000 };
+			glm::vec3 cameraFront = { 0.0f, 0.0f, -1.0f };
+			glm::vec3 cameraUp = { 0.0f, 1.0f, 0.0f };
+			cam = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
+
+			ResourceManager::getSelf()->getShader("monocolor").use();
+			ResourceManager::getSelf()->getShader("monocolor").setVec3("rgbColor", 1,1,0);
+			ResourceManager::getSelf()->getShader("monocolor").setMat4("cam", cam);
+			ResourceManager::getSelf()->getShader("monocolor").setMat4("model", model);
+			ResourceManager::getSelf()->getShader("monocolor").setMat4("projection", proj);
+			
+			renderer.render(ResourceManager::getSelf()->getModel("quadTest"));
+
 			previousRenderTime = glfwGetTime();
 			GSM.render();
 			FPSCount++;
+			glfwSwapBuffers(window);
 		}
 };
 

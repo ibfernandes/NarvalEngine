@@ -1,5 +1,7 @@
+#pragma once
 #include "defines.h"
 #include "Shader.h"
+#include "Model.h"
 #include <string>
 #include <iostream>
 #include <map>
@@ -10,13 +12,27 @@ private:
 	ResourceManager();
 	static ResourceManager* self;
 	std::map<std::string, Shader> shaders;
+	std::map<std::string, Model> models;
 	
 public:
 	~ResourceManager();
 	static ResourceManager *getSelf();
 
-	void test() {
 
+	void addModel(std::string name, Model model) {
+
+		if (models.count(name) > 0)
+			return;
+
+		models.insert({name, model});
+	}
+
+	Model getModel(std::string name) {
+		return models.at(name);
+	}
+
+	Shader getShader(std::string name){
+		return shaders.at(name);
 	}
 
 	Shader loadShader(std::string name, std::string vertexShaderPath, std::string fragmentShaderPath,
