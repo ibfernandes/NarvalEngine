@@ -50,6 +50,7 @@ int main(){
 
 	GameStateManager gsm;
 	ResourceManager::getSelf()->loadShader("monocolor", "shaders/monoColor.vert", "shaders/monoColor.frag", "");
+	ResourceManager::getSelf()->loadShader("cloudscape", "shaders/cloudscape.vert", "shaders/cloudscape.frag", "");
 	generateTestModel();
 
 	engine->mainLoop();

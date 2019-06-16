@@ -28,6 +28,9 @@ include_directories(includes/stb)
 # GLM library
 include_directories(includes/glm)
 
+# GLM library
+include_directories(includes/fastnoise)
+
 # Imgui paths
 include_directories(includes/imgui)
 include_directories(includes/imgui/examples)
@@ -44,11 +47,16 @@ set(IMGUI_SOURCES
     "includes/imgui/examples/imgui_impl_opengl3.cpp"
 )
 
+set(FASTNOISE_SOURCES
+    "includes/fastnoise/FastNoise.h"
+    "includes/fastnoise/FastNoise.cpp"
+)
+
 # Sources files
 file(GLOB SOURCE_FILES
     "src/*.h"
     "src/*.cpp"
 )
 
-add_executable(NarvalEngine ${SOURCE_FILES} ${GLAD} ${IMGUI_SOURCES})
+add_executable(NarvalEngine ${SOURCE_FILES} ${GLAD} ${IMGUI_SOURCES} ${FASTNOISE_SOURCES})
 target_link_libraries(NarvalEngine glfw ${GLFW_LIBRARIES})

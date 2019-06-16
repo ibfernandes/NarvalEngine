@@ -1,7 +1,10 @@
 #pragma once
 #include "ResourceManager.h"
 #include "GameStateManager.h"
+#include "FastNoise.h"
 #include "Renderer.h"
+#include "CloudSystem.h"
+#include "Texture3D.h"
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
@@ -23,19 +26,23 @@ class Engine3D{
 		int const GL_CONTEXT_VERSION_MAJOR = 4;
 		int const GL_CONTEXT_VERSION_MINOR = 0;
 		int const IS_VSYNC_ON = 0;
-		GLint WIDTH = 864, HEIGHT = 486;
+		GLint WIDTH = 256, HEIGHT = 256;
 		GLFWwindow *window;
 
 		Renderer renderer;
+		std::string currentShader = "cloudscape";
+		CloudSystem cloudSystem;
+		
 
 		void init() {
 			startGLFW();
+			cloudSystem.generateCloudNoiseTextures();
 
 			glEnable(GL_TEXTURE_2D);
-			glFrontFace(GL_CW);
-			//glEnable(GL_CULL_FACE);
-			//glCullFace(GL_BACK);
-			//glEnable(GL_DEPTH_TEST);
+			glFrontFace(GL_CCW);
+			glEnable(GL_CULL_FACE);
+			glCullFace(GL_BACK);
+			glEnable(GL_DEPTH_TEST);
 		}
 
 		int startGLFW() {
@@ -104,16 +111,24 @@ class Engine3D{
 			float farPlane = 7000;
 			float projAngle = 45;
 			proj = glm::perspective(glm::radians(projAngle), (GLfloat)WIDTH / (GLfloat)HEIGHT, nearPlane, farPlane);
-			glm::vec3 cameraPos = {0, 0.0f, 6000 };
+			glm::vec3 cameraPos = {0, 0.0f, 600 };
 			glm::vec3 cameraFront = { 0.0f, 0.0f, -1.0f };
 			glm::vec3 cameraUp = { 0.0f, 1.0f, 0.0f };
 			cam = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
 
-			ResourceManager::getSelf()->getShader("monocolor").use();
-			ResourceManager::getSelf()->getShader("monocolor").setVec3("rgbColor", 1,1,0);
-			ResourceManager::getSelf()->getShader("monocolor").setMat4("cam", cam);
-			ResourceManager::getSelf()->getShader("monocolor").setMat4("model", model);
-			ResourceManager::getSelf()->getShader("monocolor").setMat4("projection", proj);
+			ResourceManager::getSelf()->getShader(currentShader).use();
+			//should be done only once
+			ResourceManager::getSelf()->getShader(currentShader).setInteger("perlinWorley", 0);
+			glActiveTexture(GL_TEXTURE0);
+			cloudSystem.perlinWorley3.bind();
+
+			float time = ((sin(glm::radians(glfwGetTime()*10)) + 1) / 2);
+
+			ResourceManager::getSelf()->getShader(currentShader).setFloat("time", time);
+			ResourceManager::getSelf()->getShader(currentShader).setMat4("cam", cam);
+			ResourceManager::getSelf()->getShader(currentShader).setMat4("model", model);
+			ResourceManager::getSelf()->getShader(currentShader).setMat4("projection", proj);
+			ResourceManager::getSelf()->getShader(currentShader).setFloat("screenRes", WIDTH);
 			
 			renderer.render(ResourceManager::getSelf()->getModel("quadTest"));
 
