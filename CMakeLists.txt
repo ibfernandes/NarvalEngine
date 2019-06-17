@@ -52,11 +52,15 @@ set(FASTNOISE_SOURCES
     "includes/fastnoise/FastNoise.cpp"
 )
 
+set(STB_SOURCES
+    "includes/stb/stb_image.h"
+)
+
 # Sources files
 file(GLOB SOURCE_FILES
     "src/*.h"
     "src/*.cpp"
 )
 
-add_executable(NarvalEngine ${SOURCE_FILES} ${GLAD} ${IMGUI_SOURCES} ${FASTNOISE_SOURCES})
+add_executable(NarvalEngine ${SOURCE_FILES} ${GLAD} ${IMGUI_SOURCES} ${FASTNOISE_SOURCES} ${STB_SOURCES})
 target_link_libraries(NarvalEngine glfw ${GLFW_LIBRARIES})

@@ -4,6 +4,7 @@
 #include <iostream>
 #include <vector>
 
+
 void generateTestModel(){
 	float vertices[] = {
 		-1, -1, 0,
@@ -51,6 +52,9 @@ int main(){
 	GameStateManager gsm;
 	ResourceManager::getSelf()->loadShader("monocolor", "shaders/monoColor.vert", "shaders/monoColor.frag", "");
 	ResourceManager::getSelf()->loadShader("cloudscape", "shaders/cloudscape.vert", "shaders/cloudscape.frag", "");
+	ResourceManager::getSelf()->loadTexture2D("cloudheights", "imgs/heights.png");
+	ResourceManager::getSelf()->loadTexture2D("weather", "imgs/weather.png");
+
 	generateTestModel();
 
 	engine->mainLoop();

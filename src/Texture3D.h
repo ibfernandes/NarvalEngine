@@ -9,7 +9,7 @@ public:
 	~Texture3D();
 	GLuint id;
 
-	void generateWithData(int width, int height, int depth, float *data) {
+	void generateWithData(int width, int height, int depth, int nmrChannels, float *data) {
 		glGenTextures(1, &id);
 		glBindTexture(GL_TEXTURE_3D, id);
 
@@ -19,7 +19,10 @@ public:
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-		glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA8, width, height, depth, 0, GL_RGBA, GL_FLOAT, data);
+		if(nmrChannels == 3)
+			glTexImage3D(GL_TEXTURE_3D, 0, GL_RGB8, width, height, depth, 0, GL_RGB, GL_FLOAT, data);
+		if(nmrChannels == 4)
+			glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA8, width, height, depth, 0, GL_RGBA, GL_FLOAT, data);
 
 		glBindTexture(GL_TEXTURE_3D, 0);
 	}

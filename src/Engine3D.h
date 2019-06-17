@@ -122,6 +122,18 @@ class Engine3D{
 			glActiveTexture(GL_TEXTURE0);
 			cloudSystem.perlinWorley3.bind();
 
+			ResourceManager::getSelf()->getShader(currentShader).setInteger("worley3", 1);
+			glActiveTexture(GL_TEXTURE1);
+			cloudSystem.worley3.bind();
+
+			ResourceManager::getSelf()->getShader(currentShader).setInteger("curl3", 2);
+			glActiveTexture(GL_TEXTURE2);
+			cloudSystem.curl3.bind();
+
+			ResourceManager::getSelf()->getShader(currentShader).setInteger("weather", 3);
+			glActiveTexture(GL_TEXTURE3);
+			ResourceManager::getSelf()->getTexture2D("weather").bind();
+
 			float time = ((sin(glm::radians(glfwGetTime()*10)) + 1) / 2);
 
 			ResourceManager::getSelf()->getShader(currentShader).setFloat("time", time);

@@ -1,11 +1,13 @@
 #pragma once
 #include "defines.h"
 #include "Shader.h"
+#include "Texture2D.h"
 #include "Model.h"
 #include <string>
 #include <iostream>
 #include <map>
 #include <fstream>
+#include "stb_image.h"
 
 class ResourceManager {
 private:
@@ -13,6 +15,7 @@ private:
 	static ResourceManager* self;
 	std::map<std::string, Shader> shaders;
 	std::map<std::string, Model> models;
+	std::map<std::string, Texture2D> textures2D;
 	
 public:
 	~ResourceManager();
@@ -29,6 +32,24 @@ public:
 
 	Model getModel(std::string name) {
 		return models.at(name);
+	}
+
+	Texture2D getTexture2D(std::string name) {
+		return textures2D.at(name);
+	}
+
+	Texture2D loadTexture2D(std::string name, std::string path) {
+		if (textures2D.count(name) > 0)
+			return textures2D.at(name);
+
+		int width, height, channels;
+		unsigned char *data = stbi_load( (RESOURCES_DIR+path).c_str(), &width, &height, &channels, 0);
+		Texture2D tex;
+		tex.generateWithData(width, height, channels, data);
+		textures2D.insert({ name, tex });
+		stbi_image_free(data);
+
+		return textures2D.at(name);
 	}
 
 	Shader getShader(std::string name){
