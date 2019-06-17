@@ -43,9 +43,9 @@ public:
 			return textures2D.at(name);
 
 		int width, height, channels;
-		unsigned char *data = stbi_load( (RESOURCES_DIR+path).c_str(), &width, &height, &channels, 0);
+		unsigned char *data = stbi_load( (RESOURCES_DIR+path).c_str(), &width, &height, &channels, STBI_rgb_alpha);
 		Texture2D tex;
-		tex.generateWithData(width, height, channels, data);
+		tex.generateWithData(width, height, 4, data);
 		textures2D.insert({ name, tex });
 		stbi_image_free(data);
 

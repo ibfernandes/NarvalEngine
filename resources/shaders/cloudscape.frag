@@ -27,7 +27,7 @@ float changeRange( float x, float xmin, float xmax, float a, float b) {
 //            G: precipitation
 //            B: cloud type (0 stratus, 0.5 stratocumulus, 1.0 cumulus)
 float getDensityHeightGradientForPoint(vec3 p, vec3 weatherData){
-    return 0.5;
+    return 1;
 }
 
 float sampleCloudDensity(vec3 p, vec3 weatherData){
@@ -103,7 +103,7 @@ void main(){
     if(gl_FragCoord.x > screenRes*0.75 && gl_FragCoord.x <= screenRes )
         noiseValue = texture(perlinWorley3, newTexCoords).a;
 
-    //noiseValue = sampleCloudDensity(gl_FragCoord.xyz, texture(weather, newTexCoords.xy).xyz);
+    noiseValue = sampleCloudDensity(newTexCoords.xyz, texture(weather, newTexCoords.xy).xyz);
 
     color = vec4(noiseValue,noiseValue,noiseValue,noiseValue);
 }
