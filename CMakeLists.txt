@@ -19,8 +19,11 @@ include_directories(includes/glfw/deps)
 include_directories(includes/glfw/include)
 
 # GLFW executables.
-set(GLAD "${GLFW_SOURCE_DIR}/deps/glad/glad.h"
-         "${GLFW_SOURCE_DIR}/deps/glad.c")
+include_directories(includes/glad/include/glad)
+include_directories(includes/glad/include/KHR)
+include_directories(includes/glad/include)
+set(GLAD "includes/glad/include/glad/glad.h"
+         "includes/glad/src/glad.c")
 
 # STB loaders
 include_directories(includes/stb)
