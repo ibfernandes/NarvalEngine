@@ -1,3 +1,4 @@
 #pragma once
 #define ROOT_DIR  "@CMAKE_SOURCE_DIR@/"
 #define RESOURCES_DIR  "@CMAKE_SOURCE_DIR@/resources/"
+#define TARGET_UPS 60

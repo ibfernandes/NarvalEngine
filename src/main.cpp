@@ -46,6 +46,29 @@ void generateTestModel(){
 }
 
 int main(){
+
+	/*glm::mat4 model(1);
+	model = glm::translate(model, {0, 0, 300 });
+	
+	glm::mat4 view(1);
+	glm::vec3 up(0, 1, 0);
+	glm::vec3 front(0, 0, 1);
+	glm::vec3 side = glm::cross(front, up);
+	glm::vec3 camPosition(0, 0, 0);
+	view = glm::lookAt(camPosition, camPosition + front, up);
+
+	glm::mat4 proj(1);
+	proj = glm::perspective( (float)glm::radians((float)45), (float)400/(float)400, (float)1, (float)1000);
+
+
+	glm::vec4 res = glm::vec4(1) * proj * view * model;
+
+
+	return 0;*/
+
+
+
+	
 	Engine3D *engine = new Engine3D();
 	engine->init();
 
