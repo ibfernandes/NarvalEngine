@@ -63,7 +63,7 @@ class Engine3D{
 			glFrontFace(GL_CCW);
 			//glEnable(GL_CULL_FACE);
 			//glCullFace(GL_BACK);
-			//glEnable(GL_DEPTH_TEST);
+			glEnable(GL_DEPTH_TEST);
 		}
 
 		int startGLFW() {
@@ -129,8 +129,8 @@ class Engine3D{
 
 			glm::mat4 model(1);
 			glm::mat4 proj(1);
-			model = glm::translate(model, { 0, 0, 1 });
-			model = glm::scale(model, { 1, 1, 0 });
+			model = glm::translate(model, { 0, 0, 5 });
+			model = glm::scale(model, { 1, 1, 1 });
 			float nearPlane = 1;
 			float farPlane = 60000;
 			float projAngle = 45;
@@ -161,6 +161,7 @@ class Engine3D{
 
 			ResourceManager::getSelf()->getShader(currentShader).setFloat("time", time);
 			ResourceManager::getSelf()->getShader(currentShader).setMat4("cam", *camera.getCam());
+			//ResourceManager::getSelf()->getShader(currentShader).setMat4("staticCam", staticCam);
 			glm::mat4 invCam = glm::inverse(*camera.getCam());
 			//ResourceManager::getSelf()->getShader(currentShader).setMat4("inverseCam", invCam);
 			ResourceManager::getSelf()->getShader(currentShader).setMat4("model", model);
@@ -172,6 +173,12 @@ class Engine3D{
 			ResourceManager::getSelf()->getShader(currentShader).setVec3("cameraPosition", camPos.x, camPos.y, camPos.z);
 			
 			renderer.render(ResourceManager::getSelf()->getModel("quadTest"));
+
+			/*model = glm::mat4(1);
+			model = glm::translate(model, { 0, 0, 8 });
+			model = glm::scale(model, { 1, 1, 1 });
+			ResourceManager::getSelf()->getShader(currentShader).setMat4("model", model);
+			renderer.render(ResourceManager::getSelf()->getModel("cubeTest"));*/
 
 			previousRenderTime = glfwGetTime();
 			GSM.render();
