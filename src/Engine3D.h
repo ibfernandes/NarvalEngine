@@ -172,7 +172,7 @@ class Engine3D{
 			ResourceManager::getSelf()->getShader(currentShader).setVec3("sunlightDirection", 0,1,0);
 			ResourceManager::getSelf()->getShader(currentShader).setVec3("cameraPosition", camPos.x, camPos.y, camPos.z);
 			
-			renderer.render(ResourceManager::getSelf()->getModel("quadTest"));
+			renderer.render(ResourceManager::getSelf()->getModel("cubeTest"));
 
 			/*model = glm::mat4(1);
 			model = glm::translate(model, { 0, 0, 8 });

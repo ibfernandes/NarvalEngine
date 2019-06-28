@@ -6,7 +6,7 @@
 
 class InputManager {
 public:
-	static enum EventType {
+	enum EventType {
 		KeyHolding, KeyRelease
 	};
 

@@ -3,8 +3,7 @@ layout (location = 0) in vec3 vertex;
 layout (location = 1) in vec2 tex;
 
 out vec2 texCoords;
-out vec3 rayDirection;
-out vec3 eye;
+out vec3 fragPos;
 
 uniform mat4 cam;
 uniform mat4 staticCam;
@@ -17,8 +16,7 @@ void main(){
 
 	gl_Position = mvp * vec4(vertex.xyz , 1.0);
 
-	eye = vec3(cam[3][0], cam[3][1], cam[3][2]);
-	rayDirection = normalize(vertex - eye);
+	fragPos = vec3(model * vec4(vertex.xyz, 1.0));
 
 	texCoords = tex.xy;
 }
