@@ -17,10 +17,17 @@ uniform mat4 inv_view;
 uniform mat4 inv_proj;
 uniform float time;
 
+uniform vec3 lightColor = vec3(1.0,0,0);
+uniform vec3 lightDirection = normalize(-vec3(0,0.3,1));
+
+uniform float coverage_multiplier = 0.6;
+uniform float cloudSpeed = 10000.5;
+uniform float crispiness = 0;
+
 uniform vec3 cameraPosition;
 
-uniform vec3 cloudColorTop = (vec3(255., 255., 255.)/255.0);
-uniform vec3 cloudColorBottom =  (vec3(200., 200., 200.)/255.0);
+uniform vec3 cloudColorTop = (vec3(1,1,1));
+uniform vec3 cloudColorBottom =  (vec3(1,1,1));
 
 #define CLOUDS_AMBIENT_COLOR_TOP cloudColorTop
 #define CLOUDS_AMBIENT_COLOR_BOTTOM cloudColorBottom
@@ -63,28 +70,28 @@ const vec3 windDirection = normalize(vec3(0.5, 0.0, 0.1));
 
 #define CLOUD_TOP_OFFSET 750.0
 #define SATURATE(x) clamp(x, 0.0, 1.0)
+#define CLOUD_SCALE crispiness
 #define CLOUD_SPEED cloudSpeed
 
-uniform float curliness; // 0.1
-uniform float coverage_multiplier = 0.4;
-uniform float cloudSpeed = 6000;
-uniform float crispiness; // 30.0
-uniform float absorption = 0.0035;
-uniform float densityFactor = 0.02;
-uniform vec3 lightColor = vec3(127, 100, 0)/255;
-uniform vec3 lightDirection = normalize(44-vec3(0,0.4,1));
+uniform float curliness = 1.5;
 
 
-vec3 ambientlight = vec3(255, 255, 235)/255;
+vec3 ambientlight = vec3(255, 255, 255)/255;
 
 vec3 eye = cameraPosition;
 
+uniform float absorption = 0.0035;
+
+
 uniform bool enablePowder = false;
+
+uniform float densityFactor = 0.2;
 
 float HG( float sundotrd, float g) {
 	float gg = g * g;
 	return (1. - gg) / pow( 1. + gg - 2. * g * sundotrd, 1.5);
 }
+
 
 bool intersectCubeMap(vec3 o, vec3 d, out vec3 minT, out vec3 maxT)
 {		
@@ -228,7 +235,7 @@ float sampleCloudDensity(vec3 p, bool expensive, float lod){
 		return 0.0;
 	}
 
-	vec4 low_frequency_noise = textureLod(perlinWorley3, vec3(uv*crispiness, heightFraction), lod);
+	vec4 low_frequency_noise = textureLod(perlinWorley3, vec3(uv*CLOUD_SCALE, heightFraction), lod);
 	float lowFreqFBM = dot(low_frequency_noise.gba, vec3(0.625, 0.25, 0.125));
 	float base_cloud = remap(low_frequency_noise.r, -(1.0 - lowFreqFBM), 1., 0.0 , 1.0);
 	
@@ -245,18 +252,18 @@ float sampleCloudDensity(vec3 p, bool expensive, float lod){
 	
 	if(expensive)
 	{
-		vec3 erodeCloudNoise = textureLod(worley3, vec3(moving_uv*crispiness, heightFraction)*curliness, lod).rgb;
+		vec3 erodeCloudNoise = textureLod(worley3, vec3(moving_uv*CLOUD_SCALE, heightFraction)*curliness, lod).rgb;
 		float highFreqFBM = dot(erodeCloudNoise.rgb, vec3(0.625, 0.25, 0.125));//(erodeCloudNoise.r * 0.625) + (erodeCloudNoise.g * 0.25) + (erodeCloudNoise.b * 0.125);
 		float highFreqNoiseModifier = mix(highFreqFBM, 1.0 - highFreqFBM, clamp(heightFraction * 10.0, 0.0, 1.0));
 
 		base_cloud_with_coverage = base_cloud_with_coverage - highFreqNoiseModifier * (1.0 - base_cloud_with_coverage);
 
 		base_cloud_with_coverage = remap(base_cloud_with_coverage*2.0, highFreqNoiseModifier * 0.2, 1.0, 0.0, 1.0);
-
 	}
 
 	return clamp(base_cloud_with_coverage, 0.0, 1.0);
 }
+
 
 float beer(float d){
 	return exp(-d);
@@ -266,6 +273,7 @@ float powder(float d){
 	return (1. - exp(-2.*d));
 
 }
+
 
  float phase(vec3 inLightVec, vec3 inViewVec, float g) {
 	float costheta = dot(inLightVec, inViewVec) / length(inLightVec) / length(inViewVec);
@@ -296,7 +304,7 @@ float raymarchToLight(vec3 o, float stepSize, vec3 lightDir, float originalDensi
 		if(heightFraction >= 0)
 		{
 			
-			float cloudDensity = sampleCloudDensity(pos, density > 0.1, i/2);
+			float cloudDensity = sampleCloudDensity(pos, density > 0.3, i/16);
 			if(cloudDensity > 0.0)
 			{
 				float Ti = exp(cloudDensity*sigma_ds);
@@ -364,7 +372,7 @@ vec4 raymarchToCloud(vec3 startPos, vec3 endPos, vec3 bg, out vec4 cloudPos){
 	{	
 		//if( pos.y >= cameraPosition.y - SPHERE_DELTA*1.5 ){
 
-		float density_sample = sampleCloudDensity(pos, true, i/2);
+		float density_sample = sampleCloudDensity(pos, true, i/16);
 		if(density_sample > 0.)
 		{
 			if(!entered){
@@ -420,22 +428,6 @@ float computeFogAmount(in vec3 startPos, in float factor){
 }
 
 #define HDR(col, exps) 1.0 - exp(-col * exps)
-
-
-float renderNoiseSlices(vec3 texCoords, vec2 fragCoord){
-    float noiseValue;
-
-    if(fragCoord.x > 0 && fragCoord.x <= screenRes.x*1.25 )
-        noiseValue = texture(perlinWorley3, texCoords).x;
-   /* if(fragCoord.x > screenRes.x*0.25 && fragCoord.x <= screenRes.x*0.5 )
-        noiseValue = texture(perlinWorley3, texCoords).y;
-    if(fragCoord.x > screenRes.x*0.5 && fragCoord.x <= screenRes.x*0.75 )
-        noiseValue = texture(perlinWorley3, texCoords).z;
-    if(fragCoord.x > screenRes.x*0.75 && fragCoord.x <= screenRes.x )
-        noiseValue = texture(perlinWorley3, texCoords).a;*/
-
-    return noiseValue;
-}
 
 void main()
 {
@@ -503,8 +495,7 @@ void main()
 
 	v = raymarchToCloud(startPos,endPos, bg.rgb, cloudDistance_v);
 	color = v;
-	color = vec4(renderNoiseSlices( vec3( gl_FragCoord.xy/screenRes.xy,0), gl_FragCoord.xy));
-	/*cloudDistance_v = vec4(distance(cameraPosition, cloudDistance_v.xyz), 0.0,0.0,0.0);
+	cloudDistance_v = vec4(distance(cameraPosition, cloudDistance_v.xyz), 0.0,0.0,0.0);
 	//cloudDistance_v = v;
 
 	float cloudAlphaness = threshold(v.a, 0.2);
@@ -526,18 +517,18 @@ void main()
 	bg.rgb = bg.rgb*(1.0 - v.a) + v.rgb;
 	bg.a = 1.0;
 
-	color = bg;
-	fragColor_v = bg;
-	alphaness_v = vec4(cloudAlphaness, 0.0, 0.0, 1.0); // alphaness buffer*/
 
-	/*if(cloudAlphaness > 0.1){ //apply fog to bloom buffer
+	fragColor_v = bg;
+	alphaness_v = vec4(cloudAlphaness, 0.0, 0.0, 1.0); // alphaness buffer
+
+	if(cloudAlphaness > 0.1){ //apply fog to bloom buffer
 		float fogAmount = computeFogAmount(startPos, 0.00003);
 
 		vec3 cloud = mix(vec3(0.0), bloom_v.rgb, clamp(fogAmount,0.,1.));
 		bloom_v.rgb = bloom_v.rgb*(1.0 - cloudAlphaness) + cloud.rgb;
 
 	}
-	fragColor_v.a = alphaness_v.r;*/
+	fragColor_v.a = alphaness_v.r;
 	/*imageStore(fragColor, fragCoord, fragColor_v);
 	imageStore(bloom, fragCoord, bloom_v);
 	imageStore(alphaness, fragCoord, alphaness_v);

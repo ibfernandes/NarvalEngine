@@ -17,7 +17,7 @@ public:
 	Texture2D curl3;
 	const float perlinRange = sqrt(3.0 / 4.0);
 
-	float changeRange(float xmin, float xmax, float x, float a, float b) {
+	float changeRange(float x, float xmin, float xmax, float a, float b) {
 		return (b - a) * (x - xmin) / (xmax - xmin) + a;
 	}
 
@@ -58,7 +58,7 @@ public:
 		fn->SetFrequency(frequency);
 
 		float noise = curlNoise(glm::vec3(x, y, 1), fn).x;
-		noise = changeRange(-1.0, 1, noise, 0, 1);
+		noise = changeRange(noise , -1.0, 1, 0, 1);
 
 		return noise;
 	}
@@ -73,12 +73,14 @@ public:
 
 		// fractal Brownian motion (FBM) for worley(cellular) noise
 		for (int i = 0; i < octaves; i++) {
-			wnoise += amplitude * (1 - fn->GetCellular(st.x * 2, st.y * 2, st.z * 2));
-			st *= 1.12;
-			amplitude *= .45;
+			wnoise += amplitude * (fn->GetCellular(st.x, st.y, st.z));
+			st *= 2;
+			amplitude *= .55;
 		}
 
-		wnoise = changeRange(-1.26376, 0.966978, wnoise, 0, 1);
+		//wnoise = glm::clamp(1 - wnoise, 0.0f, 1.0f);
+		//wnoise = changeRange(-1.26376, 0.966978, wnoise, 0, 1);
+
 		return wnoise;
 	}
 
@@ -87,24 +89,26 @@ public:
 
 		int octaves = 7;
 		float pnoise = 0;
-		float amplitude = .9;
+		float amplitude = 1;
 		glm::vec3 st(x, y, z);
+		fn->SetFrequency(0.01);
 
 		// fractal Brownian motion (FBM) for perlin noise
 		for (int i = 0; i < octaves; i++) {
-			pnoise += amplitude * fn->GetPerlin(st.x, st.y, st.z);
-			st *= 2.;
+			pnoise += amplitude * (float)fn->GetPerlin(st.x, st.y, st.z);
+			st *= 2;
 			amplitude *= .5;
 		}
 
-		pnoise = abs(pnoise);
-		pnoise = changeRange(0, perlinRange, pnoise, 0, 1);
+		//pnoise = abs(pnoise);
+		//pnoise = glm::clamp(pnoise, 0.0f, 1.0f);
+		//pnoise = changeRange(0, perlinRange, pnoise, 0, 1);
 
-		float wnoise = generateWorley(fn, 0.02, 0.5, 3, x, y, z);
+		//float wnoise = generateWorley(fn, 0.025, 1, 1, x, y, z);
 
-		fnoise = changeRange(0, 1, pnoise, wnoise, 1);
+		//fnoise = changeRange(pnoise, 0, 1, wnoise, 1);
 
-		return fnoise;
+		return pnoise;
 	}
 
 	void generateCloudNoiseTextures() {
@@ -113,8 +117,11 @@ public:
 		noise->SetCellularReturnType(noise->Distance2Add);
 
 		//Generates a 3D RGBA texture with R: perlin-worley GBA: worley at increasing frequencies 
-		int resolution = 64;
+		int resolution = 128;
 		int channels = 4;
+		float min[4] = { 0 };
+		float max[4] = { 0 };
+
 		float *data = new float[resolution * resolution * resolution * channels];
 		for (int z = 0; z < resolution; z++) {
 			for (int x = 0; x < resolution; x++) {
@@ -122,16 +129,69 @@ public:
 					int pos = (x + y * resolution)*channels + (z * resolution * resolution* channels);
 
 					data[pos] = generatePerlinWorley(noise, x, y, z);
-					data[pos + 1] = generateWorley(noise, 0.1, 1, 1, x, y, z);
-					data[pos + 2] = generateWorley(noise, 0.13, 1, 1, x, y, z);
-					data[pos + 3] = generateWorley(noise, 0.16, 1, 1, x, y, z);
+					data[pos + 1] = generateWorley(noise, 0.025, 1, 5, x, y, z);
+					data[pos + 2] = generateWorley(noise, 0.07, 1, 2, x, y, z);
+					data[pos + 3] = generateWorley(noise, 0.12, 1, 2, x, y, z);
+
+					if (data[pos + 1] < min[0]) {
+						min[0] = data[pos + 1];
+					}
+					if (data[pos + 1] > max[0]) {
+						max[0] = data[pos + 1];
+					}
+
+					if (data[pos + 2] < min[1]) {
+						min[1] = data[pos + 2];
+					}
+					if (data[pos + 2] > max[1]) {
+						max[1] = data[pos + 2];
+					}
+
+					if (data[pos + 3] < min[2]) {
+						min[2] = data[pos + 3];
+					}
+					if (data[pos + 3] > max[2]) {
+						max[2] = data[pos + 3];
+					}
+
+					if (data[pos] < min[3]) {
+						min[3] = data[pos];
+					}
+					if (data[pos] > max[3]) {
+						max[3] = data[pos];
+					}
+				}
+			}
+		}
+		
+		for (int z = 0; z < resolution; z++) {
+			for (int x = 0; x < resolution; x++) {
+				for (int y = 0; y < resolution; y++) {
+					int pos = (x + y * resolution)*channels + (z * resolution * resolution* channels);
+
+					data[pos + 1] = 1 - changeRange(data[pos + 1], min[0], max[0], 0 , 1);
+					data[pos + 2] = 1 - changeRange(data[pos + 2], min[1], max[1], 0, 1);
+					data[pos + 3] = 1 - changeRange(data[pos + 3], min[2], max[2], 0, 1);
+					data[pos] = abs(changeRange(data[pos], min[3], max[3], -1, 1));
+					data[pos] = changeRange(data[pos], data[pos + 1], 1, 0, 1);
 				}
 			}
 		}
 		perlinWorley3.generateWithData(resolution, resolution, resolution, 4, data);
 
+
+
 		//Generates a 3D RGB texture with RGB: worley at increasing frequencies
-		resolution = 32;
+		min[0] = 0;
+		min[1] = 0;
+		min[2] = 0;
+		min[3] = 0;
+		max[0] = 0;
+		max[1] = 0;
+		max[2] = 0;
+		max[3] = 0;
+
+		resolution = 64;
 		channels = 3;
 		data = new float[resolution * resolution * resolution * channels];
 		for (int z = 0; z < resolution; z++) {
@@ -142,6 +202,39 @@ public:
 					data[pos] = generateWorley(noise, 0.01, 1, 1, x, y, z);
 					data[pos + 1] = generateWorley(noise, 0.06, 1, 1, x, y, z);
 					data[pos + 2] = generateWorley(noise, 0.09, 1, 1, x, y, z);
+
+					if (data[pos] < min[0]) {
+						min[0] = data[pos];
+					}
+					if (data[pos] > max[0]) {
+						max[0] = data[pos];
+					}
+
+					if (data[pos + 1] < min[0]) {
+						min[0] = data[pos + 1];
+					}
+					if (data[pos + 1] > max[0]) {
+						max[0] = data[pos + 1];
+					}
+
+					if (data[pos + 2] < min[1]) {
+						min[1] = data[pos + 2];
+					}
+					if (data[pos + 2] > max[1]) {
+						max[1] = data[pos + 2];
+					}
+				}
+			}
+		}
+
+		for (int z = 0; z < resolution; z++) {
+			for (int x = 0; x < resolution; x++) {
+				for (int y = 0; y < resolution; y++) {
+					int pos = (x + y * resolution)*channels + (z * resolution * resolution* channels);
+
+					data[pos] = 1 - changeRange(data[pos], min[0], max[0], 0, 1);
+					data[pos + 1] = 1 - changeRange(data[pos + 1], min[1], max[1], 0, 1);
+					data[pos + 2] = 1 - changeRange(data[pos + 2], min[2], max[2], 0, 1);
 				}
 			}
 		}
@@ -156,9 +249,9 @@ public:
 			for (int y = 0; y < resolution; y++) {
 				int pos = (x + y * resolution) * channels;
 
-				data[pos] = generateCurl(noise, 0.14, 1, 1, x, y);
-				data[pos + 1] = generateCurl(noise, 0.17, 1, 1, x, y);
-				data[pos + 2] = generateCurl(noise, 0.19, 1, 1, x, y);
+				data[pos] = generateCurl(noise, 0.01, 1, 1, x, y);
+				data[pos + 1] = generateCurl(noise, 0.08, 1, 1, x, y);
+				data[pos + 2] = generateCurl(noise, 0.1, 1, 1, x, y);
 			}
 		}
 
