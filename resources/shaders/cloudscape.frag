@@ -504,7 +504,7 @@ void main()
 	v = raymarchToCloud(startPos,endPos, bg.rgb, cloudDistance_v);
 	color = v;
 	//color = vec4(renderNoiseSlices( vec3( gl_FragCoord.xy/screenRes.xy,0), gl_FragCoord.xy));
-	/*cloudDistance_v = vec4(distance(cameraPosition, cloudDistance_v.xyz), 0.0,0.0,0.0);
+	cloudDistance_v = vec4(distance(cameraPosition, cloudDistance_v.xyz), 0.0,0.0,0.0);
 	//cloudDistance_v = v;
 
 	float cloudAlphaness = threshold(v.a, 0.2);
