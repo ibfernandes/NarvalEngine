@@ -425,14 +425,14 @@ float computeFogAmount(in vec3 startPos, in float factor){
 float renderNoiseSlices(vec3 texCoords, vec2 fragCoord){
     float noiseValue;
 
-    if(fragCoord.x > 0 && fragCoord.x <= screenRes.x*1.25 )
+    if(fragCoord.x > 0 && fragCoord.x <= screenRes.x*0.25 )
         noiseValue = texture(perlinWorley3, texCoords).x;
-   /* if(fragCoord.x > screenRes.x*0.25 && fragCoord.x <= screenRes.x*0.5 )
+   if(fragCoord.x > screenRes.x*0.25 && fragCoord.x <= screenRes.x*0.5 )
         noiseValue = texture(perlinWorley3, texCoords).y;
     if(fragCoord.x > screenRes.x*0.5 && fragCoord.x <= screenRes.x*0.75 )
         noiseValue = texture(perlinWorley3, texCoords).z;
     if(fragCoord.x > screenRes.x*0.75 && fragCoord.x <= screenRes.x )
-        noiseValue = texture(perlinWorley3, texCoords).a;*/
+        noiseValue = texture(perlinWorley3, texCoords).a;
 
     return noiseValue;
 }
@@ -503,7 +503,7 @@ void main()
 
 	v = raymarchToCloud(startPos,endPos, bg.rgb, cloudDistance_v);
 	color = v;
-	color = vec4(renderNoiseSlices( vec3( gl_FragCoord.xy/screenRes.xy,0), gl_FragCoord.xy));
+	//color = vec4(renderNoiseSlices( vec3( gl_FragCoord.xy/screenRes.xy,0), gl_FragCoord.xy));
 	/*cloudDistance_v = vec4(distance(cameraPosition, cloudDistance_v.xyz), 0.0,0.0,0.0);
 	//cloudDistance_v = v;
 
