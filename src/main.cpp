@@ -160,6 +160,7 @@ int main(){
 	GameStateManager gsm;
 	ResourceManager::getSelf()->loadShader("monocolor", "shaders/monoColor.vert", "shaders/monoColor.frag", "");
 	ResourceManager::getSelf()->loadShader("cloudscape", "shaders/cloudscape.vert", "shaders/cloudscape.frag", "");
+	ResourceManager::getSelf()->loadShader("volume", "shaders/volume.vert", "shaders/volume.frag", "");
 	ResourceManager::getSelf()->loadTexture2D("cloudheights", "imgs/heights.png");
 	ResourceManager::getSelf()->loadTexture2D("weather", "imgs/weather.png");
 

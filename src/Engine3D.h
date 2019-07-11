@@ -26,9 +26,9 @@ class Engine3D{
 		int FPSCount = 0;
 
 		int const GL_CONTEXT_VERSION_MAJOR = 4;
-		int const GL_CONTEXT_VERSION_MINOR = 0;
+		int const GL_CONTEXT_VERSION_MINOR = 3;
 		int const IS_VSYNC_ON = 1;
-		GLint WIDTH = 1000, HEIGHT = 512;
+		GLint WIDTH = 512, HEIGHT = 512;
 		GLFWwindow *window;
 
 		Renderer renderer;
@@ -60,10 +60,12 @@ class Engine3D{
 			cloudSystem.generateCloudNoiseTextures();
 
 			glEnable(GL_TEXTURE_2D);
-			glFrontFace(GL_CCW);
 			//glEnable(GL_CULL_FACE);
+			//glFrontFace(GL_CCW);
 			//glCullFace(GL_BACK);
 			glEnable(GL_DEPTH_TEST);
+			glEnable(GL_BLEND);
+			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		}
 
 		int startGLFW() {
@@ -122,11 +124,7 @@ class Engine3D{
 			glfwPollEvents();
 		}
 
-		void render() {
-			glViewport(0, 0, WIDTH, HEIGHT);
-			glClearColor(0, 1, 0, 1);
-			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
+		void renderSky() {
 			glm::mat4 model(1);
 			glm::mat4 proj(1);
 			model = glm::translate(model, { 0, 0, 1 });
@@ -157,7 +155,7 @@ class Engine3D{
 
 			//float time = ((sin(glm::radians(glfwGetTime()*100)) + 1) / 2)*1;
 			//float time = 1;
-			float time = glfwGetTime()/2;
+			float time = glfwGetTime() / 2;
 			//std::cout << time << std::endl;
 
 			glm::vec3 camPos = *(camera.getPosition());
@@ -178,13 +176,13 @@ class Engine3D{
 			glm::mat4 invProj = glm::inverse(proj);
 			ResourceManager::getSelf()->getShader(currentShader).setMat4("inv_proj", invProj);
 			ResourceManager::getSelf()->getShader(currentShader).setVec2("screenRes", WIDTH, HEIGHT);
-			ResourceManager::getSelf()->getShader(currentShader).setVec3("sunlightDirection", 0,1,0);
+			ResourceManager::getSelf()->getShader(currentShader).setVec3("sunlightDirection", 0, 1, 0);
 			ResourceManager::getSelf()->getShader(currentShader).setVec3("cameraPosition", camPos.x, camPos.y, camPos.z);
 
 			time = ((sin(glm::radians(glfwGetTime() * 100)) + 1) / 2) * 1;
-			ResourceManager::getSelf()->getShader(currentShader).setFloat("crispness", 30 * time);
-			ResourceManager::getSelf()->getShader(currentShader).setFloat("curliness", 30 * time);
-			
+			ResourceManager::getSelf()->getShader(currentShader).setFloat("crispness", 30 * 0.2);
+			ResourceManager::getSelf()->getShader(currentShader).setFloat("curliness", 0.1);
+
 			renderer.render(ResourceManager::getSelf()->getModel("quadTest"));
 
 			/*model = glm::mat4(1);
@@ -192,6 +190,42 @@ class Engine3D{
 			model = glm::scale(model, { 0.2, 0.2, 0.2 });
 			ResourceManager::getSelf()->getShader(currentShader).setMat4("model", model);
 			renderer.render(ResourceManager::getSelf()->getModel("cubeTest"));*/
+		}
+
+		void renderVolume() {
+			glm::mat4 model(1);
+			glm::mat4 proj(1);
+			model = glm::translate(model, { 0, 0, 4 });
+			model = glm::scale(model, { 1, 1, 1 });
+			float nearPlane = 1;
+			float farPlane = 60000;
+			float projAngle = 45;
+			proj = glm::perspective(glm::radians(projAngle), (GLfloat)WIDTH / (GLfloat)HEIGHT, nearPlane, farPlane);
+
+			std::string currentShader = "volume";
+
+			ResourceManager::getSelf()->getShader(currentShader).use();
+			ResourceManager::getSelf()->getShader(currentShader).setInteger("volume", 0);
+			glActiveTexture(GL_TEXTURE0);
+			cloudSystem.perlinWorley3.bind();
+
+			ResourceManager::getSelf()->getShader(currentShader).setMat4("cam", *camera.getCam());
+			ResourceManager::getSelf()->getShader(currentShader).setMat4("model", model);
+			ResourceManager::getSelf()->getShader(currentShader).setMat4("proj", proj);
+			glm::vec3 camPos = *(camera.getPosition());
+			ResourceManager::getSelf()->getShader(currentShader).setVec3("cameraPosition", camPos.x, camPos.y, camPos.z);
+
+			renderer.render(ResourceManager::getSelf()->getModel("cubeTest"));
+
+		}
+
+		void render() {
+			glViewport(0, 0, WIDTH, HEIGHT);
+			glClearColor(0, 1, 0, 1);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+			renderVolume();
+			//renderSky();
 
 			previousRenderTime = glfwGetTime();
 			GSM.render();

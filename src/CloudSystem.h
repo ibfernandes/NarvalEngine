@@ -291,9 +291,9 @@ public:
 			amplitude *= .5;
 		}
 
-		pnoise = abs(pnoise);
+		//pnoise = abs(pnoise);
 		//pnoise = glm::clamp(pnoise, 0.0f, 1.0f);
-		//pnoise = changeRange(0, perlinRange, pnoise, 0, 1);
+		pnoise = changeRange(pnoise, -perlinRange*0.8, perlinRange*0.4, 0, 1);
 
 		//float wnoise = generateWorley(fn, 0.025, 1, 1, x, y, z);
 
@@ -308,7 +308,8 @@ public:
 		noise->SetCellularReturnType(noise->Distance2Add);
 
 		//Generates a 3D RGBA texture with R: perlin-worley GBA: worley at increasing frequencies 
-		int resolution = 128;
+		int resolution = 64;
+		float centerPos = resolution/2.0f;
 		int channels = 4;
 		float min[4] = { 0 };
 		float max[4] = { 0 };
@@ -318,11 +319,13 @@ public:
 			for (int x = 0; x < resolution; x++) {
 				for (int y = 0; y < resolution; y++) {
 					int pos = (x + y * resolution)*channels + (z * resolution * resolution* channels);
+					float dist = pow((x - centerPos), 2) + pow((y - centerPos), 2) + pow((z - centerPos), 2);
+					dist = sqrt(dist)/55.9f;
 
 					data[pos] = generatePerlinWorley(noise, x, y, z);
-					data[pos + 1] = generateWorley(0.025, 1, 3, x, y, z);
-					data[pos + 2] = generateWorley(0.09, 1, 2, x, y, z);
-					data[pos + 3] = generateWorley(0.15, 1, 2, x, y, z);
+					data[pos + 1] = generateWorley(noise, 0.025, 1, 3, x, y, z);
+					data[pos + 2] = generateWorley(noise, 0.09, 1, 2, x, y, z);
+					data[pos + 3] = generateWorley(noise, 0.15, 1, 2, x, y, z);
 
 					if (data[pos + 1] < min[0]) {
 						min[0] = data[pos + 1];
@@ -360,9 +363,9 @@ public:
 				for (int y = 0; y < resolution; y++) {
 					int pos = (x + y * resolution)*channels + (z * resolution * resolution* channels);
 
-					//data[pos + 1] = 1 - changeRange(data[pos + 1], min[0], max[0], 0 , 1);
-					//data[pos + 2] = 1 - changeRange(data[pos + 2], min[1], max[1], 0, 1);
-					//data[pos + 3] = 1 - changeRange(data[pos + 3], min[2], max[2], 0, 1);
+					data[pos + 1] = 1 - changeRange(data[pos + 1], min[0], max[0], 0 , 1);
+					data[pos + 2] = 1 - changeRange(data[pos + 2], min[1], max[1], 0, 1);
+					data[pos + 3] = 1 - changeRange(data[pos + 3], min[2], max[2], 0, 1);
 					//data[pos] = generateWorley(1, 1, 1, x, y, z);
 					//data[pos] = abs(changeRange(data[pos], min[3], max[3], -1, 1));
 					data[pos] = changeRange(data[pos], data[pos + 1], 1, 0, 1);
@@ -391,9 +394,9 @@ public:
 				for (int y = 0; y < resolution; y++) {
 					int pos = (x + y * resolution)*channels + (z * resolution * resolution* channels);
 
-					data[pos] = generateWorley(0.01, 1, 1, x, y, z);
-					data[pos + 1] = generateWorley(0.06, 1, 1, x, y, z);
-					data[pos + 2] = generateWorley(0.09, 1, 1, x, y, z);
+					data[pos] =     generateWorley(noise, 0.01, 1, 1, x, y, z);
+					data[pos + 1] = generateWorley(noise, 0.06, 1, 1, x, y, z);
+					data[pos + 2] = generateWorley(noise, 0.09, 1, 1, x, y, z);
 
 					if (data[pos] < min[0]) {
 						min[0] = data[pos];
@@ -419,17 +422,17 @@ public:
 			}
 		}
 
-		/*for (int z = 0; z < resolution; z++) {
+		for (int z = 0; z < resolution; z++) {
 			for (int x = 0; x < resolution; x++) {
 				for (int y = 0; y < resolution; y++) {
 					int pos = (x + y * resolution)*channels + (z * resolution * resolution* channels);
 
-					data[pos] = 1 - changeRange(data[pos], min[0], max[0], 0, 1);
+					data[pos]     = 1 - changeRange(data[pos], min[0], max[0], 0, 1);
 					data[pos + 1] = 1 - changeRange(data[pos + 1], min[1], max[1], 0, 1);
 					data[pos + 2] = 1 - changeRange(data[pos + 2], min[2], max[2], 0, 1);
 				}
 			}
-		}*/
+		}
 		worley3.generateWithData(resolution, resolution, resolution, 3, data);
 
 		//Generates a 2D RGB texture with RGB: curl at increasing frequencies

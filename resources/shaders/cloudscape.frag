@@ -216,6 +216,13 @@ vec2 getUVProjection(vec3 p){
 	return p.xz/SPHERE_INNER_RADIUS + 0.5;
 }
 
+float hash13(vec3 p3)
+{
+	p3  = fract(p3 * .1031);
+    p3 += dot(p3, p3.yzx + 19.19);
+    return fract((p3.x + p3.y) * p3.z);
+}
+
 float sampleCloudDensity(vec3 p, bool expensive, float lod){
 
 	float heightFraction = getHeightFraction(p);
@@ -247,15 +254,15 @@ float sampleCloudDensity(vec3 p, bool expensive, float lod){
 	{
 		vec3 erodeCloudNoise = textureLod(worley3, vec3(moving_uv*crispiness, heightFraction)*curliness, lod).rgb;
 		float highFreqFBM = dot(erodeCloudNoise.rgb, vec3(0.625, 0.25, 0.125));//(erodeCloudNoise.r * 0.625) + (erodeCloudNoise.g * 0.25) + (erodeCloudNoise.b * 0.125);
-		float highFreqNoiseModifier = mix(highFreqFBM, 1.0 - highFreqFBM, clamp(heightFraction * 10.0, 0.0, 1.0));
+		float highFreqNoiseModifier = mix(highFreqFBM, 1.0 - highFreqFBM, clamp(heightFraction * 1.0, 0.0, 1.0));
 
 		base_cloud_with_coverage = base_cloud_with_coverage - highFreqNoiseModifier * (1.0 - base_cloud_with_coverage);
 
-		base_cloud_with_coverage = remap(base_cloud_with_coverage*2.0, highFreqNoiseModifier * 0.2, 1.0, 0.0, 1.0);
+		base_cloud_with_coverage = remap(base_cloud_with_coverage, highFreqNoiseModifier * 0.2, 1.0, 0.0, 1.0);
 
 	}
 
-	return clamp(base_cloud_with_coverage, 0.0, 1.0);
+	return remap(base_cloud_with_coverage, -0.5,1.0, 0.0, 1.0);
 }
 
 float beer(float d){
@@ -364,7 +371,7 @@ vec4 raymarchToCloud(vec3 startPos, vec3 endPos, vec3 bg, out vec4 cloudPos){
 	{	
 		//if( pos.y >= cameraPosition.y - SPHERE_DELTA*1.5 ){
 
-		float density_sample = sampleCloudDensity(pos, true, i/2);
+		float density_sample = sampleCloudDensity(pos, true, i/16);
 		if(density_sample > 0.)
 		{
 			if(!entered){
