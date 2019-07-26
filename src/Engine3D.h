@@ -209,6 +209,8 @@ class Engine3D{
 			glActiveTexture(GL_TEXTURE0);
 			cloudSystem.perlinWorley3.bind();
 
+			float time = ((sin(glm::radians(glfwGetTime() * 100)) + 1) / 2) * 1;
+			ResourceManager::getSelf()->getShader(currentShader).setFloat("time", time);
 			ResourceManager::getSelf()->getShader(currentShader).setMat4("cam", *camera.getCam());
 			ResourceManager::getSelf()->getShader(currentShader).setMat4("model", model);
 			ResourceManager::getSelf()->getShader(currentShader).setMat4("proj", proj);
