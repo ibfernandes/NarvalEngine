@@ -163,6 +163,7 @@ int main(){
 	ResourceManager::getSelf()->loadShader("volume", "shaders/volume.vert", "shaders/volume.frag", "");
 	ResourceManager::getSelf()->loadTexture2D("cloudheights", "imgs/heights.png");
 	ResourceManager::getSelf()->loadTexture2D("weather", "imgs/weather.png");
+	ResourceManager::getSelf()->loadShader("screentex", "shaders/screenTex.vert", "shaders/screenTex.frag", "");
 
 	generateCubeTestModel();
 	generateTestModel();

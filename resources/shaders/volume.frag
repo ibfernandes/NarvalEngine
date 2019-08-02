@@ -1,12 +1,25 @@
 #version 430 core
-#define STEPS 64
 
 out vec4 color; 
 in vec3 rayDirection;
 flat in vec3 eyeObjectSpace;
 
 uniform sampler3D volume;
+uniform sampler3D perlinWorley3;
 uniform float time;
+uniform vec3 scattering = 1 * vec3(0.4, 0.4, 0.1);
+uniform vec3 absorption = vec3(0.001);
+uniform vec3 lightPosition = vec3(0.9);
+uniform vec3 lightColor = vec3(0.5, 0.2 , 0.2);
+uniform float lightMaxRadius = 0.5;
+uniform vec3 materialColor = vec3(1.0, 0.0, 0.0);
+uniform vec3 sunLightColor = vec3(252.0/255, 186.0/255, 3.0/255);
+uniform float ambientStrength = 0.1;
+uniform float densityCoef = 0.75;
+uniform float powderCoef = 1.3;
+uniform float HGCoef = 0.01;
+
+#define extinction (absorption + scattering)
 
 vec2 intersectBox(vec3 orig, vec3 dir) {
 	const vec3 boxMin = vec3(0, 0, 0);
@@ -28,99 +41,6 @@ vec2 intersectBox(vec3 orig, vec3 dir) {
 	return vec2(t0, t1);
 }
 
-vec3 scattering = vec3(0.2, 0.5, 1.0);
-//the higher the absorption
-vec3 absorption = vec3(0.4);
-vec3 lightPosition = vec3(time);
-vec3 L = vec3(0.5, 0.5, 0.5);
-#define extinction (absorption + scattering)
-#define tr 3
-#define PI 3.14
-
-/*
-that Li(c, −v) = Lo(p, v), where c
-is the camera position, p is the intersection point of the closest surface with the view
-ray, and v is the unit view vector pointing from p to c
-*/
-//the closer to 0 the more it abosordbs light.
-//the closer to 1 the more it scatters light.
-vec3 calculateAlbedo(vec3 color){
-	vec3 albedo = scattering / (scattering + absorption);
-	return color * albedo;
-}
-
-//calculates transmittance using beer-lambert law.
-//Tr (c, p)
-vec3 calculateTransmittance(vec3 p1, vec3 p2){
-	float depth = length(p1 - p2);
-	vec3 t = depth * extinction;
-	return exp(-t);
-}
-
-//Henyey-Greenstein phase function
-//g in [-1,1]
-float phaseFunction(float g, float theta){
-	return (1 - g*g)/(4*PI*pow(1 + g*g - 2*g*cos(theta), 1.5));
-}
-
-vec4 bookVersion(){
- 	vec3 rayDirection = normalize(rayDirection);
-	vec2 t_hit = intersectBox(eyeObjectSpace, rayDirection);
-
-	if (t_hit.x > t_hit.y) {
-		discard;
-	}
-
-	t_hit.x = max(t_hit.x, 0.0);
-	vec3 dt_vec = 1.0 / (vec3(100) * abs(rayDirection));
-	float dt = 1 * min(dt_vec.x, min(dt_vec.y, dt_vec.z));
-	vec3 cubePos = eyeObjectSpace + (t_hit.x) * rayDirection;
-	vec4 finalColor = vec4(0,0,0,0);
-
-	//c = camera
-	//p intersection point closest surface
-	// v unit ray from p to c (p - c)
-	for (float t = t_hit.x; t < t_hit.y; t += dt) {
-		float density = texture(volume, cubePos).r;
-		
-		cubePos += rayDirection * dt;
-	}
-	
-	//finalColor = calculateTransmittance()*Lo(p,v) + integral o -> p-c Tr * Lscat* scattering * dt
-	return finalColor;
-}
-
-
-vec4 original(vec4 color){
-	vec3 rayDirection = normalize(rayDirection);
-	vec2 t_hit = intersectBox(eyeObjectSpace, rayDirection);
-	if (t_hit.x > t_hit.y) {
-		discard;
-	}
-	t_hit.x = max(t_hit.x, 0.0);
-	vec3 dt_vec = 1.0 / (vec3(100) * abs(rayDirection));
-	float dt = 1 * min(dt_vec.x, min(dt_vec.y, dt_vec.z));
-	vec3 cubePos = eyeObjectSpace + (t_hit.x) * rayDirection;
-	vec3 scatteredLuminance = vec3(0.0,0.0,0.0);
-	vec3 transmittance = vec3(1.0);
-
-	for (float t = t_hit.x; t < t_hit.y; t += dt) {
-		float density = texture(volume, cubePos).r;
-		vec4 val_color = vec4(vec3(1,1,1), density);
-
-		// Opacity correction
-		val_color.a = 1.0 - pow(1.0 - val_color.a, 1);
-		color.rgb += (1.0 - color.a) * val_color.a * val_color.rgb;
-		color.a += (1.0 - color.a) * val_color.a;
-
-		if (color.a >= 1) {
-			break;
-		}
-		
-		cubePos += rayDirection * dt;
-	}
-	return color;
-}
 
 // Get transmittance from a direction and distance onto a point (volume shadows)
 vec3 getShadowTransmittance(vec3 cubePos, float sampledDistance, float stepSizeShadow){
@@ -132,23 +52,49 @@ vec3 getShadowTransmittance(vec3 cubePos, float sampledDistance, float stepSizeS
         vec3 cubeShadowPos = cubePos + tshadow*lDir;
         float densityShadow = texture(volume, cubeShadowPos).r;
 		//exp(− integral [a,b] extinction )
-        shadow += -densityShadow * extinction * stepSizeShadow;
-
+        shadow += -extinction * densityShadow * stepSizeShadow;
     }
 	
     return exp(shadow);
 }
 
 // Returns the light distance attenuation
-float distanceAttenuation(float distance)
-{
-    float lightMaxRadius = 3.0;
+float distanceAttenuation(float distance){
     float linAtt = clamp((lightMaxRadius-distance)/lightMaxRadius,0.0,1.0);
     linAtt*=linAtt;	// some "fake artistic" attenuation
     return linAtt/(distance*distance);
 }
 
-vec4 bunnyVersion(){
+vec3 sunDirection = normalize( vec3(-1.0,0.75,1.0) );
+
+float HGPhase(float cosAngle, float g){
+	float g2 = g * g;
+	return (1.0 - g2) / pow(1.0 + g2 - 2.0 * g * cosAngle, 1.5);
+}
+
+float beerLaw(float densitySample, float densityCoef){
+   return exp( -densitySample * densityCoef);
+}
+         
+float powderEffect(float densitySample, float cosAngle, float densityCoef, float powderCoef){
+   float powder = 1.0 - exp(-densitySample * densityCoef * 2.0);
+   powder = clamp(powder * powderCoef, 0.0, 1.0);
+   return mix(1.0, powder, smoothstep(0.5, -0.5, cosAngle));
+}
+
+ float remap(float originalValue, float originalMin, float originalMax, float newMin, float newMax){
+	return newMin + (((originalValue - originalMin) / (originalMax - originalMin)) * (newMax - newMin));
+}
+
+float phaseFunction(){
+    return 1.0/(4.0*3.14);
+}
+
+float sampleVolume(vec3 pos){
+	return texture(volume, pos).r *0.3;
+}
+
+vec4 bunnyVersion(vec4 color){
 	vec3 rayDirection = normalize(rayDirection);
 	vec2 tHit = intersectBox(eyeObjectSpace, rayDirection);
 
@@ -162,37 +108,51 @@ vec4 bunnyVersion(){
 	float dt = min(dtVec.x, min(dtVec.y, dtVec.z));
 	vec3 cubePos = eyeObjectSpace + (tHit.x) * rayDirection;
 
-	vec3 scatteredLuminance = vec3(0.0,0.0,0.0);
+	vec3 scatteredLuminance = vec3(0.0);
 	vec3 transmittance = vec3(1.0);
-
 	float density = 0;
+
+	vec4 sum = vec4(0.0f);
+
+	vec3 lightPosInObjectSpace = (lightPosition - vec3(0,0,4))/vec3(1,1,1);
+	vec3 ambientColor = ambientStrength * sunLightColor;
+
 	for (float t = tHit.x; t < tHit.y; t += dt) {
-		density += texture(volume, cubePos).r;
+		density += sampleVolume(cubePos);
+		float currentDensity = texture(volume, cubePos).r;
 		
 		float stepSizeShadow = 0.1;
-		vec3 shadow = getShadowTransmittance(cubePos, 1.0, 0.1);
+		vec3 shadow = getShadowTransmittance(cubePos, 1.0, 1.0/10.0);
 		
-		float Ldist = length(lightPosition-cubePos);
+		float Ldist = length(lightPosInObjectSpace-cubePos);
 		float Lattenuation = distanceAttenuation(Ldist);
-		// Scattered luminance ignores phase function (assumes L has it baked in)
-		// This is not energy conservative.
-		scatteredLuminance += Lattenuation * shadow * transmittance * density *scattering * dt * L;       
+
+		//working one?
+		scatteredLuminance += Lattenuation * shadow * transmittance * density * scattering * dt * phaseFunction();
 		transmittance *= exp(-density * extinction * dt);
+
+		//VolumetricIntegration - SebH
+        /*vec3 S = evaluateLight(p) * sigmaS * phaseFunction();// incoming light
+        vec3 Sint = (S - S * exp(-sigmaE * dd)) / sigmaE; // integrate along the current step segment
+        scatteredLight += transmittance * Sint; // accumulate and also take into account the transmittance from previous steps
+        transmittance *= exp(-sigmaE * dd);*/
 		
+
+		//horizon try
+		/*float cosAngle = dot(normalize(cubePos), normalize(lightPosInObjectSpace)); //wrong
+		vec4 col = vec4(materialColor,1.0) * vec4(2.0 * beerLaw(currentDensity, densityCoef) * powderEffect(currentDensity, cosAngle, densityCoef, powderCoef) * HGPhase(cosAngle,HGCoef));
+		sum += col;*/
+
 		cubePos += rayDirection * dt;
 	}
 
-	return vec4(transmittance + scatteredLuminance, density);
+	//return vec4(sum.xyzw * 0.1);
+	return vec4( ambientColor + transmittance*(color.xyz) + scatteredLuminance, 1.0);
 }
 
 void main(){
-        
-	vec4 thisColor = bunnyVersion();
-	color = vec4(thisColor);
-
-	//color = bookVersion();
-	//color = original(color);
-
-	//float density = rayMarch(eyeObjectSpace, normalize(rayDirection));
-	//color = vec4(1,1,1,density);
+	color = vec4(0,1,0,1);
+	vec4 thisColor = bunnyVersion(color);
+	color = thisColor;
+	//color = vec4(pow(color.xyz, vec3(1.0/2.2)),1);
 }

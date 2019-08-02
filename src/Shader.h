@@ -104,6 +104,10 @@ public:
 		glUniform3f(glGetUniformLocation(id, name.c_str()), x, y, z);
 	}
 
+	void setVec4(std::string name, float x, float y, float z, float w) {
+		glUniform4f(glGetUniformLocation(id, name.c_str()), x, y, z, w);
+	}
+
 	void setMat4(std::string name, glm::mat4 mat) {
 		if (glGetUniformLocation(id, name.c_str()) == -1) {
 			std::cout << "ERROR: uniform " + name + " not found";
