@@ -22,6 +22,37 @@ vec4 renderNoiseSlices(vec3 texCoords){
     return vec4(noiseValue,noiseValue,noiseValue,1.0);
 }
 
+vec3 calculateIntegral(float a, float b, vec3 sigma_a){
+    return (b-a) * sigma_a;
+}
+
+vec3 calculateAbsorption(vec3 radiance, float startT){
+	//absorption values for each color channel (wavelength)
+	vec3 sigma_a = vec3(0.19, 0.19, 0.19); 
+	
+	vec3 e = vec3(0, 0, 0);
+	vec3 p = vec3(0, 0, 0);
+	vec3 w = normalize(vec3(1, 0, 0));
+	float stepSize = 0.001f;
+	float d = 10.0;
+	
+	/*for(float t = startT; t <= d; t += stepSize){
+		vec3 currentP = p + t*w;
+		float volumeSample = 1.0;
+	    e += calculateIntegral(t, t+stepSize, sigma_a);
+	}*/
+
+    vec3 integral = calculateIntegral(startT * d, d, sigma_a);
+    e = exp(-integral);
+	
+	return e * radiance;
+}
+
+
 void main(){
-	color = renderNoiseSlices(vec3(texCoords.xy, 1.0));
+	//color = renderNoiseSlices(vec3(texCoords.xy, 1.0));
+
+    vec3 c = vec3(1,1,1);
+    color = vec4(calculateAbsorption(c, gl_FragCoord.x/screenRes.x), 1.0);
+
 }

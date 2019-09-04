@@ -16,6 +16,7 @@
 #include "imgui_impl_opengl3.h"
 
 
+
 class Engine3D{
 	public:
 		GameStateManager GSM;
@@ -44,15 +45,23 @@ class Engine3D{
 		bool *p_open = &showMainMenu;
 		ImGuiWindowFlags window_flags = 0;
 
-		glm::vec3 absorption = 0.0f * glm::vec3(0.001f);
+		glm::vec3 absorption = 0.0f * glm::vec3(0.01f);
 		glm::vec3 scattering = glm::vec3(0.25, 0.5, 1.0);
-		glm::vec3 lightPosition = glm::vec3(0.5,1.0,5.0);
+		glm::vec3 lightPosition = glm::vec3(-0.5,1.0, 3.5);
 		glm::vec3 lightColor =  glm::vec3(1.0, 1.0, 1.0);
 		glm::vec3 materialColor =  glm::vec3(1.0, 1.0, 1.0);
 
+		float lightMaxRadius =  1000.0f;
 		float densityCoef =  0.75;
-		float powderCoef =  1.3;
-		float HGCoef = 0.99;
+		float ambientStrength =  0.1;
+		int phaseFunctionOption = 0;
+		float g = 0.9;
+		float numberOfSteps = 64;
+		float param1 = 14.9;
+		float param2 = 0.1;
+		float param3 = 1.2;
+		bool gammaCorrection = false;
+		ImFont* robotoFont;
 
 		void initInputManager() {
 			glfwSetKeyCallback(window, InputManager::key_callback_handler);
@@ -83,6 +92,64 @@ class Engine3D{
 
 			// Setup style
 			ImGui::StyleColorsDark();
+			ImGuiStyle * style = &ImGui::GetStyle();
+
+			style->WindowPadding = ImVec2(15, 15);
+			style->WindowRounding = 5.0f;
+			style->FramePadding = ImVec2(5, 5);
+			style->FrameRounding = 4.0f;
+			style->ItemSpacing = ImVec2(12, 8);
+			style->ItemInnerSpacing = ImVec2(8, 6);
+			style->IndentSpacing = 25.0f;
+			style->ScrollbarSize = 15.0f;
+			style->ScrollbarRounding = 9.0f;
+			style->GrabMinSize = 5.0f;
+			style->GrabRounding = 3.0f;
+
+			style->Colors[ImGuiCol_Text] = ImVec4(0.80f, 0.80f, 0.83f, 1.00f);
+			style->Colors[ImGuiCol_TextDisabled] = ImVec4(0.24f, 0.23f, 0.29f, 1.00f);
+			style->Colors[ImGuiCol_WindowBg] = ImVec4(0.06f, 0.05f, 0.07f, 1.00f);
+			style->Colors[ImGuiCol_ChildWindowBg] = ImVec4(0.07f, 0.07f, 0.09f, 1.00f);
+			style->Colors[ImGuiCol_PopupBg] = ImVec4(0.07f, 0.07f, 0.09f, 1.00f);
+			style->Colors[ImGuiCol_Border] = ImVec4(0.80f, 0.80f, 0.83f, 0.0f);
+			style->Colors[ImGuiCol_BorderShadow] = ImVec4(0.92f, 0.91f, 0.88f, 0.00f);
+			style->Colors[ImGuiCol_FrameBg] = ImVec4(0.10f, 0.09f, 0.12f, 1.00f);
+			style->Colors[ImGuiCol_FrameBgHovered] = ImVec4(0.24f, 0.23f, 0.29f, 1.00f);
+			style->Colors[ImGuiCol_FrameBgActive] = ImVec4(0.56f, 0.56f, 0.58f, 1.00f);
+			style->Colors[ImGuiCol_TitleBg] = ImVec4(0.10f, 0.09f, 0.12f, 1.00f);
+			style->Colors[ImGuiCol_TitleBgCollapsed] = ImVec4(1.00f, 0.98f, 0.95f, 0.75f);
+			style->Colors[ImGuiCol_TitleBgActive] = ImVec4(0.07f, 0.07f, 0.09f, 1.00f);
+			style->Colors[ImGuiCol_MenuBarBg] = ImVec4(0.10f, 0.09f, 0.12f, 1.00f);
+			style->Colors[ImGuiCol_ScrollbarBg] = ImVec4(0.10f, 0.09f, 0.12f, 1.00f);
+			style->Colors[ImGuiCol_ScrollbarGrab] = ImVec4(0.80f, 0.80f, 0.83f, 0.31f);
+			style->Colors[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.56f, 0.56f, 0.58f, 1.00f);
+			style->Colors[ImGuiCol_ScrollbarGrabActive] = ImVec4(0.06f, 0.05f, 0.07f, 1.00f);
+			style->Colors[ImGuiCol_CheckMark] = ImVec4(0.80f, 0.80f, 0.83f, 0.31f);
+			style->Colors[ImGuiCol_SliderGrab] = ImVec4(0.80f, 0.80f, 0.83f, 0.31f);
+			style->Colors[ImGuiCol_SliderGrabActive] = ImVec4(0.06f, 0.05f, 0.07f, 1.00f);
+			style->Colors[ImGuiCol_Button] = ImVec4(0.10f, 0.09f, 0.12f, 1.00f);
+			style->Colors[ImGuiCol_ButtonHovered] = ImVec4(0.24f, 0.23f, 0.29f, 1.00f);
+			style->Colors[ImGuiCol_ButtonActive] = ImVec4(0.56f, 0.56f, 0.58f, 1.00f);
+			style->Colors[ImGuiCol_Header] = ImVec4(0.10f, 0.09f, 0.12f, 1.00f);
+			style->Colors[ImGuiCol_HeaderHovered] = ImVec4(0.56f, 0.56f, 0.58f, 1.00f);
+			style->Colors[ImGuiCol_HeaderActive] = ImVec4(0.06f, 0.05f, 0.07f, 1.00f);
+			style->Colors[ImGuiCol_Column] = ImVec4(0.56f, 0.56f, 0.58f, 1.00f);
+			style->Colors[ImGuiCol_ColumnHovered] = ImVec4(0.24f, 0.23f, 0.29f, 1.00f);
+			style->Colors[ImGuiCol_ColumnActive] = ImVec4(0.56f, 0.56f, 0.58f, 1.00f);
+			style->Colors[ImGuiCol_ResizeGrip] = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+			style->Colors[ImGuiCol_ResizeGripHovered] = ImVec4(0.56f, 0.56f, 0.58f, 1.00f);
+			style->Colors[ImGuiCol_ResizeGripActive] = ImVec4(0.06f, 0.05f, 0.07f, 1.00f);
+			style->Colors[ImGuiCol_PlotLines] = ImVec4(0.40f, 0.39f, 0.38f, 0.63f);
+			style->Colors[ImGuiCol_PlotLinesHovered] = ImVec4(0.25f, 1.00f, 0.00f, 1.00f);
+			style->Colors[ImGuiCol_PlotHistogram] = ImVec4(0.40f, 0.39f, 0.38f, 0.63f);
+			style->Colors[ImGuiCol_PlotHistogramHovered] = ImVec4(0.25f, 1.00f, 0.00f, 1.00f);
+			style->Colors[ImGuiCol_TextSelectedBg] = ImVec4(0.25f, 1.00f, 0.00f, 0.43f);
+			style->Colors[ImGuiCol_ModalWindowDarkening] = ImVec4(1.00f, 0.98f, 0.95f, 0.73f);
+
+			std::string path = RESOURCES_DIR "fonts/roboto/Roboto-Regular.ttf";
+			robotoFont = io.Fonts->AddFontFromFileTTF(path.c_str(), 14);
+			
+			
 		}
 
 		void init() {
@@ -238,8 +305,16 @@ class Engine3D{
 			ResourceManager::getSelf()->getShader(currentShader).setVec3("materialColor", materialColor.x, materialColor.y, materialColor.z);
 
 			ResourceManager::getSelf()->getShader(currentShader).setFloat("densityCoef", densityCoef);
-			ResourceManager::getSelf()->getShader(currentShader).setFloat("powderCoef", powderCoef);
-			ResourceManager::getSelf()->getShader(currentShader).setFloat("HGCoef", HGCoef);
+			ResourceManager::getSelf()->getShader(currentShader).setFloat("lightMaxRadius", lightMaxRadius);
+			ResourceManager::getSelf()->getShader(currentShader).setFloat("ambientStrength", ambientStrength);
+
+			ResourceManager::getSelf()->getShader(currentShader).setFloat("phaseFunctionOption", phaseFunctionOption);
+			ResourceManager::getSelf()->getShader(currentShader).setFloat("numberOfSteps", numberOfSteps);
+			ResourceManager::getSelf()->getShader(currentShader).setFloat("g", g);
+			ResourceManager::getSelf()->getShader(currentShader).setFloat("gammaCorrection", gammaCorrection);
+			ResourceManager::getSelf()->getShader(currentShader).setFloat("param1", param1);
+			ResourceManager::getSelf()->getShader(currentShader).setFloat("param2", param2);
+			ResourceManager::getSelf()->getShader(currentShader).setFloat("param3", param3);
 		}
 
 		void renderImGUI() {
@@ -248,19 +323,30 @@ class Engine3D{
 			ImGui_ImplOpenGL3_NewFrame();
 			ImGui_ImplGlfw_NewFrame();
 			ImGui::NewFrame();
+			//ImGui::PushFont(robotoFont);
 
-			ImGui::SetNextWindowPos(ImVec2(600, 4), ImGuiCond_Once); // Normally user code doesn't need/want to call this because positions are saved in .ini file anyway. Here we just want to make the demo initial state a bit more friendly!
-			ImGui::SetNextWindowSize(ImVec2(300, 300), ImGuiCond_Once);
+			ImGui::SetNextWindowPos(ImVec2(4, 4), ImGuiCond_Once); // Normally user code doesn't need/want to call this because positions are saved in .ini file anyway. Here we just want to make the demo initial state a bit more friendly!
+			ImGui::SetNextWindowSize(ImVec2(400, 550), ImGuiCond_Once);
 			ImGui::Begin("Volumetric Menu", p_open, window_flags);
-			ImGui::DragFloat3("Absorption", &absorption[0], 0.01, 0.0, 30.0);
-			ImGui::DragFloat3("Scaterring", &scattering[0], 0.01, 0.0, 30.0);
-			ImGui::DragFloat3("Light Pos", &lightPosition[0], 0.01, -30.0, 30.0);
-			ImGui::DragFloat3("Light Lumminance", &lightColor[0], 0.01, 0.0, 30.0);
-			ImGui::DragFloat3("Material Color", &materialColor[0], 0.01, 0.0, 1.0);
+			ImGui::DragFloat3("Absorption (1/m)", &absorption[0], 0.001, 0.001, 5.0);
+			ImGui::DragFloat3("Scattering (1/m)", &scattering[0], 0.001, 0.001, 5.0);
+			ImGui::DragFloat3("Light Pos (m)", &lightPosition[0], 0.05, -30.0, 30.0);
+			ImGui::DragFloat3("L. color", &lightColor[0], 0.01, 0.0, 30.0);
 
-			ImGui::DragFloat("densityCoef", &densityCoef, 0.01, 0.0, 2.0);
-			ImGui::DragFloat("powderCoef", &powderCoef, 0.01, 0.0, 2.0);
-			ImGui::DragFloat("HGCoef", &HGCoef, 0.01, 0.0, 2.0);
+			ImGui::DragFloat("Density Multiplier", &densityCoef, 0.01, 0.0, 30.0);
+			ImGui::DragFloat("Ambient Strength", &ambientStrength, 0.01, 0.0, 20.0);
+			ImGui::DragFloat("g", &g, 0.01, -1.0, 1.0);
+			ImGui::DragFloat("N. of Steps", &numberOfSteps, 1, 0.0, 256);
+
+			ImGui::DragFloat("param1", &param1, 0.1, -100, 100);
+			ImGui::DragFloat("param2", &param2, 0.1, -100, 100);
+			ImGui::DragFloat("param3", &param3, 0.1, -100, 100);
+
+			ImGui::Checkbox("Gamma Correction", &gammaCorrection);
+
+			const char* items[] = { "Isotropic", "Rayleigh", "Henyey-Greenstein"};
+			ImGui::Combo("Phase Function", &phaseFunctionOption, items, IM_ARRAYSIZE(items));
+
 			ImGui::End();
 			
 			// Imgui Render Calls (For Each end frame)
@@ -268,7 +354,7 @@ class Engine3D{
 			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 		}
 
-		void render2DVolume() {
+		void renderNoiseTexture() {
 			glm::mat4 model(1);
 			glm::mat4 proj(1);
 			float nearPlane = 1;
@@ -293,6 +379,32 @@ class Engine3D{
 			renderer.render(ResourceManager::getSelf()->getModel("quadTest"));
 		}
 
+		void renderGradientBackground() {
+			glDisable(GL_DEPTH_TEST);
+
+			glm::mat4 model(1);
+			glm::mat4 proj(1);
+			float nearPlane = 1;
+			float farPlane = 60000;
+			float projAngle = 45;
+			proj = glm::perspective(glm::radians(projAngle), (GLfloat)WIDTH / (GLfloat)HEIGHT, nearPlane, farPlane);
+			proj = glm::ortho(0.f, -(float)WIDTH, 0.f, (float)HEIGHT, -1.f, 1.f);
+
+			std::string currentShader = "gradientBackground";
+			ResourceManager::getSelf()->getShader(currentShader).use();
+			model = glm::translate(model, { WIDTH / 2, HEIGHT / 2, 0 });
+			model = glm::scale(model, { 512, 512, 1 });
+
+			ResourceManager::getSelf()->getShader(currentShader).setMat4("model", model);
+			ResourceManager::getSelf()->getShader(currentShader).setMat4("proj", proj);
+			ResourceManager::getSelf()->getShader(currentShader).setMat4("cam", staticCam);
+
+
+			renderer.render(ResourceManager::getSelf()->getModel("quadTest"));
+
+			glEnable(GL_DEPTH_TEST);
+		}
+
 		void renderVolume() {
 			glm::mat4 model(1);
 			glm::mat4 proj(1);
@@ -304,7 +416,7 @@ class Engine3D{
 			std::string currentShader = "monocolor";
 			ResourceManager::getSelf()->getShader(currentShader).use();
 			model = glm::translate(model, lightPosition);
-			model = glm::scale(model, { 0.2, 0.2, 0.2 });
+			model = glm::scale(model, { 0.1, 0.1, 0.1 });
 
 			ResourceManager::getSelf()->getShader(currentShader).setMat4("model", model);
 			ResourceManager::getSelf()->getShader(currentShader).setMat4("projection", proj);
@@ -317,7 +429,7 @@ class Engine3D{
 			currentShader = "volume";
 			ResourceManager::getSelf()->getShader(currentShader).use();
 			model = glm::mat4(1);
-			model = glm::translate(model, { 0, 0, 4 });
+			model = glm::translate(model, { -1.2, -0.5, 3 });
 			model = glm::scale(model, { 1, 1, 1 });
 
 			ResourceManager::getSelf()->getShader(currentShader).setInteger("volume", 0);
@@ -325,7 +437,9 @@ class Engine3D{
 			cloudSystem.perlinWorley3.bind();
 
 			float time = ((sin(glm::radians(glfwGetTime() * 100)) + 1) / 2) * 1;
+			float continuosTime = glfwGetTime()/6;
 			ResourceManager::getSelf()->getShader(currentShader).setFloat("time", time);
+			ResourceManager::getSelf()->getShader(currentShader).setFloat("continuosTime", continuosTime);
 			ResourceManager::getSelf()->getShader(currentShader).setMat4("cam", *camera.getCam());
 			ResourceManager::getSelf()->getShader(currentShader).setMat4("model", model);
 			ResourceManager::getSelf()->getShader(currentShader).setMat4("proj", proj);
@@ -338,9 +452,10 @@ class Engine3D{
 
 		void render() {
 			glViewport(0, 0, WIDTH, HEIGHT);
-			glClearColor(0, 1, 0, 1);
+			glClearColor(0, 0, 0, 1);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+			renderGradientBackground();
 			renderVolume();
 			//renderSky();
 

@@ -164,6 +164,7 @@ int main(){
 	ResourceManager::getSelf()->loadTexture2D("cloudheights", "imgs/heights.png");
 	ResourceManager::getSelf()->loadTexture2D("weather", "imgs/weather.png");
 	ResourceManager::getSelf()->loadShader("screentex", "shaders/screenTex.vert", "shaders/screenTex.frag", "");
+	ResourceManager::getSelf()->loadShader("gradientBackground", "shaders/gradientBackground.vert", "shaders/gradientBackground.frag", "");
 
 	generateCubeTestModel();
 	generateTestModel();
