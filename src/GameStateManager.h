@@ -5,10 +5,8 @@ public:
 	~GameStateManager();
 
 	void update() {
-
 	}
 
 	void render() {
-
 	}
 };

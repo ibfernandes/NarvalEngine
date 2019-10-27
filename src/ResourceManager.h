@@ -2,12 +2,14 @@
 #include "defines.h"
 #include "Shader.h"
 #include "Texture2D.h"
+#include "Texture3D.h"
 #include "Model.h"
 #include <string>
 #include <iostream>
 #include <map>
 #include <fstream>
 #include "stb_image.h"
+#include <openvdb/openvdb.h>
 
 class ResourceManager {
 private:
@@ -16,6 +18,7 @@ private:
 	std::map<std::string, Shader> shaders;
 	std::map<std::string, Model> models;
 	std::map<std::string, Texture2D> textures2D;
+	std::map<std::string, Texture3D> textures3D;
 	
 public:
 	~ResourceManager();
@@ -32,6 +35,24 @@ public:
 
 	Model getModel(std::string name) {
 		return models.at(name);
+	}
+
+	Texture3D getTexture3D(std::string name) {
+		return textures3D.at(name);
+	}
+
+	Texture3D loadVDBasTexture3D(std::string name, std::string path) {
+		if (textures3D.count(name) > 0)
+			return textures3D.at(name);
+
+		int width, height, depth, channels;
+		unsigned char *data = stbi_load((RESOURCES_DIR + path).c_str(), &width, &height, &channels, STBI_rgb_alpha);
+		Texture2D tex;
+		tex.generateWithData(width, height, 4, data);
+		textures2D.insert({ name, tex });
+		stbi_image_free(data);
+
+		return textures2D.at(name);
 	}
 
 	Texture2D getTexture2D(std::string name) {

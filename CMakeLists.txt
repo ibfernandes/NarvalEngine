@@ -1,3 +1,5 @@
+list(APPEND CMAKE_MODULE_PATH "C:/vcpkg/package/openvdb_x86-windows/share/openvdb")
+set(CMAKE_TOOLCHAIN_FILE "C:/vcpkg/scripts/buildsystems/vcpkg.cmake")
 cmake_minimum_required(VERSION 3.9)
 project(NarvalEngine)
 
@@ -31,7 +33,19 @@ include_directories(includes/stb)
 # GLM library
 include_directories(includes/glm)
 
-# GLM library
+# OpenVDB library
+#find_package( ZLIB COMPONENTS REQUIRED )
+#include_directories( ${ZLIB_INCLUDE_DIR} )
+##include_directories(includes/openvdb)
+#include_directories(includes/tinyvdb)
+#include_directories(includes/tinyvdb/third_party/c-blosc)
+#set(VDB_SOURCES
+#    "includes/tinyvdb/miniz.c"
+#    "includes/tinyvdb/miniz.h"
+#    "includes/tinyvdb/tinyvdbio.h"
+#)
+
+# GLM fastnoise
 include_directories(includes/fastnoise)
 
 # Imgui paths
@@ -59,11 +73,132 @@ set(STB_SOURCES
     "includes/stb/stb_image.h"
 )
 
+# --------------------------------------------------------------------------------------
+# Finders
+
+# OPENEXR FINDER
+include(FindZLIB)
+find_package(openexr)
+
+if (ZLIB_FOUND)
+	message(STATUS "ZLIB detected. :)")
+    FIND_PATH(OPENEXR_INCLUDE_DIR ImfRgbaFile.h PATH_SUFFIXES OpenEXR PATHS $ENV{OPENEXR_PATH}/include $ENV{CPATH})
+    FIND_LIBRARY(OPENEXR_HALF_LIBRARY NAMES Half PATHS $ENV{OPENEXR_PATH}/lib $ENV{LIBRARY_PATH})
+    FIND_LIBRARY(OPENEXR_IEX_LIBRARY NAMES Iex PATHS $ENV{OPENEXR_PATH}/lib $ENV{LIBRARY_PATH})
+    FIND_LIBRARY(OPENEXR_IMATH_LIBRARY NAMES Imath PATHS $ENV{OPENEXR_PATH}/lib $ENV{LIBRARY_PATH})
+    FIND_LIBRARY(OPENEXR_ILMIMF_LIBRARY NAMES IlmImf PATHS $ENV{OPENEXR_PATH}/lib $ENV{LIBRARY_PATH})
+    FIND_LIBRARY(OPENEXR_ILMTHREAD_LIBRARY NAMES IlmThread PATHS $ENV{OPENEXR_PATH}/lib $ENV{LIBRARY_PATH})
+	
+	message(STATUS ${OPENEXR_HALF_LIBRARY})
+
+    include(FindPackageHandleStandardArgs)
+    find_package_handle_standard_args(OpenEXR REQUIRED_VARS
+            OPENEXR_INCLUDE_DIR
+            OPENEXR_HALF_LIBRARY
+            OPENEXR_IEX_LIBRARY
+            OPENEXR_IMATH_LIBRARY
+            OPENEXR_ILMIMF_LIBRARY
+            OPENEXR_ILMTHREAD_LIBRARY)
+    
+    set(OPENEXR_LIBRARIES
+        ${OPENEXR_ILMIMF_LIBRARY}
+        ${OPENEXR_ILMTHREAD_LIBRARY}
+        ${OPENEXR_IMATH_LIBRARY}
+        ${OPENEXR_HALF_LIBRARY}
+        ${OPENEXR_IEX_LIBRARY}
+        ${ZLIB_LIBRARY})
+    
+    mark_as_advanced(
+            OPENEXR_INCLUDE_DIR
+            OPENEXR_HALF_LIBRARY
+            OPENEXR_IEX_LIBRARY
+            OPENEXR_IMATH_LIBRARY
+            OPENEXR_ILMIMF_LIBRARY
+            OPENEXR_ILMTHREAD_LIBRARY
+            OPENEXR_LIBRARIES)
+else()
+    message(STATUS "OpenEXR not available: Could not find ZLib")
+endif()
+
+
+
+#OPENVDB FINDER
+find_path(OPENVDB_INCLUDE_DIR NAMES openvdb/openvdb.h)
+find_library(OPENVDB_LIBRARY NAMES openvdb)
+
+include(FindPackageHandleStandardArgs)
+find_package_handle_standard_args(OpenVDB REQUIRED_VARS OPENVDB_INCLUDE_DIR OPENVDB_LIBRARY)
+
+SET( OPENVDB_COMPILE_FLAGS)
+
+IF( OPENVDB_FOUND)
+	message(STATUS "OK openvdb_found")
+    SET( OPENVDB_LIBRARIES ${OPENVDB_LIBRARY})
+    SET( OPENVDB_INCLUDE_DIRS ${OPENVDB_INCLUDE_DIR})
+ELSE()
+	message(STATUS "ERRO openvdb_found")
+    SET( OPENVDB_LIBRARIES)
+    SET( OPENVDB_INCLUDE_DIRS)
+ENDIF()
+
+mark_as_advanced(OPENVDB_INCLUDE_DIR OPENVDB_LIBRARY)
+
+#TBB FINDER
+find_path(TBB_INCLUDE_DIR NAMES tbb/tbb.h)
+find_library(TBB_LIBRARY NAMES tbb)
+
+include(FindPackageHandleStandardArgs)
+find_package_handle_standard_args(TBB REQUIRED_VARS TBB_INCLUDE_DIR TBB_LIBRARY)
+
+set(TBB_LIBRARIES ${TBB_LIBRARY})
+set(TBB_INCLUDE_DIRS ${TBB_INCLUDE_DIR})
+
+mark_as_advanced(TBB_INCLUDE_DIR TBB_LIBRARY)
+
+# --------------------------------------------------------------------------------------
+# OpenVDB
+
+find_package(OpenEXR)
+if (OPENEXR_FOUND)
+    message(STATUS "OpenEXR detected. Building with .exr support")
+    add_definitions(-DOPENEXR_AVAILABLE)
+else()
+    message(STATUS "No OpenEXR detected. Building without .exr support")
+endif()
+
+find_package(OpenVDB)
+find_package(Boost)
+find_package(TBB)
+if (OPENEXR_FOUND AND OPENVDB_FOUND AND TBB_FOUND)
+    message(STATUS "OpenVDB detected. Building with .vdb support")
+    add_definitions(-DOPENVDB_AVAILABLE)
+	#add_definitions(-DOPENVDB_3_ABI_COMPATIBLE)
+	#add_definitions(-DOPENVDB_ENABLE_3_ABI_COMPATIBLE)
+	#add_definitions(-DOPENVDB_ABI_VERSION_NUMBER=3)
+	#openvdb::OPENVDB_VERSION_NAME
+    include_directories(${OPENVDB_INCLUDE_DIR} ${OPENVDB_INCLUDE_DIRS} ${OPENEXR_INCLUDE_DIR} ${TBB_INCLUDE_DIRS})
+    set(core_libs ${OPENVDB_LIBRARIES} ${TBB_LIBRARIES} ${OPENEXR_LIBRARIES})
+else()
+    if (NOT OPENVDB_FOUND)
+        message(STATUS "No OpenVDB detected. Building without .vdb support")
+    elseif(NOT OPENEXR_FOUND)
+        message(STATUS "No OpenEXR libraries detected. Building without .vdb support")
+    else()
+        message(STATUS "No TBB detected. Building without .vdb support")
+    endif()
+endif()
+
+file(COPY "C:/vcpkg/installed/x86-windows/bin/Half-2_3.dll" DESTINATION ${CMAKE_BINARY_DIR}/Debug)
+file(COPY "C:/vcpkg/installed/x86-windows/bin/tbb.dll" DESTINATION ${CMAKE_BINARY_DIR}/Debug)
+#set(TBB_BUILD_TYPE DEBUG)
+#https://github.com/xtensor-stack/xtensor/blob/master/cmake/FindTBB.cmake
+
 # Sources files
 file(GLOB SOURCE_FILES
     "src/*.h"
     "src/*.cpp"
 )
 
-add_executable(NarvalEngine ${SOURCE_FILES} ${GLAD} ${IMGUI_SOURCES} ${FASTNOISE_SOURCES} ${STB_SOURCES})
-target_link_libraries(NarvalEngine glfw ${GLFW_LIBRARIES})
+add_executable(NarvalEngine ${SOURCE_FILES} ${GLAD} ${IMGUI_SOURCES} ${FASTNOISE_SOURCES} ${STB_SOURCES} )
+target_link_libraries(NarvalEngine ${core_libs} glfw ${GLFW_LIBRARIES})
+set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT NarvalEngine)

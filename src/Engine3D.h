@@ -14,8 +14,11 @@
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
-
-
+#define __TBB_NO_IMPLICIT_LINKAGE 1
+#define __TBBMALLOC_NO_IMPLICIT_LINKAGE 1
+#include <openvdb/openvdb.h>
+#include <openvdb/tools/Dense.h>
+#include<execution>
 
 class Engine3D{
 	public:
@@ -47,9 +50,14 @@ class Engine3D{
 
 		glm::vec3 absorption = 0.0f * glm::vec3(0.01f);
 		glm::vec3 scattering = glm::vec3(0.25, 0.5, 1.0);
-		glm::vec3 lightPosition = glm::vec3(-0.5,1.0, 3.5);
+		glm::vec3 lightPosition = glm::vec3(-0.5,0.5, 0.9);
 		glm::vec3 lightColor =  glm::vec3(1.0, 1.0, 1.0);
 		glm::vec3 materialColor =  glm::vec3(1.0, 1.0, 1.0);
+
+		glm::vec3 gradientDownNight =  glm::vec3( 57/255.0f, 65/255.0f, 73/255.0f);
+		glm::vec3 gradientUpNight = glm::vec3(19 / 155.0f, 21 / 255.0f, 23 / 255.0f);
+		glm::vec3 gradientDownDay =  glm::vec3( 236/255.0f, 240/255.0f, 241/255.0f);
+		glm::vec3 gradientUpDay =  glm::vec3(186/255.0f, 199/255.0f, 200/255.0f);
 
 		float lightMaxRadius =  1000.0f;
 		float densityCoef =  0.75;
@@ -57,17 +65,151 @@ class Engine3D{
 		int phaseFunctionOption = 0;
 		float g = 0.9;
 		float numberOfSteps = 64;
+		float shadowSteps = 16;
 		float param1 = 14.9;
 		float param2 = 0.1;
 		float param3 = 1.2;
+		float SPP = 16.0;
 		bool gammaCorrection = false;
+		bool pathTracing = false;
+		bool lockScattering = true;
+		bool nightMode = true;
+		bool animate = false;
 		ImFont* robotoFont;
+		Texture3D cloud;
+
 
 		void initInputManager() {
 			glfwSetKeyCallback(window, InputManager::key_callback_handler);
 
 			//Instantiate and init self
 			InputManager::getSelf();
+		}
+
+		void openvdb() {
+			openvdb::initialize();
+
+			//std::string path = RESOURCES_DIR "wdas_cloud_sixteenth.vdb";
+			std::string path = RESOURCES_DIR "wdas_cloud_quarter.vdb";
+			//std::string path = RESOURCES_DIR "wdas_cloud_half.vdb";
+
+			openvdb::io::File file(path);
+			openvdb::GridBase::Ptr baseGrid;
+
+			file.open();
+			for (openvdb::io::File::NameIterator nameIter = file.beginName(); nameIter != file.endName(); ++nameIter){
+				if (nameIter.gridName() == "density") 
+					baseGrid = file.readGrid(nameIter.gridName());
+				else 
+					std::cout << "skipping grid " << nameIter.gridName() << std::endl;
+			}
+			file.close();
+			
+			openvdb::FloatGrid::Ptr grid = openvdb::gridPtrCast<openvdb::FloatGrid>(baseGrid);
+
+		
+			/*for (openvdb::FloatGrid::ValueOnIter iter = grid->beginValueOn(); iter; ++iter) {
+				//float dist = iter.getValue();
+				//openvdb::Coord cd =  iter.getCoord();
+				//std::cout << "Coord: (" << cd.x() << ", " << cd.y() << ", " << cd.z() << ")" << std::endl;
+			}*/
+
+			openvdb::CoordBBox boundingBox = grid->evalActiveVoxelBoundingBox();
+			openvdb::Vec3d size = grid->voxelSize();
+
+			std::cout << "Volume size: (" << size.x() << ", " << size.y() << ", " << size.z() << ")" << std::endl ;
+
+			const int channels = 1;
+			const int resolution = 512; //512 quarter = 2^9 /  128 small
+			const int finalSize = resolution * resolution * resolution * channels;
+			float *data = new float[resolution * resolution * resolution * channels];
+			openvdb::FloatTree tree = grid->tree();
+			//openvdb::Coord coord;
+			//openvdb::FloatGrid::Accessor accessor = grid->getAccessor();
+
+			/*for (int z = 0; z < resolution; z++) {
+				for (int y = 0; y < resolution; y++) {
+					for (int x = 0; x < resolution; x++) {
+						int pos = (x + y * resolution)*channels + (z * resolution * resolution* channels);
+						//std::cout << pos << std::endl;
+						openvdb::Coord coord(x - resolution / 2, y - resolution / 2, z - resolution / 2);
+						
+						data[pos] = tree.getValue(coord);
+						//data[pos] = accessor.getValue(coord);
+					}
+				}
+			}*/
+
+			/*for (openvdb::FloatGrid::ValueOnIter iter = grid->beginValueOn(); iter; ++iter) {
+				openvdb::Coord cd = iter.getCoord();
+				float x = cd.x() + resolution / 2;
+				float y = cd.y() + resolution / 2;
+				float z = cd.z() + resolution / 2;
+				int pos = (x + y * resolution)*channels + (z * resolution * resolution* channels);
+				if (x < 0 || y < 0 || z < 0 || x>=resolution || y>=resolution || z>=resolution) {
+					//std::cout << "Coord: (" << x << ", " << y << ", " << z << ")" << std::endl;
+					continue;
+				}
+
+				data[pos] = iter.getValue();
+			}
+			
+
+			for (openvdb::FloatGrid::ValueOffIter iter = grid->beginValueOff(); iter; ++iter) {
+				openvdb::Coord cd = iter.getCoord();
+				float x = cd.x() + resolution / 2.0f;
+				float y = cd.y() + resolution / 2.0f;
+				float z = cd.z() + resolution / 2.0f;
+				int pos = (x + y * resolution)*channels + (z * resolution * resolution* channels);
+				//std::cout << "Coord: (" << x << ", " << y << ", " << z << ")" << std::endl;
+				if (x < 0 || y < 0 || z < 0 || x>=resolution || y>=resolution || z>=resolution) {
+					
+					continue;
+				}
+
+				data[pos] = iter.getValue();
+			}*/
+
+			openvdb::Coord dim(resolution, resolution, resolution);
+			openvdb::Coord origin(-resolution/2, -resolution/2, -resolution/2);
+			openvdb::tools::Dense<float> dense(dim, origin);
+			
+
+			openvdb::tools::copyToDense<openvdb::tools::Dense<float>, openvdb::FloatGrid>(*grid, dense);
+			
+			float *denseData = dense.data();
+	
+			/*const int parts = 8;
+			const int partSize = finalSize / parts;
+			bool done = false;
+
+			for (int i = 0; i < parts; i++) {
+				std::thread writer([i,data, grid, resolution, partSize, tree, channels, &done] {
+
+					for (int pos = i * partSize; pos < (i + 1) * partSize; pos++) {
+
+						int z = pos / (resolution * resolution);
+						int crrPos = pos - (z * resolution * resolution);
+						int y = crrPos / resolution;
+						int x = crrPos % resolution;
+
+						openvdb::Coord cd(x - resolution / 2, y - resolution / 2, z - resolution / 2);
+						//std::cout << "pos: (" << x << ", " << y << ", " << z << ")" << std::endl;
+
+						data[pos] = tree.getValue(cd);
+					}
+
+
+					done = true;
+				});
+				writer.detach();
+			}
+
+			while (!done);
+
+			std::cout << data[207151] << std::endl;*/
+
+			cloud.generateWithData(resolution, resolution, resolution, 1, denseData);
 		}
 
 		void initCamera() {
@@ -156,7 +298,9 @@ class Engine3D{
 			startGLFW();
 			initInputManager();
 			initCamera();
-			cloudSystem.generateCloudNoiseTextures();
+			openvdb();
+			//cloudSystem.generateCloudNoiseTextures();
+
 
 			glEnable(GL_TEXTURE_2D);
 			//glEnable(GL_CULL_FACE);
@@ -310,11 +454,23 @@ class Engine3D{
 
 			ResourceManager::getSelf()->getShader(currentShader).setFloat("phaseFunctionOption", phaseFunctionOption);
 			ResourceManager::getSelf()->getShader(currentShader).setFloat("numberOfSteps", numberOfSteps);
+			ResourceManager::getSelf()->getShader(currentShader).setFloat("shadowSteps", shadowSteps);
 			ResourceManager::getSelf()->getShader(currentShader).setFloat("g", g);
 			ResourceManager::getSelf()->getShader(currentShader).setFloat("gammaCorrection", gammaCorrection);
 			ResourceManager::getSelf()->getShader(currentShader).setFloat("param1", param1);
 			ResourceManager::getSelf()->getShader(currentShader).setFloat("param2", param2);
 			ResourceManager::getSelf()->getShader(currentShader).setFloat("param3", param3);
+			ResourceManager::getSelf()->getShader(currentShader).setFloat("SPP", SPP);
+			ResourceManager::getSelf()->getShader(currentShader).setFloat("enablePathTracing", pathTracing);
+			ResourceManager::getSelf()->getShader(currentShader).setFloat("enableAnimation", animate);
+
+			if (nightMode) {
+				ResourceManager::getSelf()->getShader(currentShader).setVec3("gradientUp", gradientUpNight.x, gradientUpNight.y, gradientUpNight.z);
+				ResourceManager::getSelf()->getShader(currentShader).setVec3("gradientDown", gradientDownNight.x, gradientDownNight.y, gradientDownNight.z);
+			}else {
+				ResourceManager::getSelf()->getShader(currentShader).setVec3("gradientUp", gradientUpDay.x, gradientUpDay.y, gradientUpDay.z);
+				ResourceManager::getSelf()->getShader(currentShader).setVec3("gradientDown", gradientDownDay.x, gradientDownDay.y, gradientDownDay.z);
+			}
 		}
 
 		void renderImGUI() {
@@ -328,21 +484,33 @@ class Engine3D{
 			ImGui::SetNextWindowPos(ImVec2(4, 4), ImGuiCond_Once); // Normally user code doesn't need/want to call this because positions are saved in .ini file anyway. Here we just want to make the demo initial state a bit more friendly!
 			ImGui::SetNextWindowSize(ImVec2(400, 550), ImGuiCond_Once);
 			ImGui::Begin("Volumetric Menu", p_open, window_flags);
-			ImGui::DragFloat3("Absorption (1/m)", &absorption[0], 0.001, 0.001, 5.0);
-			ImGui::DragFloat3("Scattering (1/m)", &scattering[0], 0.001, 0.001, 5.0);
+			ImGui::DragFloat3("Absorption (1/m)", &absorption[0], 0.001f, 0.001f, 5.0f);
+			ImGui::DragFloat3("Scattering (1/m)", &scattering[0], 0.001f, 0.001f, 5.0f);
+			if (lockScattering) {
+				scattering[1] = scattering[0];
+				scattering[2] = scattering[0];
+			}
+			ImGui::Checkbox("Lock Scattering", &lockScattering);
 			ImGui::DragFloat3("Light Pos (m)", &lightPosition[0], 0.05, -30.0, 30.0);
 			ImGui::DragFloat3("L. color", &lightColor[0], 0.01, 0.0, 30.0);
 
 			ImGui::DragFloat("Density Multiplier", &densityCoef, 0.01, 0.0, 30.0);
-			ImGui::DragFloat("Ambient Strength", &ambientStrength, 0.01, 0.0, 20.0);
+			ImGui::DragFloat("Ambient Strength", &ambientStrength, 0.1, 0.0, 100.0);
 			ImGui::DragFloat("g", &g, 0.01, -1.0, 1.0);
 			ImGui::DragFloat("N. of Steps", &numberOfSteps, 1, 0.0, 256);
+			ImGui::DragFloat("Shadow Steps", &shadowSteps, 1, 0.0, 256);
 
 			ImGui::DragFloat("param1", &param1, 0.1, -100, 100);
 			ImGui::DragFloat("param2", &param2, 0.1, -100, 100);
 			ImGui::DragFloat("param3", &param3, 0.1, -100, 100);
 
+			ImGui::Checkbox("Animation", &animate);
+			ImGui::Checkbox("Path Tracing", &pathTracing);
+			ImGui::DragFloat("SPP", &SPP, 1.0, 0, 10000);
+
+			
 			ImGui::Checkbox("Gamma Correction", &gammaCorrection);
+			ImGui::Checkbox("Night Mode", &nightMode);
 
 			const char* items[] = { "Isotropic", "Rayleigh", "Henyey-Greenstein"};
 			ImGui::Combo("Phase Function", &phaseFunctionOption, items, IM_ARRAYSIZE(items));
@@ -399,6 +567,15 @@ class Engine3D{
 			ResourceManager::getSelf()->getShader(currentShader).setMat4("proj", proj);
 			ResourceManager::getSelf()->getShader(currentShader).setMat4("cam", staticCam);
 
+			if (nightMode) {
+				ResourceManager::getSelf()->getShader(currentShader).setVec3("gradientUp", gradientUpNight.x, gradientUpNight.y, gradientUpNight.z);
+				ResourceManager::getSelf()->getShader(currentShader).setVec3("gradientDown", gradientDownNight.x, gradientDownNight.y, gradientDownNight.z);
+			}
+			else {
+				ResourceManager::getSelf()->getShader(currentShader).setVec3("gradientUp", gradientUpDay.x, gradientUpDay.y, gradientUpDay.z);
+				ResourceManager::getSelf()->getShader(currentShader).setVec3("gradientDown", gradientDownDay.x, gradientDownDay.y, gradientDownDay.z);
+			}
+
 
 			renderer.render(ResourceManager::getSelf()->getModel("quadTest"));
 
@@ -434,7 +611,8 @@ class Engine3D{
 
 			ResourceManager::getSelf()->getShader(currentShader).setInteger("volume", 0);
 			glActiveTexture(GL_TEXTURE0);
-			cloudSystem.perlinWorley3.bind();
+			cloud.bind();
+			//cloudSystem.perlinWorley3.bind();
 
 			float time = ((sin(glm::radians(glfwGetTime() * 100)) + 1) / 2) * 1;
 			float continuosTime = glfwGetTime()/6;

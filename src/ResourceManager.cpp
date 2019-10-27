@@ -3,8 +3,10 @@
 ResourceManager *ResourceManager::self = 0;
 
 ResourceManager* ResourceManager::getSelf(){
-	if (self == 0)
+	if (self == 0) {
+		openvdb::initialize();
 		self = new ResourceManager();
+	}
 
 	return self;
 }

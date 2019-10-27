@@ -38,7 +38,6 @@ public:
 		float ampl = amplitude;
 
 		for (int i = 0; i < octaves; i++) {
-
 			float sample = perlin.octaveNoise0_1(st.x, st.y, st.z, 1);
 
 			f += ampl * sample;
@@ -48,8 +47,6 @@ public:
 		}
 
 		return f;
-
-
 	}
 
 	float generateWorley(int x, int y, int z, int octaves, float frequency, float amplitude){
@@ -60,7 +57,6 @@ public:
 
 		for (int i = 0; i < octaves; i++) {
 			wnoise::WorleyNoise wnoise;
-
 			glm::vec2 w = wnoise.worley(1,st);
 
 			f += ampl * rescale(glm::length(w) / (w.y + w.x) - w.x, glm::vec2(0.0, 1.4));
@@ -99,12 +95,11 @@ public:
 		}
 		perlinWorley3.generateWithData(resolution, resolution, resolutionZ, 4, data);
 
-
-
 		//Generates a 3D RGB texture with RGB: worley at increasing frequencies
 		resolution = 64;
 		channels = 3;
 		data = new float[resolution * resolution * resolution * channels];
+
 		for (int z = 0; z < resolution; z++) {
 			for (int x = 0; x < resolution; x++) {
 				for (int y = 0; y < resolution; y++) {

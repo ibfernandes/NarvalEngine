@@ -12,36 +12,33 @@ public:
 	~Camera();
 	
 	void init() {
-
 	}
 
 	void update() {
 		if (InputManager::getSelf()->eventTriggered("MOVE_FORWARD"))
 			position += front * movementSpeed;
-		if (InputManager::getSelf()->eventTriggered("MOVE_BACKWARDS")) {
+		else if (InputManager::getSelf()->eventTriggered("MOVE_BACKWARDS")) 
 			position -= front * movementSpeed;
-		}
 
 		if (InputManager::getSelf()->eventTriggered("MOVE_RIGHT"))
 			position += side * movementSpeed;
-		if (InputManager::getSelf()->eventTriggered("MOVE_LEFT"))
+		else if (InputManager::getSelf()->eventTriggered("MOVE_LEFT"))
 			position -= side * movementSpeed;
 
 		if (InputManager::getSelf()->eventTriggered("MOVE_UPWARDS"))
 			position += up * movementSpeed;
-		if (InputManager::getSelf()->eventTriggered("MOVE_DOWNWARDS"))
+		else if (InputManager::getSelf()->eventTriggered("MOVE_DOWNWARDS"))
 			position -= up * movementSpeed;
 
 		if (InputManager::getSelf()->eventTriggered("PITCH_UP"))
 			pitch += rotationSpeed;
-		if (InputManager::getSelf()->eventTriggered("PITCH_DOWN"))
+		else if (InputManager::getSelf()->eventTriggered("PITCH_DOWN"))
 			pitch -= rotationSpeed;
 
 		if (InputManager::getSelf()->eventTriggered("YAW_RIGHT"))
 			yaw += rotationSpeed;
-		if (InputManager::getSelf()->eventTriggered("YAW_LEFT"))
+		else if (InputManager::getSelf()->eventTriggered("YAW_LEFT"))
 			yaw -= rotationSpeed;
-
 
 		if (pitch > 89.0f)
 			pitch = 89.0f;
@@ -51,12 +48,11 @@ public:
 		front.x = cos(glm::radians(pitch)) * cos(glm::radians(yaw));
 		front.y = sin(glm::radians(pitch));
 		front.z = cos(glm::radians(pitch)) * sin(glm::radians(yaw));
-		front = glm::normalize(front);
 
+		front = glm::normalize(front);
 		cam = glm::lookAt(position, position + front, up);
 		side = glm::cross(front, up);
 	}
-
 
 	glm::mat4 *getCam() {
 		return &cam;
