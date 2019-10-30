@@ -40,6 +40,7 @@ uniform float phaseFunctionOption = 0;
 uniform float gammaCorrection = 0;
 uniform float enablePathTracing = 0;
 uniform float enableAnimation = 0;
+uniform float enableShadow = 0;
 
 
 uniform float param1 = 0;
@@ -47,48 +48,6 @@ uniform float param2 = 0;
 uniform float param3 = 0;
 
 vec3 sunDirection = normalize( vec3(-1.0,0.75,1.0) );
-
-float hash( float n ) { return fract(sin(n)*753.5453123); }
-
-float noise( in vec3 x )
-{
-    vec3 p = floor(x);
-    vec3 f = fract(x);
-    f = f*f*(3.0-2.0*f);
-	
-    float n = p.x + p.y*157.0 + 113.0*p.z;
-    return mix(mix(mix( hash(n+  0.0), hash(n+  1.0),f.x),
-                   mix( hash(n+157.0), hash(n+158.0),f.x),f.y),
-               mix(mix( hash(n+113.0), hash(n+114.0),f.x),
-                   mix( hash(n+270.0), hash(n+271.0),f.x),f.y),f.z);
-}
-
-#define NUM_OCTAVES 5
-
-float fbm(vec3 x) {
-    float v = 0.0;
-    float a = 0.5;
-    vec3 shift = vec3(100);
-    for (int i = 0; i < NUM_OCTAVES; ++i) {
-        v += a * noise(x);
-        x = x * 2.0 + shift;
-        a *= 0.5;
-    }
-    return v;
-}
-
-float snoise2(vec4 x) {
-    /*x *= 4.0;
-    vec3 y = x.xyz;
-    y += x.w;
-    return noise(y);
-	*/
-    x *= 0.4;
-    vec3 y = x.xyz;
-    y += x.w;
-    return fbm(y);
-}
-
 
 vec2 intersectBox(vec3 orig, vec3 dir) {
 	const vec3 boxMin = vec3(0, 0, 0);
@@ -118,40 +77,8 @@ float saturate(float value){
 	return clamp(value, 0.0, 1.0);
 }
 
-float sampleVolumeR(vec3 pos){
-	return densityCoef*texture(volume, pos).r;
-}
-
 float sampleVolume(vec3 pos){
-	float radius = 0.4;
-	float center = 0.5;
-	float x = pos.x - center;
-	x *= x;
-	float y = pos.y - center;
-	y *= y;
-	float z = pos.z - center;
-	z *= z;
-
-	
-	vec4 sampleNoise = texture(volume, (pos + continuosTime)*0.5);
-
-	float shapeNoise = sampleNoise.g * 0.625 + sampleNoise.b * 0.25 + sampleNoise.a * 0.125;
-	shapeNoise = -(1 - shapeNoise);
-	shapeNoise = remap(sampleNoise.r, shapeNoise, 1.0, 0.0, 1.0);
-
-	float distance = length (pos - vec3(center)) + 1;
-
-	if(x+y+z <= radius*radius)
-		return shapeNoise * densityCoef ;
-
-	if(x+y+z > radius*radius &&  + x+y+z < radius*radius + noise(pos*param1)*param2/param3){
-		if(enableAnimation == 1)
-			return densityCoef * smoothstep(0.1, 0.4, noise((pos + continuosTime)*4)*0.6);
-		else
-		return densityCoef * smoothstep(0.1, 0.4, noise(pos*4)*0.6);
-	}
-	//return texture(volume, pos + continuosTime).g * densityCoef ;
-	return 0;
+	return densityCoef*texture(volume, pos).r;
 }
 
 float isotropicPhaseFunction(){
@@ -163,10 +90,11 @@ float rayleighPhaseFunction(float theta){
 	return (3 * (1 + cosAngle*cosAngle)) / (16 * PI);
 }
 
-float henyeyGreensteinPhaseFunction(float theta, float g){
-	float cosAngle = cos(theta);
+float henyeyGreensteinPhaseFunction(float cosTheta, float g){
+	//float cosAngle = cos(theta);
 	float g2 = g * g;
-	return (1.0 - g2) / pow(1.0 + g2 - 2.0 * g * cosAngle, 1.5);
+	// (0.25 / PI) = 1 / (4 * PI)
+	return  (0.25 / PI) * (1.0 - g2) / pow(1.0 + g2 - 2.0 * g * cosTheta, 1.5);
 }
 
 float phaseFunction(float theta, float g){
@@ -184,22 +112,28 @@ float phaseFunction(float theta, float g){
 
 vec3 evaluateLight(in vec3 pos){
     vec3 L = lightPosInObjectSpace - pos;
-    return lightColor * 100.0 / dot(L, L);
+    return lightColor/ (1.2 + dot(L, L));
 }
 
-vec3 volumetricShadow(in vec3 from, in vec3 to){
+vec3 volumetricShadow(in vec3 cubePos, in vec3 lightPos){
+	if(enableShadow==0)
+		return vec3(1,1,1);
 
-    const float numStep = shadowSteps; // quality control. Bump to avoid shadow alisaing
-    vec3 shadow = vec3(1.0);
-    float sigmaS = 0.0;
-    float sigmaT = 0.0;
-    float dd = length(to-from) / numStep;
+    vec3 transmittance = vec3(1.0);
+    float distance = length(lightPos-cubePos) / shadowSteps;
+	vec3 lightDir = normalize(lightPos - cubePos);
+	float stepSizeShadow = 1 / shadowSteps;
 
-    for(float s=0.5; s<(numStep-0.1); s+=1.0){
-        vec3 pos = from + (to-from)*(s/(numStep));
-        shadow *= exp(-extinction * dd);
+    for(float tshadow= stepSizeShadow; tshadow<3.0; tshadow+=stepSizeShadow){
+        vec3 cubeShadowPos = cubePos + tshadow*lightDir;
+        float density = sampleVolume(cubeShadowPos);
+		if(density==0)
+			break;	
+        transmittance *= exp(-extinction * density);
+		if(transmittance.x < 0.05)
+			break;
     }
-    return shadow;
+    return transmittance;
 }
 
 vec4 refinedVersion(vec4 color, vec3 rayDirection){
@@ -215,34 +149,40 @@ vec4 refinedVersion(vec4 color, vec3 rayDirection){
 
 	float density = 0;
 
-	float d = 1.0;
-	float dd = 0.0;
+	float currentDensity = 0.0;
 	vec3 scatteredLight = vec3(0.0, 0.0, 0.0);
-	vec3 transmittance = vec3(1.0, 1.0, 1.0);
+	vec3 totalTransmittance = vec3(1.0, 1.0, 1.0);
+	vec3 currentTransmittance = vec3(0.0, 0.0, 0.0);
+	float theta = 1.5f;
+	float lightDotEye = dot(normalize(rayDirection), normalize(lightPosInObjectSpace));
 
 	for (float t = tHit.x; t < tHit.y; t += dt) {
-		float theta = 1.5f;
-		vec3 S = scattering * albedo * phaseFunction(theta, g) * volumetricShadow(cubePos, lightPosInObjectSpace);
-		vec3 Sglobal = ambientStrength *  S;
-		S = evaluateLight(cubePos) * S;
-		
-		vec3 Sint = (S - S * exp(-extinction * dd)) / extinction; 
+		currentDensity = sampleVolume(cubePos);
+		currentTransmittance = exp(-extinction * currentDensity);
 
-		vec3 SintGlobal = (Sglobal - Sglobal * exp(-extinction * dd)) / extinction; 
-		scatteredLight += transmittance * (Sint + SintGlobal); 
+		vec3 S = scattering * albedo * volumetricShadow(cubePos, lightPosInObjectSpace);
+		vec3 Sglobal = ambientStrength *  S;
+		S = evaluateLight(cubePos) * phaseFunction(lightDotEye, g) * S;
 		
-		transmittance *= exp(-extinction * dd);
+		//solved integral for slide 28 SH
+		vec3 Sint = (S - S * currentTransmittance) / extinction; 
+
+		vec3 SintGlobal = (Sglobal - Sglobal * currentTransmittance) / extinction; 
+		scatteredLight += totalTransmittance * (Sint + SintGlobal); 
+		
+		totalTransmittance *= currentTransmittance;
+
+		if(totalTransmittance.x < 0.05)
+			break;
 
 		cubePos += rayDirection * dt;
-		dd = sampleVolumeR(cubePos);
-		d += dd;
 	}
 
     //lighting
     vec3 finalColor = color.xyz;
 
     // Apply scattering/transmittance
-    finalColor = vec3(finalColor * transmittance + scatteredLight);
+    finalColor = vec3(finalColor * totalTransmittance + scatteredLight);
 
 	return vec4(finalColor, 1.0);
 }

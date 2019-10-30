@@ -36,9 +36,9 @@ public:
 			pitch -= rotationSpeed;
 
 		if (InputManager::getSelf()->eventTriggered("YAW_RIGHT"))
-			yaw += rotationSpeed;
-		else if (InputManager::getSelf()->eventTriggered("YAW_LEFT"))
 			yaw -= rotationSpeed;
+		else if (InputManager::getSelf()->eventTriggered("YAW_LEFT"))
+			yaw += rotationSpeed;
 
 		if (pitch > 89.0f)
 			pitch = 89.0f;
@@ -51,7 +51,7 @@ public:
 
 		front = glm::normalize(front);
 		cam = glm::lookAt(position, position + front, up);
-		side = glm::cross(front, up);
+		side = -glm::cross(front, up);
 	}
 
 	glm::mat4 *getCam() {

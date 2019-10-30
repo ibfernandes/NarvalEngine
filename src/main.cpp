@@ -1,3 +1,4 @@
+#define GLM_FORCE_LEFT_HANDED true
 #include "Engine3D.h"
 #include "GameStateManager.h"
 #include "ResourceManager.h"
@@ -165,6 +166,8 @@ int main(){
 	ResourceManager::getSelf()->loadTexture2D("weather", "imgs/weather.png");
 	ResourceManager::getSelf()->loadShader("screentex", "shaders/screenTex.vert", "shaders/screenTex.frag", "");
 	ResourceManager::getSelf()->loadShader("gradientBackground", "shaders/gradientBackground.vert", "shaders/gradientBackground.frag", "");
+	//ResourceManager::getSelf()->loadVDBasTexture3D("cloud", "wdas_cloud_quarter.vdb", 512);
+	ResourceManager::getSelf()->loadVDBasTexture3D("cloud", "wdas_cloud_sixteenth.vdb", 128);
 
 	generateCubeTestModel();
 	generateTestModel();
