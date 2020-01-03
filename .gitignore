@@ -1,4 +1,4 @@
 build/
-resources/wdas_cloud*
+resources/wdas_cloud*.vdb
 models/
 includes/
