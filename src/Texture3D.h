@@ -1,5 +1,6 @@
 #pragma once
 #include <glad/glad.h>
+#include <stdio.h>
 
 class Texture3D
 {
@@ -8,10 +9,12 @@ public:
 	Texture3D(int width, int height, int depth);
 	~Texture3D();
 	GLuint id;
+	//float *data;
 
 	void generateWithData(int width, int height, int depth, int nmrChannels, float *data) {
 		glGenTextures(1, &id);
 		glBindTexture(GL_TEXTURE_3D, id);
+		//this->data = data;
 
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_REPEAT);

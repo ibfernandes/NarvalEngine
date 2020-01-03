@@ -1,1 +1,4 @@
 build/
+resources/wdas_cloud*
+models/
+includes/

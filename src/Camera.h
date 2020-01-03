@@ -7,6 +7,18 @@
 
 class Camera
 {
+private:
+	glm::vec3 position;
+	glm::vec3 previousPosition;
+	glm::vec3 front = { 0.0f, 0.0f, 1.0f };
+	glm::vec3 up = { 0.0f, 1.0f, 0.0f };
+	glm::vec3 side = glm::cross(front, up);
+	glm::mat4 cam;
+	float yaw = 89;
+	float pitch = 0;
+	float movementSpeed = 1.0f / TARGET_UPS;
+	float rotationSpeed = 90.0f / TARGET_UPS;
+
 public:
 	Camera();
 	~Camera();
@@ -15,6 +27,8 @@ public:
 	}
 
 	void update() {
+		previousPosition = position;
+
 		if (InputManager::getSelf()->eventTriggered("MOVE_FORWARD"))
 			position += front * movementSpeed;
 		else if (InputManager::getSelf()->eventTriggered("MOVE_BACKWARDS")) 
@@ -54,6 +68,7 @@ public:
 		side = -glm::cross(front, up);
 	}
 
+
 	glm::mat4 *getCam() {
 		return &cam;
 	}
@@ -65,16 +80,8 @@ public:
 	glm::vec3 *getPosition() {
 		return &position;
 	}
-
-private:
-	glm::vec3 position;
-	glm::vec3 front = { 0.0f, 0.0f, 1.0f };
-	glm::vec3 up = { 0.0f, 1.0f, 0.0f };
-	glm::vec3 side = glm::cross(front, up);
-	glm::mat4 cam;
-	float yaw = 89;
-	float pitch = 0;
-	float movementSpeed = 1.0f / TARGET_UPS;
-	float rotationSpeed = 90.0f / TARGET_UPS;
+	glm::vec3 *getPreviousPosition() {
+		return &previousPosition;
+	}
 };
 

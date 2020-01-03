@@ -9,8 +9,7 @@ namespace wnoise
 	{	
 	public:
 
-		float rescale(float x, glm::vec2 range)
-		{
+		float rescale(float x, glm::vec2 range){
 			float a = range.x, b = range.y;
 			return (x - a) / (b - a);
 		}

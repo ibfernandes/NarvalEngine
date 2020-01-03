@@ -160,14 +160,27 @@ int main(){
 
 	GameStateManager gsm;
 	ResourceManager::getSelf()->loadShader("monocolor", "shaders/monoColor.vert", "shaders/monoColor.frag", "");
+	ResourceManager::getSelf()->loadShader("billboard", "shaders/billboard.vert", "shaders/billboard.frag", "");
+	ResourceManager::getSelf()->loadShader("phong", "shaders/phong.vert", "shaders/phong.frag", "");
 	ResourceManager::getSelf()->loadShader("cloudscape", "shaders/cloudscape.vert", "shaders/cloudscape.frag", "");
+	ResourceManager::getSelf()->loadShader("visibility", "shaders/visibility.vert", "shaders/visibility.frag", "");
+	ResourceManager::getSelf()->loadShader("shvolume", "shaders/shvolume.vert", "shaders/shvolume.frag", "");
 	ResourceManager::getSelf()->loadShader("volume", "shaders/volume.vert", "shaders/volume.frag", "");
+	ResourceManager::getSelf()->loadShader("volumewcs", "shaders/volumeWCS.vert", "shaders/volumeWCS.frag", "");
+	ResourceManager::getSelf()->loadShader("simpleTexture", "shaders/simpleTexture.vert", "shaders/simpleTexture.frag", "");
+	ResourceManager::getSelf()->loadShader("pathTracingLastPass", "shaders/pathTracingLastPass.vert", "shaders/pathTracingLastPass.frag", "");
 	ResourceManager::getSelf()->loadTexture2D("cloudheights", "imgs/heights.png");
 	ResourceManager::getSelf()->loadTexture2D("weather", "imgs/weather.png");
+	ResourceManager::getSelf()->loadTexture2D("lightbulb", "imgs/light-bulb.png");
 	ResourceManager::getSelf()->loadShader("screentex", "shaders/screenTex.vert", "shaders/screenTex.frag", "");
 	ResourceManager::getSelf()->loadShader("gradientBackground", "shaders/gradientBackground.vert", "shaders/gradientBackground.frag", "");
 	//ResourceManager::getSelf()->loadVDBasTexture3D("cloud", "wdas_cloud_quarter.vdb", 512);
 	ResourceManager::getSelf()->loadVDBasTexture3D("cloud", "wdas_cloud_sixteenth.vdb", 128);
+	//ResourceManager::getSelf()->loadModel("spider", "models/spider/", "spider.obj");
+	//ResourceManager::getSelf()->loadModel("monkey", "models/monkey2/source/", "monkey.obj");
+	//ResourceManager::getSelf()->loadModel("aloy", "models/aloy/", "Aloy_full.obj");
+	//ResourceManager::getSelf()->loadModel("hz", "models/xps/Aloy V2/", "plz.obj");
+	ResourceManager::getSelf()->loadModel("xyzaxis", "models/xyzaxis/", "arrows.obj");
 
 	generateCubeTestModel();
 	generateTestModel();

@@ -30,20 +30,22 @@ set(GLAD "includes/glad/include/glad/glad.h"
 # STB loaders
 include_directories(includes/stb)
 
+# ASSIMP
+# Set ASSIMP options and add directory
+option(ASSIMP_BUILD_ASSIMP_TOOLS OFF)
+option(ASSIMP_BUILD_SAMPLES OFF)
+option(ASSIMP_BUILD_TESTS OFF)
+add_subdirectory(includes/assimp)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/inncludes/assimp/include)
+
+# Debug!: For some reason the config.h file is created only in
+# the build directory, so this line below is a workaround to include
+# this file
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/includes/assimp/include)
+
+
 # GLM library
 include_directories(includes/glm)
-
-# OpenVDB library
-#find_package( ZLIB COMPONENTS REQUIRED )
-#include_directories( ${ZLIB_INCLUDE_DIR} )
-##include_directories(includes/openvdb)
-#include_directories(includes/tinyvdb)
-#include_directories(includes/tinyvdb/third_party/c-blosc)
-#set(VDB_SOURCES
-#    "includes/tinyvdb/miniz.c"
-#    "includes/tinyvdb/miniz.h"
-#    "includes/tinyvdb/tinyvdbio.h"
-#)
 
 # GLM fastnoise
 include_directories(includes/fastnoise)
@@ -169,6 +171,11 @@ endif()
 find_package(OpenVDB)
 find_package(Boost)
 find_package(TBB)
+if (Boost_FOUND)
+	add_definitions(-DBOOST_LOG_DYN_LINK=1)
+	message(STATUS "BOOST Found.")
+endif()
+
 if (OPENEXR_FOUND AND OPENVDB_FOUND AND TBB_FOUND)
     message(STATUS "OpenVDB detected. Building with .vdb support")
     add_definitions(-DOPENVDB_AVAILABLE)
@@ -176,8 +183,8 @@ if (OPENEXR_FOUND AND OPENVDB_FOUND AND TBB_FOUND)
 	#add_definitions(-DOPENVDB_ENABLE_3_ABI_COMPATIBLE)
 	#add_definitions(-DOPENVDB_ABI_VERSION_NUMBER=3)
 	#openvdb::OPENVDB_VERSION_NAME
-    include_directories(${OPENVDB_INCLUDE_DIR} ${OPENVDB_INCLUDE_DIRS} ${OPENEXR_INCLUDE_DIR} ${TBB_INCLUDE_DIRS})
-    set(core_libs ${OPENVDB_LIBRARIES} ${TBB_LIBRARIES} ${OPENEXR_LIBRARIES})
+    include_directories(${OPENVDB_INCLUDE_DIR} ${OPENVDB_INCLUDE_DIRS} ${OPENEXR_INCLUDE_DIR} ${TBB_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
+    set(core_libs ${OPENVDB_LIBRARIES} ${TBB_LIBRARIES} ${OPENEXR_LIBRARIES} ${Boost_LIBRARIES})
 else()
     if (NOT OPENVDB_FOUND)
         message(STATUS "No OpenVDB detected. Building without .vdb support")
@@ -200,5 +207,5 @@ file(GLOB SOURCE_FILES
 )
 
 add_executable(NarvalEngine ${SOURCE_FILES} ${GLAD} ${IMGUI_SOURCES} ${FASTNOISE_SOURCES} ${STB_SOURCES} )
-target_link_libraries(NarvalEngine ${core_libs} glfw ${GLFW_LIBRARIES})
+target_link_libraries(NarvalEngine ${core_libs} glfw ${GLFW_LIBRARIES} assimp)
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT NarvalEngine)

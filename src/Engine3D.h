@@ -14,6 +14,12 @@
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
+#include "VolumeScene.h"
+#include "ModelScene.h"
+#include "FBO.h"
+#include <stdlib.h>
+#include <time.h> 
+#include "SphericalHarmonics.h"
 
 class Engine3D{
 	public:
@@ -31,8 +37,8 @@ class Engine3D{
 
 		int const GL_CONTEXT_VERSION_MAJOR = 4;
 		int const GL_CONTEXT_VERSION_MINOR = 3;
-		int const IS_VSYNC_ON = 1;
-		GLint WIDTH = 1600, HEIGHT = 900;
+		int const IS_VSYNC_ON = 0;
+		GLint WIDTH = 1280, HEIGHT = 720;
 		GLFWwindow *window;
 
 		Renderer renderer;
@@ -44,36 +50,17 @@ class Engine3D{
 		bool showMainMenu = true;
 		bool *p_open = &showMainMenu;
 		ImGuiWindowFlags window_flags = 0;
-
-		glm::vec3 absorption = glm::vec3(0.001f);
-		glm::vec3 scattering = glm::vec3(0.25, 0.5, 1.0);
-		glm::vec3 lightPosition = glm::vec3(0.0, 0.0, 4.0);
-		glm::vec3 lightColor =  glm::vec3(1.0, 1.0, 1.0);
-		glm::vec3 materialColor =  glm::vec3(1.0, 1.0, 1.0);
-
 		glm::vec3 gradientDownNight =  glm::vec3( 57/255.0f, 65/255.0f, 73/255.0f);
 		glm::vec3 gradientUpNight = glm::vec3(19 / 155.0f, 21 / 255.0f, 23 / 255.0f);
 		glm::vec3 gradientDownDay =  glm::vec3( 236/255.0f, 240/255.0f, 241/255.0f);
 		glm::vec3 gradientUpDay =  glm::vec3(186/255.0f, 199/255.0f, 200/255.0f);
 
-		float lightMaxRadius =  1000.0f;
-		float densityCoef =  0.75;
-		float ambientStrength =  0.1;
-		int phaseFunctionOption = 2;
-		float g = 0.9;
-		float numberOfSteps = 128;
-		float shadowSteps = 16;
-		float param1 = 14.9;
-		float param2 = 0.1;
-		float param3 = 1.2;
-		float theta = 1.2;
-		float SPP = 16.0;
-		bool gammaCorrection = false;
-		bool pathTracing = false;
-		bool lockScattering = true;
 		bool nightMode = false;
-		bool animate = false;
-		bool enableShadow = true;
+		int currentScene = 0;
+		const char *scenes[3] = { "Volume", "3D model", "SH" };
+		static const int MAX_GRAPH_POINTS = 100;
+		float FPSgraphPoints[MAX_GRAPH_POINTS];
+		float UPSgraphPoints[MAX_GRAPH_POINTS];
 		ImFont* robotoFont;
 
 		void initInputManager() {
@@ -82,7 +69,7 @@ class Engine3D{
 		}
 
 		void initCamera() {
-			glm::vec3 position(0, 0, -6);
+			glm::vec3 position(0, 0, -3);
 			camera.setPosition(position);
 			glm::vec3 front = { 0.0f, 0.0f, 1.0f };
 			glm::vec3 up = { 0.0f, 1.0f, 0.0f };
@@ -174,6 +161,16 @@ class Engine3D{
 			glEnable(GL_DEPTH_TEST);
 			glEnable(GL_BLEND);
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			
+			VolumeScene *vs = new VolumeScene;
+			vs->init(WIDTH, HEIGHT, &renderer, &camera);
+			GSM.addState(vs);
+
+			/*ModelScene *mods = new ModelScene;
+			mods->init(WIDTH, HEIGHT, &renderer, &camera);
+			GSM.addState(mods);*/
+				
+			GSM.currentScene = 0;
 
 			initImgui();
 		}
@@ -208,11 +205,16 @@ class Engine3D{
 			while (!glfwWindowShouldClose(window)) {
 
 				if (glfwGetTime() - startTime >= 1.0) {
-					//std::cout << "------------------------" << std::endl;
-					//std::cout << "UPS: " << UPSCount << std::endl;
-					//std::cout << "FPS: " << FPSCount << std::endl;
 					lastFPS = FPSCount;
 					lastUPS= UPSCount;
+					
+					FPSgraphPoints[0] = FPSCount;
+					UPSgraphPoints[0] = UPSCount;
+
+					for (int i = MAX_GRAPH_POINTS - 1; i > 0; i--) {
+						FPSgraphPoints[i] = FPSgraphPoints[i - 1];
+						UPSgraphPoints[i] = UPSgraphPoints[i - 1];
+					}
 
 					startTime = glfwGetTime();
 					UPSCount = 0;
@@ -221,7 +223,6 @@ class Engine3D{
 
 				update();
 				//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-				//render();
 				//glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 				render();
 			}
@@ -233,113 +234,13 @@ class Engine3D{
 				camera.update();
 
 				previousUpdateTime = glfwGetTime();
-				GSM.update();
-				updateUI();
+				GSM.update(1);
 				UPSCount++;
 			}
 			glfwPollEvents();
 		}
-		
-		void updateUI() {
-			currentShader = "volume";
-			ResourceManager::getSelf()->getShader(currentShader).use();
 
-			ResourceManager::getSelf()->getShader(currentShader).setVec3("absorption", absorption.x, absorption.y, absorption.z);
-			ResourceManager::getSelf()->getShader(currentShader).setVec3("scattering", scattering.x, scattering.y, scattering.z);
-			ResourceManager::getSelf()->getShader(currentShader).setVec3("lightColor", lightColor.x, lightColor.y, lightColor.z);
-			ResourceManager::getSelf()->getShader(currentShader).setVec3("lightPosition", lightPosition.x, lightPosition.y, lightPosition.z);
-			ResourceManager::getSelf()->getShader(currentShader).setVec3("materialColor", materialColor.x, materialColor.y, materialColor.z);
-
-			ResourceManager::getSelf()->getShader(currentShader).setFloat("densityCoef", densityCoef);
-			ResourceManager::getSelf()->getShader(currentShader).setFloat("lightMaxRadius", lightMaxRadius);
-			ResourceManager::getSelf()->getShader(currentShader).setFloat("ambientStrength", ambientStrength);
-
-			ResourceManager::getSelf()->getShader(currentShader).setFloat("phaseFunctionOption", phaseFunctionOption);
-			ResourceManager::getSelf()->getShader(currentShader).setFloat("numberOfSteps", numberOfSteps);
-			ResourceManager::getSelf()->getShader(currentShader).setFloat("shadowSteps", shadowSteps);
-			ResourceManager::getSelf()->getShader(currentShader).setFloat("g", g);
-			ResourceManager::getSelf()->getShader(currentShader).setFloat("gammaCorrection", gammaCorrection);
-			ResourceManager::getSelf()->getShader(currentShader).setFloat("param1", param1);
-			ResourceManager::getSelf()->getShader(currentShader).setFloat("param2", param2);
-			ResourceManager::getSelf()->getShader(currentShader).setFloat("param3", param3);
-			ResourceManager::getSelf()->getShader(currentShader).setFloat("SPP", SPP);
-			ResourceManager::getSelf()->getShader(currentShader).setFloat("enablePathTracing", pathTracing);
-			ResourceManager::getSelf()->getShader(currentShader).setFloat("enableAnimation", animate);
-			ResourceManager::getSelf()->getShader(currentShader).setFloat("enableShadow", enableShadow);
-			ResourceManager::getSelf()->getShader(currentShader).setFloat("theta", theta);
-
-			if (nightMode) {
-				ResourceManager::getSelf()->getShader(currentShader).setVec3("gradientUp", gradientUpNight.x, gradientUpNight.y, gradientUpNight.z);
-				ResourceManager::getSelf()->getShader(currentShader).setVec3("gradientDown", gradientDownNight.x, gradientDownNight.y, gradientDownNight.z);
-			}else {
-				ResourceManager::getSelf()->getShader(currentShader).setVec3("gradientUp", gradientUpDay.x, gradientUpDay.y, gradientUpDay.z);
-				ResourceManager::getSelf()->getShader(currentShader).setVec3("gradientDown", gradientDownDay.x, gradientDownDay.y, gradientDownDay.z);
-			}
-		}
-
-		void renderImGUI() {
-			// Show GUI
-			// Start the ImGui frame (For Each new frame)
-			ImGui_ImplOpenGL3_NewFrame();
-			ImGui_ImplGlfw_NewFrame();
-			ImGui::NewFrame();
-
-			ImGui::SetNextWindowPos(ImVec2(40, 40), ImGuiCond_Once);
-			ImGui::SetNextWindowSize(ImVec2(400, 100), ImGuiCond_Once);
-			ImGui::Begin("Performance", p_open, window_flags);
-				ImGui::Text("FPS:   %d", lastFPS);
-				ImGui::Text("UPS:   %d", lastUPS);
-			ImGui::End();
-
-			ImGui::SetNextWindowPos(ImVec2(40, 170), ImGuiCond_Once); 
-			ImGui::SetNextWindowSize(ImVec2(400, 200), ImGuiCond_Once);
-			ImGui::Begin("Volume Properties", p_open, window_flags);
-				ImGui::DragFloat3("Absorption (1/m)", &absorption[0], 0.001f, 0.001f, 5.0f);
-				ImGui::DragFloat3("Scattering (1/m)", &scattering[0], 0.001f, 0.001f, 5.0f);
-				if (lockScattering) {
-					scattering[1] = scattering[0];
-					scattering[2] = scattering[0];
-				}
-				ImGui::Checkbox("Lock Scattering", &lockScattering);
-
-				ImGui::DragFloat("Density Multiplier", &densityCoef, 0.01, 0.0, 30.0);
-			ImGui::End();
-			
-			ImGui::SetNextWindowPos(ImVec2(40, 410), ImGuiCond_Once); 
-			ImGui::SetNextWindowSize(ImVec2(400, 400), ImGuiCond_Once);
-			ImGui::Begin("Light Properties", p_open, window_flags);
-				ImGui::DragFloat3("Light Pos (m)", &lightPosition[0], 0.1, 0.1, 0.1);
-				ImGui::DragFloat3("L. color", &lightColor[0], 0.01, 0.0, 30.0);
-
-				ImGui::DragFloat("Ambient Strength", &ambientStrength, 0.1, 0.0, 100.0);
-				ImGui::DragFloat("g", &g, 0.01, -1.0, 1.0);
-				ImGui::DragFloat("N. of Steps", &numberOfSteps, 1, 0.0, 256);
-				ImGui::DragFloat("Shadow Steps", &shadowSteps, 1, 0.0, 256);
-				ImGui::Checkbox("Enable Shadow", &enableShadow);
-
-				ImGui::Checkbox("Path Tracing", &pathTracing);
-				ImGui::DragFloat("SPP", &SPP, 1.0, 0, 10000);
-
-				ImGui::Checkbox("Night Mode", &nightMode);
-
-				const char* items[] = { "Isotropic", "Rayleigh", "Henyey-Greenstein" };
-				ImGui::Combo("Phase Function", &phaseFunctionOption, items, IM_ARRAYSIZE(items));
-			ImGui::End();
-
-			ImGui::SetNextWindowPos(ImVec2(40, 810), ImGuiCond_Once); 
-			ImGui::SetNextWindowSize(ImVec2(400, 100), ImGuiCond_Once);
-			ImGui::Begin("Test", p_open, window_flags);
-			
-				ImGui::DragFloat("Theta", &theta, 0.1, 0.0, 100.0);
-			
-			ImGui::End();
-
-			// Imgui Render Calls (For Each end frame)
-			ImGui::Render();
-			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-		}
-
-		void renderNoiseTexture() {
+		/*void renderNoiseTexture() {
 			glm::mat4 model(1);
 			glm::mat4 proj(1);
 			float nearPlane = 1;
@@ -362,7 +263,7 @@ class Engine3D{
 			cloudSystem.perlinWorley3.bind();
 
 			renderer.render(ResourceManager::getSelf()->getModel("quadTest"));
-		}
+		}*/
 
 		void renderGradientBackground() {
 			glDisable(GL_DEPTH_TEST);
@@ -398,7 +299,26 @@ class Engine3D{
 			glEnable(GL_DEPTH_TEST);
 		}
 
-		void renderVolume() {
+		void renderImGUI() {
+			ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_Once);
+			ImGui::SetNextWindowSize(ImVec2(300, 330), ImGuiCond_Once);
+			ImGui::Begin("Performance", p_open, window_flags);
+
+			ImGui::Text("FPS:   %d", lastFPS);
+			ImGui::PlotLines("", FPSgraphPoints, IM_ARRAYSIZE(FPSgraphPoints),0,0,0,200, ImVec2(300,60));
+
+			ImGui::Text("UPS:   %d", lastUPS);
+			ImGui::PlotLines("", UPSgraphPoints, IM_ARRAYSIZE(UPSgraphPoints), 0, 0, 0, 200, ImVec2(300, 60));
+
+			
+			ImGui::Text("Scenes");
+			ImGui::ListBox("", &currentScene, scenes, IM_ARRAYSIZE(scenes), IM_ARRAYSIZE(scenes));
+			GSM.changeStateTo(currentScene);
+
+			ImGui::End();
+		}
+
+		void renderAxis() {
 			glm::mat4 model(1);
 			glm::mat4 proj(1);
 			float nearPlane = 1;
@@ -406,52 +326,20 @@ class Engine3D{
 			float projAngle = 45;
 			proj = glm::perspective(glm::radians(projAngle), (GLfloat)WIDTH / (GLfloat)HEIGHT, nearPlane, farPlane);
 
-			//Light position
 			std::string currentShader = "monocolor";
 			ResourceManager::getSelf()->getShader(currentShader).use();
-			model = glm::translate(model, lightPosition);
-			model = glm::scale(model, { 0.1, 0.1, 0.1 });
+			model = glm::translate(model, glm::vec3(1.8,-1,0));
+			model = glm::scale(model, { 0.01, 0.01, 0.01 });
+			model = glm::rotate(model, glm::radians(-90.0f), glm::vec3(0,0,1));
 
 			ResourceManager::getSelf()->getShader(currentShader).setMat4("model", model);
 			ResourceManager::getSelf()->getShader(currentShader).setMat4("projection", proj);
-			ResourceManager::getSelf()->getShader(currentShader).setMat4("cam", *camera.getCam());
-			ResourceManager::getSelf()->getShader(currentShader).setVec4("rgbColor", 1,0,0,1);
+			ResourceManager::getSelf()->getShader(currentShader).setMat4("cam", staticCam);
+			ResourceManager::getSelf()->getShader(currentShader).setVec4("rgbColor", 0.3f, 0.3f, 0.3f,1);
 
-			renderer.render(ResourceManager::getSelf()->getModel("cubeTest"));
-
-			//Origin position
-			model = glm::mat4(1);
-			model = glm::translate(model, glm::vec3(0,0,0));
-			model = glm::scale(model, { 0.1, 0.1, 0.1 });
-
-			ResourceManager::getSelf()->getShader(currentShader).setMat4("model", model);
-			ResourceManager::getSelf()->getShader(currentShader).setMat4("projection", proj);
-			ResourceManager::getSelf()->getShader(currentShader).setMat4("cam", *camera.getCam());
-			ResourceManager::getSelf()->getShader(currentShader).setVec4("rgbColor", 1, 1, 1, 1);
-
-			renderer.render(ResourceManager::getSelf()->getModel("cubeTest"));
-
-			currentShader = "volume";
-			ResourceManager::getSelf()->getShader(currentShader).use();
-			model = glm::mat4(1);
-			model = glm::translate(model, { -0.5, -0.5, -0.5 });
-			//model = glm::scale(model, { 2, 2, 2 });
-
-			ResourceManager::getSelf()->getShader(currentShader).setInteger("volume", 0);
-			glActiveTexture(GL_TEXTURE0);
-			ResourceManager::getSelf()->getTexture3D("cloud").bind();
-
-			float time = ((sin(glm::radians(glfwGetTime() * 100)) + 1) / 2) * 1;
-			float continuosTime = glfwGetTime()/6;
-			ResourceManager::getSelf()->getShader(currentShader).setFloat("time", time);
-			ResourceManager::getSelf()->getShader(currentShader).setFloat("continuosTime", continuosTime);
-			ResourceManager::getSelf()->getShader(currentShader).setMat4("cam", *camera.getCam());
-			ResourceManager::getSelf()->getShader(currentShader).setMat4("model", model);
-			ResourceManager::getSelf()->getShader(currentShader).setMat4("proj", proj);
-			glm::vec3 camPos = *(camera.getPosition());
-			ResourceManager::getSelf()->getShader(currentShader).setVec3("cameraPosition", camPos.x, camPos.y, camPos.z);
-
-			renderer.render(ResourceManager::getSelf()->getModel("cubeTest"));
+			for (Mesh m : ResourceManager::getSelf()->getModel("xyzaxis").meshes) {
+				m.render(currentShader);
+			}
 		}
 
 		void render() {
@@ -459,15 +347,18 @@ class Engine3D{
 			glClearColor(0, 0, 0, 1);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-			renderGradientBackground();
-			renderVolume();
-			//renderSky();
+			ImGui_ImplOpenGL3_NewFrame();
+			ImGui_ImplGlfw_NewFrame();
+			ImGui::NewFrame();
 
 			previousRenderTime = glfwGetTime();
+			
 			GSM.render();
-			//render2DVolume();
+			renderAxis();
 			renderImGUI();
 
+			ImGui::Render();
+			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 			FPSCount++;
 			glfwSwapBuffers(window);
 		}
