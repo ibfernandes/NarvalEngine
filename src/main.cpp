@@ -174,11 +174,12 @@ int main(){
 	ResourceManager::getSelf()->loadTexture2D("lightbulb", "imgs/light-bulb.png");
 	ResourceManager::getSelf()->loadShader("screentex", "shaders/screenTex.vert", "shaders/screenTex.frag", "");
 	ResourceManager::getSelf()->loadShader("gradientBackground", "shaders/gradientBackground.vert", "shaders/gradientBackground.frag", "");
-	//ResourceManager::getSelf()->loadVDBasTexture3D("cloud", "wdas_cloud_quarter.vdb", 512);
-	ResourceManager::getSelf()->loadVDBasTexture3D("cloud", "wdas_cloud_sixteenth.vdb", 128);
+	//ResourceManager::getSelf()->loadVDBasTexture3D("cloud", "vdb/wdas_cloud_quarter.vdb", 512);
+	ResourceManager::getSelf()->loadVDBasTexture3D("cloud", "vdb/wdas_cloud_sixteenth.vdb", 128);
 	//ResourceManager::getSelf()->loadModel("spider", "models/spider/", "spider.obj");
 	//ResourceManager::getSelf()->loadModel("monkey", "models/monkey2/source/", "monkey.obj");
 	//ResourceManager::getSelf()->loadModel("aloy", "models/aloy/", "Aloy_full.obj");
+	
 	//ResourceManager::getSelf()->loadModel("hz", "models/xps/Aloy V2/", "plz.obj");
 	ResourceManager::getSelf()->loadModel("xyzaxis", "models/xyzaxis/", "arrows.obj");
 

@@ -1,4 +1,4 @@
-#version 430 core
+	#version 430 core
 
 out vec4 color; 
 in vec3 rayDirection;
@@ -56,6 +56,11 @@ uniform int SPP = 1;
 
 vec2 seed = vec2(0);
 
+struct Ray{
+	vec3 origin;
+	vec3 direction;
+};
+
 float rand() {
 	seed += vec2(gl_FragCoord.xy/screenRes.xy) + ( 1.0f + time/10000);
 	return fract(sin(dot(seed, vec2(12.9898, 4.1414))) * 43758.5453);
@@ -63,8 +68,8 @@ float rand() {
 
 bool intersectAABB(vec3 origin, vec3 dir){
 	float tmin, tmax, tymin, tymax, tzmin, tzmax; 
-	const vec3 boxMin = vec3(0, 0, 0);
-	const vec3 boxMax = vec3(1, 1, 1);
+	const vec3 boxMin = vec3(0);
+	const vec3 boxMax = vec3(1);
 	vec3 bounds[2];
 	bounds[0] = boxMin;
 	bounds[1] = boxMax;
@@ -157,6 +162,7 @@ float phaseFunction(float theta, float g){
 	return 1;
 }
 
+//geometric term
 vec3 evaluateLight(in vec3 pos){
     vec3 L = lightPosition - pos;
     return lightColor/ (1.2 + dot(L, L));
@@ -175,8 +181,8 @@ vec3 volumetricShadow(in vec3 cubePos, in vec3 lightPos){
         vec3 cubeShadowPos = cubePos + tshadow*lightDir;
 		vec3 texCoord = vec3(inverse(model) * vec4(cubeShadowPos, 1)) ;
         float density = sampleVolume(texCoord);
-		if(density==0)
-			break;	//TODO not quite right...
+		//if(density==0)
+		//	break;	//TODO not quite right...
         transmittance *= exp(-extinction * density);
 		if(transmittance.x < 0.05)
 			break;
@@ -193,6 +199,112 @@ vec3 randomDir() {
 	return vec3(cos(2.0 * PI * e2) * sint, sin(2.0 * PI * e2) * sint, z);
 }
 
+//Came from the neutron transport community in the 60s and has various names (delta tracking etc), but was developed by Woodcock. Source: http://www.cs.cornell.edu/courses/cs6630/2012sp/notes/09volpath.pdf
+float sampleDistance(){
+	float t = -log(1 - rand())/extinction.x;
+	return t;
+}
+
+vec4 MCPathTracing(vec4 color, vec3 origin, vec3 rayDirection, float depth){
+	vec2 tHit = intersectBox(origin, rayDirection);
+
+	if (tHit.x > tHit.y) 
+		return color;
+	
+	tHit.x = max(tHit.x, 0.0);
+	vec3 dtVec = 1.0 / (vec3(numberOfSteps) * abs(rayDirection));
+	float dt = min(dtVec.x, min(dtVec.y, dtVec.z));
+	vec3 cubePos = cameraPosition + (tHit.x) * rayDirection;
+
+	float currentDensity = 0.0;
+	vec3 scatteredLight = vec3(0.0, 0.0, 0.0);
+	vec3 totalTransmittance = vec3(1.0, 1.0, 1.0);
+	vec3 currentTransmittance = vec3(0.0, 0.0, 0.0);
+	float lightDotEye = dot(normalize(rayDirection), normalize(lightPosition));
+	float rayLength = 0;
+
+	//for(int b=0; b<4; b++){
+		float t = sampleDistance();
+
+		for (float t = tHit.x; t < tHit.y; t += dt) {
+			vec3 texCoord = vec3(inverse(model) * vec4(cubePos, 1)) ;
+			currentDensity = sampleVolume(texCoord);
+			currentTransmittance = exp(-extinction * currentDensity);
+
+			vec3 S = scattering * albedo * volumetricShadow(cubePos, lightPosition);
+			vec3 Sglobal = ambientStrength *  S;
+			S = evaluateLight(cubePos) * phaseFunction(lightDotEye, g) * S;
+			
+			//solved integral for slide 28 SH
+			vec3 Sint = (S - S * currentTransmittance) / extinction; 
+
+			vec3 SintGlobal = (Sglobal - Sglobal * currentTransmittance) / extinction; 
+			scatteredLight += totalTransmittance * (Sint + SintGlobal); 
+			
+			totalTransmittance *= currentTransmittance;
+
+			if(totalTransmittance.x < 0.05)
+				break;
+
+			cubePos += rayDirection * dt;
+
+			if(enablePathTracing==1 && rand() > currentTransmittance.x) {
+				//rayDirection = randomDir();
+				break;
+			}
+			vec4 cubePosNDC = proj * cam * vec4(cubePos,1);
+			if(cubePosNDC.z > depth)
+				break;
+		}
+
+		rayDirection = randomDir();
+		tHit = intersectBox(cubePos, rayDirection);
+
+		//if (tHit.x > tHit.y) 
+		//	break;
+		
+		tHit.x = max(tHit.x, 0.0);
+		dtVec = 1.0 / (vec3(numberOfSteps) * abs(rayDirection));
+		dt = min(dtVec.x, min(dtVec.y, dtVec.z));
+		
+	//}
+
+    vec3 finalColor = color.xyz;
+    finalColor = vec3(finalColor * totalTransmittance + scatteredLight);
+
+	return vec4(finalColor, 1.0);
+}
+
+vec4 singleScattering(vec4 background, vec3 origin, vec3 rayDirection, float depth){
+	vec2 tHit = intersectBox(origin, rayDirection); 
+	if (tHit.x > tHit.y) 
+		return background;
+
+	tHit.x = max(tHit.x, 0.0f);
+	vec3 absDir = abs(rayDirection);
+	float dt = 1.0f / ( numberOfSteps * max(absDir.x, max(absDir.y, absDir.z)));
+
+	vec3 cubePos = cameraPosition + tHit.x * rayDirection;
+	float lightDotEye = dot(normalize(rayDirection), normalize(lightPosition));
+	vec3 totalTr = vec3(1.0f);
+	vec3 sum = vec3(0.0f);
+
+	for(float t = tHit.x; t < tHit.y; t += dt){
+		float density = sampleVolume( vec3(inverse(model) * vec4(cubePos, 1)) );
+		vec3 currentTr = exp(-extinction * density);
+		totalTr *= currentTr;
+		
+		vec3 Ls = evaluateLight(cubePos) * volumetricShadow(cubePos, lightPosition) * phaseFunction(lightDotEye, g);
+		//Integrate Ls from 0 to d
+		Ls =  (Ls - Ls * currentTr) / extinction; 
+
+		sum += totalTr * scattering * Ls;
+		cubePos += rayDirection * dt;
+	}
+
+	return vec4(background.xyz * totalTr + sum, 1.0f); 
+}
+
 vec4 refinedVersion(vec4 color, vec3 origin, vec3 rayDirection, float depth){
 	vec2 tHit = intersectBox(origin, rayDirection);
 
@@ -205,8 +317,6 @@ vec4 refinedVersion(vec4 color, vec3 origin, vec3 rayDirection, float depth){
 	vec3 dtVec = 1.0 / (vec3(numberOfSteps) * abs(rayDirection));
 	float dt = min(dtVec.x, min(dtVec.y, dtVec.z));
 	vec3 cubePos = cameraPosition + (tHit.x) * rayDirection;
-
-	float density = 0;
 
 	float currentDensity = 0.0;
 	vec3 scatteredLight = vec3(0.0, 0.0, 0.0);
@@ -308,7 +418,8 @@ vec4 pathTracing(vec4 color, vec3 origin, vec3 rayDirection, float depth){
 	//return vec4(((rayDirection+1)/2 - (newRay+1)/2), 1.0);
 
 	for(int i = 0; i < SPP; i++){
-		thisColor += refinedVersion(color, origin, normalize(newRay), depth);
+		thisColor += MCPathTracing(color, origin, normalize(newRay), depth);
+		//thisColor += refinedVersion(color, origin, normalize(newRay), depth);
 	}
 	
 	thisColor = thisColor/float(SPP);
@@ -322,9 +433,10 @@ vec4 pathTracing(vec4 color, vec3 origin, vec3 rayDirection, float depth){
 
 void main(){
 	
-	vec4 bg = texture(background, vec2((screenRes.x - gl_FragCoord.x)/screenRes.x, gl_FragCoord.y/screenRes.y));
+	vec4 bg = texture(background, vec2((gl_FragCoord.x)/screenRes.x, gl_FragCoord.y/screenRes.y));
 	vec4 thisColor;
-	float depth = texture(backgroundDepth, vec2((screenRes.x - gl_FragCoord.x)/screenRes.x, gl_FragCoord.y/screenRes.y)).r;
+	//screenRes.x - gl_FragCoord.x
+	float depth = texture(backgroundDepth, vec2((gl_FragCoord.x)/screenRes.x, gl_FragCoord.y/screenRes.y)).r;
 	//depth = 2 * depth - 1;
 	//depth = (inverse(mvp) * vec4(1, 1, depth, 1)).z;
 	vec3 origin = vec3(inverse(model) * vec4(cameraPosition, 1));
@@ -332,7 +444,8 @@ void main(){
 	if(enablePathTracing==1)
 		thisColor = pathTracing(bg, origin, normalize(rayDirection), depth);
 	else
-		thisColor = refinedVersion(bg, origin, normalize(rayDirection), depth);
+		//thisColor = refinedVersion(bg, origin, normalize(rayDirection), depth);
+		thisColor = singleScattering(bg, origin, normalize(rayDirection), depth);
 
 	color = thisColor;
 }

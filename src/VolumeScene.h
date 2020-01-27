@@ -32,7 +32,7 @@ public:
 	//Lightning
 	glm::vec3 lightPosition = glm::vec3(0.0, 1.6, 4.0);
 	glm::vec3 lightColor = glm::vec3(1.0, 1.0, 1.0);
-	float ambientStrength = 0.1;
+	float ambientStrength = 1.0;
 	float lightMaxRadius = 1000.0f;
 
 	//Volume's material
@@ -64,7 +64,7 @@ public:
 	glm::mat4 staticCam;
 	bool firstPass = true;
 	int totalSamples = 1;
-	bool enablePathTracing = 1;
+	bool enablePathTracing = 0;
 	bool clearRayTracing = true;
 
 	void init(GLint width, GLint height, Renderer *r, Camera *c) {
@@ -208,7 +208,7 @@ public:
 		ResourceManager::getSelf()->getShader(currentShader).use();
 		model = glm::mat4(1);
 		model = glm::translate(model, { -WIDTH/2, HEIGHT / 2, 0 });
-		model = glm::scale(model, { WIDTH / 2, -HEIGHT / 2, 1 });
+		model = glm::scale(model, { -WIDTH / 2, -HEIGHT / 2, 1 });
 
 		glActiveTexture(GL_TEXTURE0);
 		ResourceManager::getSelf()->getShader(currentShader).setInteger("tex", 0);
@@ -220,6 +220,21 @@ public:
 
 		(*renderer).render(ResourceManager::getSelf()->getModel("quadTest"));
 		glEnable(GL_DEPTH_TEST);
+	}
+
+	void renderRayPath() {
+		std::string currentShader = "monocolor";
+		ResourceManager::getSelf()->getShader(currentShader).use();
+		model = glm::mat4(1);
+		model = glm::translate(model, {0,0,0});
+		model = glm::scale(model, { 1,1,1});
+
+		ResourceManager::getSelf()->getShader(currentShader).setMat4("model", model);
+		ResourceManager::getSelf()->getShader(currentShader).setMat4("projection", proj);
+		ResourceManager::getSelf()->getShader(currentShader).setMat4("cam", *(camera->getCam()));
+		ResourceManager::getSelf()->getShader(currentShader).setVec4("rgbColor", glm::vec4(1,0,0,1));
+
+		(*renderer).renderLine(glm::vec3(0,0,0), glm::vec3(0,0,40));
 	}
 
 	void updateVariable(float deltaTime) {
@@ -264,6 +279,8 @@ public:
 		renderTex(cloudTex[currentCloudFrame]);
 		
 		currentCloudFrame = next;
+
+		//renderRayPath();
 	}
 };
 

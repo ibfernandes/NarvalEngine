@@ -61,6 +61,7 @@ Texture3D ResourceManager::loadVDBasTexture3D(std::string name, std::string path
 
 	openvdb::io::File file(RESOURCES_DIR + path);
 	openvdb::GridBase::Ptr baseGrid;
+	openvdb::math::Vec3d a;
 
 	file.open();
 	for (openvdb::io::File::NameIterator nameIter = file.beginName(); nameIter != file.endName(); ++nameIter) {
