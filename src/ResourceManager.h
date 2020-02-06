@@ -34,7 +34,7 @@ public:
 	Model loadModel(std::string name, std::string path, std::string fileName);
 	Model getModel(std::string name);
 	Texture3D getTexture3D(std::string name);
-	Texture3D loadVDBasTexture3D(std::string name, std::string path, int resolution);
+	Texture3D loadVDBasTexture3D(std::string name, std::string path);
 	Texture2D getTexture2D(std::string name);
 	void setTexture2D(std::string name, Texture2D t);
 	Texture2D loadTexture2D(std::string name, std::string path);

@@ -30,6 +30,8 @@ class Engine3D{
 		double const targetUPSTime = 1.0/TARGET_UPS;
 		double previousUpdateTime;
 		double previousRenderTime;
+		float accumulator = 0;
+		float alphaInterpolator = 1;
 		int UPSCount = 0;
 		int FPSCount = 0;
 		int lastFPS = 0;
@@ -42,22 +44,18 @@ class Engine3D{
 		GLFWwindow *window;
 
 		Renderer renderer;
-		std::string currentShader = "cloudscape";
-		CloudSystem cloudSystem;
 		Camera camera;
 		glm::mat4 staticCam;
 
 		bool showMainMenu = true;
 		bool *p_open = &showMainMenu;
 		ImGuiWindowFlags window_flags = 0;
-		glm::vec3 gradientDownNight =  glm::vec3( 57/255.0f, 65/255.0f, 73/255.0f);
-		glm::vec3 gradientUpNight = glm::vec3(19 / 155.0f, 21 / 255.0f, 23 / 255.0f);
-		glm::vec3 gradientDownDay =  glm::vec3( 236/255.0f, 240/255.0f, 241/255.0f);
-		glm::vec3 gradientUpDay =  glm::vec3(186/255.0f, 199/255.0f, 200/255.0f);
-
+		glm::mat4 proj;
+		glm::mat4 model = glm::mat4(1);
+		
 		bool nightMode = false;
 		int currentScene = 0;
-		const char *scenes[3] = { "Volume", "3D model", "SH" };
+		const char *scenes[2] = { "Volume model", "3D model" };
 		static const int MAX_GRAPH_POINTS = 100;
 		float FPSgraphPoints[MAX_GRAPH_POINTS];
 		float UPSgraphPoints[MAX_GRAPH_POINTS];
@@ -78,13 +76,11 @@ class Engine3D{
 		}
 
 		void initImgui() {
-			// Setup Dear ImGui binding
+
 			IMGUI_CHECKVERSION();
 			ImGui::CreateContext();
 			ImGuiIO& io = ImGui::GetIO(); (void)io;
-			//io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;  // Enable Keyboard Controls
-			//io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;   // Enable Gamepad Controls
-
+	
 			ImGui_ImplGlfw_InitForOpenGL(window, true);
 			ImGui_ImplOpenGL3_Init();
 
@@ -152,25 +148,28 @@ class Engine3D{
 			startGLFW();
 			initInputManager();
 			initCamera();
-			//cloudSystem.generateCloudNoiseTextures();
 
 			glEnable(GL_TEXTURE_2D);
-			//glEnable(GL_CULL_FACE);
 			glFrontFace(GL_CCW);
 			glCullFace(GL_BACK);
 			glEnable(GL_DEPTH_TEST);
 			glEnable(GL_BLEND);
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 			
+			float nearPlane = 1;
+			float farPlane = 60000;
+			float projAngle = 45;
+			proj = glm::perspective(glm::radians(projAngle), (GLfloat)WIDTH / (GLfloat)HEIGHT, nearPlane, farPlane);
+
 			VolumeScene *vs = new VolumeScene;
 			vs->init(WIDTH, HEIGHT, &renderer, &camera);
 			GSM.addState(vs);
 
-			/*ModelScene *mods = new ModelScene;
+			ModelScene *mods = new ModelScene;
 			mods->init(WIDTH, HEIGHT, &renderer, &camera);
-			GSM.addState(mods);*/
+			GSM.addState(mods);
 				
-			GSM.currentScene = 0;
+			GSM.currentScene = currentScene;
 
 			initImgui();
 		}
@@ -206,7 +205,7 @@ class Engine3D{
 
 				if (glfwGetTime() - startTime >= 1.0) {
 					lastFPS = FPSCount;
-					lastUPS= UPSCount;
+					lastUPS = UPSCount;
 					
 					FPSgraphPoints[0] = FPSCount;
 					UPSgraphPoints[0] = UPSCount;
@@ -222,81 +221,37 @@ class Engine3D{
 				}
 
 				update();
-				//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-				//glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 				render();
 			}
 		}
 
 		void update() {
-			if (glfwGetTime() - previousUpdateTime >= targetUPSTime) {
-				glfwGetWindowSize(window, &WIDTH, &HEIGHT);
+			int count = 0;
+			float currentFrame = glfwGetTime();
+			float deltaTime = currentFrame - previousUpdateTime;
+			previousUpdateTime = currentFrame;
+
+			if (deltaTime > targetUPSTime * (TARGET_UPS * 0.1f))
+				deltaTime = targetUPSTime * (TARGET_UPS * 0.1f);
+
+			accumulator += deltaTime;
+
+			while (accumulator > targetUPSTime) {
+				count++;
+				accumulator -= targetUPSTime;
+			}
+
+			alphaInterpolator = accumulator / targetUPSTime;
+
+			for (int i = 0; i < count; i++) {
+				float previous = glfwGetTime();
+				
 				camera.update();
-
-				previousUpdateTime = glfwGetTime();
-				GSM.update(1);
-				UPSCount++;
-			}
-			glfwPollEvents();
-		}
-
-		/*void renderNoiseTexture() {
-			glm::mat4 model(1);
-			glm::mat4 proj(1);
-			float nearPlane = 1;
-			float farPlane = 60000;
-			float projAngle = 45;
-			proj = glm::perspective(glm::radians(projAngle), (GLfloat)WIDTH / (GLfloat)HEIGHT, nearPlane, farPlane);
-			proj = glm::ortho(0.f, -(float)WIDTH, 0.f, (float)HEIGHT, -1.f, 1.f);
-
-			std::string currentShader = "screentex";
-			ResourceManager::getSelf()->getShader(currentShader).use();
-			model = glm::translate(model, { WIDTH / 2, HEIGHT / 2, 0 });
-			model = glm::scale(model, { 512, 512, 1 });
-
-			ResourceManager::getSelf()->getShader(currentShader).setMat4("model", model);
-			ResourceManager::getSelf()->getShader(currentShader).setMat4("proj", proj);
-			ResourceManager::getSelf()->getShader(currentShader).setMat4("cam", staticCam);
-
-			ResourceManager::getSelf()->getShader(currentShader).setInteger("volume", 0);
-			glActiveTexture(GL_TEXTURE0);
-			cloudSystem.perlinWorley3.bind();
-
-			renderer.render(ResourceManager::getSelf()->getModel("quadTest"));
-		}*/
-
-		void renderGradientBackground() {
-			glDisable(GL_DEPTH_TEST);
-
-			glm::mat4 model(1);
-			glm::mat4 proj(1);
-			float nearPlane = 1;
-			float farPlane = 60000;
-			float projAngle = 45;
-			proj = glm::perspective(glm::radians(projAngle), (GLfloat)WIDTH / (GLfloat)HEIGHT, nearPlane, farPlane);
-			proj = glm::ortho(0.f, (float)WIDTH, 0.f, (float)HEIGHT, -8.f, 8.f);
-
-			std::string currentShader = "gradientBackground";
-			ResourceManager::getSelf()->getShader(currentShader).use();
-			model = glm::translate(model, { WIDTH / 2, HEIGHT / 2, 0 });
-			model = glm::scale(model, { WIDTH, HEIGHT, 1 });
-
-			ResourceManager::getSelf()->getShader(currentShader).setMat4("model", model);
-			ResourceManager::getSelf()->getShader(currentShader).setMat4("proj", proj);
-			ResourceManager::getSelf()->getShader(currentShader).setMat4("cam", staticCam);
-
-			if (nightMode) {
-				ResourceManager::getSelf()->getShader(currentShader).setVec3("gradientUp", gradientUpNight.x, gradientUpNight.y, gradientUpNight.z);
-				ResourceManager::getSelf()->getShader(currentShader).setVec3("gradientDown", gradientDownNight.x, gradientDownNight.y, gradientDownNight.z);
-			}
-			else {
-				ResourceManager::getSelf()->getShader(currentShader).setVec3("gradientUp", gradientUpDay.x, gradientUpDay.y, gradientUpDay.z);
-				ResourceManager::getSelf()->getShader(currentShader).setVec3("gradientDown", gradientDownDay.x, gradientDownDay.y, gradientDownDay.z);
+				GSM.update(targetUPSTime);
+				glfwPollEvents();
 			}
 
-			renderer.render(ResourceManager::getSelf()->getModel("quadTest"));
-
-			glEnable(GL_DEPTH_TEST);
+			UPSCount += count;
 		}
 
 		void renderImGUI() {
@@ -309,7 +264,6 @@ class Engine3D{
 
 			ImGui::Text("UPS:   %d", lastUPS);
 			ImGui::PlotLines("", UPSgraphPoints, IM_ARRAYSIZE(UPSgraphPoints), 0, 0, 0, 200, ImVec2(300, 60));
-
 			
 			ImGui::Text("Scenes");
 			ImGui::ListBox("", &currentScene, scenes, IM_ARRAYSIZE(scenes), IM_ARRAYSIZE(scenes));
@@ -319,15 +273,9 @@ class Engine3D{
 		}
 
 		void renderAxis() {
-			glm::mat4 model(1);
-			glm::mat4 proj(1);
-			float nearPlane = 1;
-			float farPlane = 60000;
-			float projAngle = 45;
-			proj = glm::perspective(glm::radians(projAngle), (GLfloat)WIDTH / (GLfloat)HEIGHT, nearPlane, farPlane);
-
 			std::string currentShader = "monocolor";
 			ResourceManager::getSelf()->getShader(currentShader).use();
+			model = glm::mat4(1);
 			model = glm::translate(model, glm::vec3(1.8,-1,0));
 			model = glm::scale(model, { 0.01, 0.01, 0.01 });
 			model = glm::rotate(model, glm::radians(-90.0f), glm::vec3(0,0,1));

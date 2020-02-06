@@ -16,7 +16,7 @@ private:
 	glm::mat4 cam;
 	float yaw = 89;
 	float pitch = 0;
-	float movementSpeed = 1.0f / TARGET_UPS;
+	float movementSpeed = 3.0f / TARGET_UPS;
 	float rotationSpeed = 90.0f / TARGET_UPS;
 
 public:

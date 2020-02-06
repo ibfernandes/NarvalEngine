@@ -15,8 +15,7 @@ struct TextureInfo {
 	std::string bindName;
 };
 
-class Mesh
-{
+class Mesh{
 public:
 	GLuint VAO, VBO, EBO;
 	std::vector<Vertex> vertices;

@@ -52,17 +52,14 @@ Texture3D ResourceManager::getTexture3D(std::string name) {
 	return textures3D.at(name);
 }
 
-Texture3D ResourceManager::loadVDBasTexture3D(std::string name, std::string path, int resolution) {
+Texture3D ResourceManager::loadVDBasTexture3D(std::string name, std::string path) {
 	if (textures3D.count(name) > 0)
 		return textures3D.at(name);
 
-	int width, height, depth, channels = 1;
 	Texture3D cloud;
 
 	openvdb::io::File file(RESOURCES_DIR + path);
 	openvdb::GridBase::Ptr baseGrid;
-	openvdb::math::Vec3d a;
-
 	file.open();
 	for (openvdb::io::File::NameIterator nameIter = file.beginName(); nameIter != file.endName(); ++nameIter) {
 		if (nameIter.gridName() == "density") {
@@ -73,14 +70,19 @@ Texture3D ResourceManager::loadVDBasTexture3D(std::string name, std::string path
 	file.close();
 
 	openvdb::FloatGrid::Ptr grid = openvdb::gridPtrCast<openvdb::FloatGrid>(baseGrid);
-	openvdb::Coord dim(resolution, resolution, resolution);
-	openvdb::Coord origin(-(resolution / 2), -(resolution / 2), -(resolution / 2) - 10);
-	openvdb::tools::Dense<float> dense(dim, origin);
 
+	openvdb::CoordBBox bb = grid->evalActiveVoxelBoundingBox();
+	float resX = abs(bb.min().x()) + abs(bb.max().x());
+	float resY = abs(bb.min().y()) + abs(bb.max().y());
+	float resZ = abs(bb.min().z()) + abs(bb.max().z());
+
+	openvdb::Coord dim(resX, resY , resZ);
+	openvdb::Coord originvdb(-abs(bb.min().x()), -abs(bb.min().y()), -abs(bb.min().z()));
+	openvdb::tools::Dense<float> dense(dim, originvdb);
 
 	openvdb::tools::copyToDense<openvdb::tools::Dense<float>, openvdb::FloatGrid>(*grid, dense);
 	float *denseData = dense.data();
-	cloud.generateWithData(resolution, resolution, resolution, 1, denseData);
+	cloud.generateWithData(resZ, resY , resX, 1, denseData);
 	textures3D.insert({ name, cloud });
 
 	return textures3D.at(name);

@@ -19,6 +19,7 @@ public:
 	Renderer *renderer;
 	Camera *camera;
 	std::string currentShader;
+	std::string currentModel = "sponza";
 
 	//Lightning
 	glm::vec3 lightPosition = glm::vec3(0.0, 1.6, 4.0);
@@ -48,7 +49,7 @@ public:
 		ResourceManager::getSelf()->getShader(currentShader).setVec3("lightPoints[0].specular", glm::vec3(0.5f));
 		ResourceManager::getSelf()->getShader(currentShader).setInteger("numberOfLights", 1);
 
-		for (Mesh m : ResourceManager::getSelf()->getModel("hz").meshes) {
+		for (Mesh m : ResourceManager::getSelf()->getModel(currentModel).meshes) {
 			m.render(currentShader);
 		}
 	}

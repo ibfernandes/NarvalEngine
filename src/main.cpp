@@ -47,6 +47,7 @@ void generateTestModel(){
 }
 
 void generateCubeTestModel() {
+	//Actually, 0..1, i'm suming 0.5 later down
 	float vertices[] = {
 		-0.5f, -0.5f, -0.5f,
 		0.5f, -0.5f, -0.5f,
@@ -160,6 +161,7 @@ int main(){
 
 	GameStateManager gsm;
 	ResourceManager::getSelf()->loadShader("monocolor", "shaders/monoColor.vert", "shaders/monoColor.frag", "");
+	ResourceManager::getSelf()->loadShader("randomVisualizer", "shaders/random.vert", "shaders/random.frag", "");
 	ResourceManager::getSelf()->loadShader("billboard", "shaders/billboard.vert", "shaders/billboard.frag", "");
 	ResourceManager::getSelf()->loadShader("phong", "shaders/phong.vert", "shaders/phong.frag", "");
 	ResourceManager::getSelf()->loadShader("cloudscape", "shaders/cloudscape.vert", "shaders/cloudscape.frag", "");
@@ -174,14 +176,19 @@ int main(){
 	ResourceManager::getSelf()->loadTexture2D("lightbulb", "imgs/light-bulb.png");
 	ResourceManager::getSelf()->loadShader("screentex", "shaders/screenTex.vert", "shaders/screenTex.frag", "");
 	ResourceManager::getSelf()->loadShader("gradientBackground", "shaders/gradientBackground.vert", "shaders/gradientBackground.frag", "");
-	//ResourceManager::getSelf()->loadVDBasTexture3D("cloud", "vdb/wdas_cloud_quarter.vdb", 512);
-	ResourceManager::getSelf()->loadVDBasTexture3D("cloud", "vdb/wdas_cloud_sixteenth.vdb", 128);
-	//ResourceManager::getSelf()->loadModel("spider", "models/spider/", "spider.obj");
-	//ResourceManager::getSelf()->loadModel("monkey", "models/monkey2/source/", "monkey.obj");
+
+	glm::vec3 origin(-(512 / 2), -(512 / 2), -(512 / 2) - 10);
+	ResourceManager::getSelf()->loadVDBasTexture3D("cloud", "vdb/wdas_cloud_quarter.vdb"); //512
+	ResourceManager::getSelf()->loadVDBasTexture3D("cloudlowres", "vdb/wdas_cloud_eighth.vdb"); //512
+	ResourceManager::getSelf()->loadVDBasTexture3D("smoke", "vdb/colored_smoke.vdb");
+	ResourceManager::getSelf()->loadVDBasTexture3D("fireball", "vdb/fireball.vdb");
+	ResourceManager::getSelf()->loadVDBasTexture3D("bunny", "vdb/bunny_cloud.vdb");
+	ResourceManager::getSelf()->loadVDBasTexture3D("explosion", "vdb/explosion.vdb");
+
 	//ResourceManager::getSelf()->loadModel("aloy", "models/aloy/", "Aloy_full.obj");
-	
 	//ResourceManager::getSelf()->loadModel("hz", "models/xps/Aloy V2/", "plz.obj");
 	ResourceManager::getSelf()->loadModel("xyzaxis", "models/xyzaxis/", "arrows.obj");
+	//ResourceManager::getSelf()->loadModel("sponza", "models/sponza/", "sponza.obj");
 
 	generateCubeTestModel();
 	generateTestModel();
