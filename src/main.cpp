@@ -188,7 +188,7 @@ int main(){
 	//ResourceManager::getSelf()->loadModel("aloy", "models/aloy/", "Aloy_full.obj");
 	//ResourceManager::getSelf()->loadModel("hz", "models/xps/Aloy V2/", "plz.obj");
 	ResourceManager::getSelf()->loadModel("xyzaxis", "models/xyzaxis/", "arrows.obj");
-	//ResourceManager::getSelf()->loadModel("sponza", "models/sponza/", "sponza.obj");
+	ResourceManager::getSelf()->loadModel("sponza", "models/sponza/", "sponza.obj");
 
 	generateCubeTestModel();
 	generateTestModel();
