@@ -3,8 +3,11 @@
 #include "Camera.h"
 #include "Renderer.h"
 #include "ResourceManager.h"
+#include "Texture1D.h"
 #include "FBO.h"
 #include "imgui.h"
+#include "LBVH.h"
+#include "LBVH2.h"
 #include <glm/glm.hpp>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -69,17 +72,29 @@ public:
 	
 	bool firstPass = true;
 	int SPP = 1;
-	bool enablePathTracing = 0;
-	bool showbbox = 0;
 	bool clearRayTracing = true;
 	int currentModel = 0;
 	const char* models[6] = {"cloud", "cloudlowres", "smoke", "fireball", "bunny", "explosion"};
+	std::string currentModelResolution = "";
+
+	int currentRenderMode = 0;
+	const char* renderModes[3] = { "Ray marching grid", "Path tracing MC", "LBVH"};
+	const char* phaseFunctionOptions[3] = { "Isotropic", "Rayleigh", "Henyey-Greenstein" };
+
+	//LBVH
+	LBVH *lbvh;
+	glm::vec3 lbvhres = glm::vec3(512, 512, 512);
+	Texture3D nodes;
+
+	//LBVH2
+	LBVH2 *lbvh2;
 
 	void init(GLint width, GLint height, Renderer *r, Camera *c) {
 		this->WIDTH = width;
 		this->HEIGHT = height;
 		aspectRatio = (float)width / height;
 		camera = c;
+		c->setSpeed(3);
 		renderer = r;
 		proj = glm::perspective(glm::radians(projAngle), (GLfloat)width / (GLfloat)height, nearPlane, farPlane);
 		orthoProj = glm::ortho(0.f, -(float)width, 0.f, (float)height, -1.f, 1.f);
@@ -104,8 +119,58 @@ public:
 		staticCam = glm::lookAt(position, position + front, up);
 	}
 
+	void lbvhBin() {
+		lbvhres = ResourceManager::getSelf()->getTexture3D(models[currentModel]).getResolution();
+		lbvhres = glm::vec3(256, 256, 256);
+		std::cout << "LBVH size: " << lbvhres.x << ", " << lbvhres.y << ", " << lbvhres.z << std::endl;
+		lbvh = new LBVH(lbvhres);
+
+		nodes.generateWithData(lbvhres.x, lbvhres.y, lbvhres.z, 3, lbvh->data);
+		std::cout << lbvh->data[3];
+
+		GLuint ssboMax;
+		glGenBuffers(1, &ssboMax);
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssboMax);
+		glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(int) * lbvhres.x * lbvhres.y * lbvhres.z * 3, lbvh->data, GL_STATIC_DRAW);
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 10, ssboMax);
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+	}
+
+	void lbvhBucket() {
+		lbvhres = ResourceManager::getSelf()->getTexture3D(models[currentModel]).getResolution();
+		std::cout << "LBVH size: " << lbvhres.x << ", " << lbvhres.y << ", " << lbvhres.z << std::endl;
+		lbvh2 = new LBVH2(ResourceManager::getSelf()->getTexture3D(models[currentModel]).data, lbvhres);
+
+		GLuint ssboNodeData;
+		glGenBuffers(1, &ssboNodeData);
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssboNodeData);
+		glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(int) * lbvh2->dataSize, lbvh2->node, GL_STATIC_DRAW);
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 10, ssboNodeData);
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+
+		GLuint ssboOffsets;
+		glGenBuffers(1, &ssboOffsets);
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssboOffsets);
+		glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(int) * lbvh2->amountOfBuckets, lbvh2->offsets, GL_STATIC_DRAW);
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 11, ssboOffsets);
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+
+		GLuint ssboMax;
+		glGenBuffers(1, &ssboMax);
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssboMax);
+		glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(int) * lbvh2->mortonCodesSize, lbvh2->mortonCodes, GL_STATIC_DRAW);
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 12, ssboMax);
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+	}
+
+	void load() {
+		lbvhBin();
+		//lbvhBucket();
+	}
+
 	void updateUI() {
-		currentShader = "volumewcs";
+
+		currentShader = "volumelbvh";
 		ResourceManager::getSelf()->getShader(currentShader).use();
 
 		ResourceManager::getSelf()->getShader(currentShader).setVec3("absorption", absorption.x, absorption.y, absorption.z);
@@ -125,14 +190,19 @@ public:
 		ResourceManager::getSelf()->getShader(currentShader).setFloat("g", g);
 		ResourceManager::getSelf()->getShader(currentShader).setFloat("gammaCorrection", gammaCorrection);
 		ResourceManager::getSelf()->getShader(currentShader).setFloat("enableShadow", enableShadow);
-		ResourceManager::getSelf()->getShader(currentShader).setFloat("enablePathTracing", enablePathTracing);
-		ResourceManager::getSelf()->getShader(currentShader).setFloat("showbbox", showbbox);
+
+		glm::vec3 r = ResourceManager::getSelf()->getTexture3D(models[currentModel]).getResolution();
+		currentModelResolution = "";
+		currentModelResolution = "[" + std::to_string((int)r.x) + ", " + std::to_string((int)r.y) + ", " + std::to_string((int)r.z) + "]";
+
+		ResourceManager::getSelf()->getShader(currentShader).setInteger("renderingMode", currentRenderMode);
 	}
 
 	void renderImGUI();
 
 	void renderVolume(Texture2D previousFrame) {
-		currentShader = "volumewcs";
+
+		currentShader = "volumelbvh";
 		ResourceManager::getSelf()->getShader(currentShader).use();
 		glm::vec3 camPos = *(camera->getPosition());
 		
@@ -162,6 +232,8 @@ public:
 		ResourceManager::getSelf()->getShader(currentShader).setInteger("previousCloud", 3);
 		previousFrame.bind();
 
+		ResourceManager::getSelf()->getShader(currentShader).setIntegerVec3("lbvhSize", lbvhres);
+
 		float time = ((sin(glm::radians(glfwGetTime() * 100)) + 1) / 2) * 1;
 		float continuosTime = glfwGetTime() / 6;
 		ResourceManager::getSelf()->getShader(currentShader).setVec2("screenRes", WIDTH, HEIGHT);
@@ -175,6 +247,8 @@ public:
 		ResourceManager::getSelf()->getShader(currentShader).setFloat("time", glfwGetTime());
 		ResourceManager::getSelf()->getShader(currentShader).setInteger("SPP", SPP);
 		ResourceManager::getSelf()->getShader(currentShader).setInteger("frameCount", frameCount);
+		//ResourceManager::getSelf()->getShader(currentShader).setInteger("levels", lbvh2->levels);
+		//ResourceManager::getSelf()->getShader(currentShader).setInteger("nodesSize", lbvh2->nodesSize);
 		ResourceManager::getSelf()->getShader(currentShader).setVec3("cameraPosition", camPos.x, camPos.y, camPos.z);
 
 		(*renderer).render(ResourceManager::getSelf()->getModel("cubeTest"));
@@ -269,7 +343,7 @@ public:
 	}
 
 	bool shouldClear() {
-		if (*camera->getPosition() != *camera->getPreviousPosition() || enablePathTracing == false)
+		if (*camera->getPosition() != *camera->getPreviousPosition() || (currentRenderMode != 1 && currentRenderMode != 2))
 			return true;
 
 		return false;
@@ -301,6 +375,7 @@ public:
 		renderLightPosition();
 		fbo.unbind();
 
+		//TODO: should clear one?
 		if (shouldClear()) {
 			frameCount = 1;
 			cloudFbo[0].bind();

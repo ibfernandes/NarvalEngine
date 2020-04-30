@@ -29,12 +29,23 @@ public:
 		clear(0, 0, 0, 0);
 	}
 
+	void attachTextureColorAndDepthStencil(int colorTex, int depthTex) {
+		bind();
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, colorTex, 0);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, depthTex, 0);
+
+		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+			std::cout << "ERROR: Framebuffer in not complete!";
+		unbind();
+	}
+
 	void attachTexture(int id) {
 		bind();
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, id, 0);
 		unbind();
 	}
 
+	//TODO: change name to "depth" only
 	void attachDepthAndStencil(int id) {
 		bind();
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, id, 0);

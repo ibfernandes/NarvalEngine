@@ -73,6 +73,10 @@ public:
 		return &cam;
 	}
 
+	void setSpeed(float speed) {
+		this->movementSpeed = speed / TARGET_UPS;
+	}
+
 	void setPosition(glm::vec3 pos) {
 		this->position = pos;
 	}
@@ -80,6 +84,7 @@ public:
 	glm::vec3 *getPosition() {
 		return &position;
 	}
+
 	glm::vec3 *getPreviousPosition() {
 		return &previousPosition;
 	}

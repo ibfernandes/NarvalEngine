@@ -20,6 +20,10 @@ public:
 	}
 
 	void changeStateTo(int id) {
+		if ((*scenes.at(currentScene)).shouldLoad) {
+			(*scenes.at(currentScene)).load();
+			(*scenes.at(currentScene)).shouldLoad = false;
+		}
 		currentScene = id;
 	}
 

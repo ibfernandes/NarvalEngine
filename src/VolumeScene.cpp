@@ -16,7 +16,7 @@ VolumeScene::~VolumeScene()
 
 void VolumeScene::renderImGUI(){
 	ImGui::SetNextWindowPos(ImVec2(10, 340), ImGuiCond_Once);
-	ImGui::SetNextWindowSize(ImVec2(300, 300), ImGuiCond_Once);
+	ImGui::SetNextWindowSize(ImVec2(300, 450), ImGuiCond_Once);
 	ImGui::Begin("Volume Properties", p_open, window_flags);
 	ImGui::DragFloat3("Absorption (1/m)", &absorption[0], 0.001f, 0.001f, 5.0f);
 	ImGui::DragFloat3("Scattering (1/m)", &scattering[0], 0.001f, 0.001f, 5000.0f);
@@ -28,9 +28,11 @@ void VolumeScene::renderImGUI(){
 	ImGui::PushItemWidth(80.0f);
 	ImGui::DragFloat("Density Multiplier", &densityCoef, 0.01, 0.001f, 30.0);
 	ImGui::PopItemWidth();
-	ImGui::Checkbox("Show bbox", &showbbox);
-	ImGui::Text("Select model: ");
+
+	ImGui::Text("Model: ");
+	ImGui::Text(currentModelResolution.c_str());
 	ImGui::Combo("", &currentModel, models, IM_ARRAYSIZE(models));
+
 	ImGui::End();
 
 	ImGui::SetNextWindowPos(ImVec2(WIDTH - 300, 10), ImGuiCond_Once);
@@ -48,13 +50,13 @@ void VolumeScene::renderImGUI(){
 	ImGui::DragFloat("N. of Steps", &numberOfSteps, 1, 0.0, 256);
 	ImGui::DragFloat("Shadow Steps", &shadowSteps, 1, 0.0, 256);
 	ImGui::Checkbox("Enable Shadow", &enableShadow);
-	ImGui::Checkbox("Enable Ray Tracing", &enablePathTracing);
-
 
 	ImGui::Checkbox("Night Mode", &nightMode);
 
-	const char* items[] = { "Isotropic", "Rayleigh", "Henyey-Greenstein" };
-	ImGui::Combo("Phase Function", &phaseFunctionOption, items, IM_ARRAYSIZE(items));
+	ImGui::Text("Render Mode: ");
+	ImGui::Combo("", &currentRenderMode, renderModes, IM_ARRAYSIZE(renderModes));
+
+	ImGui::Combo("Phase Function", &phaseFunctionOption, phaseFunctionOptions, IM_ARRAYSIZE(phaseFunctionOptions));
 	ImGui::End();
 	ImGui::SetNextWindowPos(ImVec2(40, 810), ImGuiCond_Once);
 	ImGui::SetNextWindowSize(ImVec2(400, 100), ImGuiCond_Once);

@@ -20,6 +20,11 @@ void Scene::variableUpdate(float deltaTime)
 {
 }
 
+void Scene::load()
+{
+}
+
+
 void Scene::render()
 {
 }

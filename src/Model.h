@@ -30,10 +30,10 @@ public:
 	void processNode(aiNode *node, const aiScene *scene, std::string path){
 		relativePath = path;
 		// process all the node's meshes (if any)
-		if (scene->HasMaterials())
-			std::cout << relativePath << " has materials" << std::endl;
-		else
-			std::cout << relativePath << " does not have materials" << std::endl;
+		//if (scene->HasMaterials())
+		//	std::cout << relativePath << " has materials" << std::endl;
+		//else
+		//	std::cout << relativePath << " does not have materials" << std::endl;
 
 		for (unsigned int i = 0; i < node->mNumMeshes; i++){
 			aiMesh *mesh = scene->mMeshes[node->mMeshes[i]];
@@ -63,6 +63,12 @@ public:
 			vector.z = mesh->mNormals[i].z;
 			vertex.normal = vector;
 
+			//tangent
+			vector.x = mesh->mTangents[i].x;
+			vector.y = mesh->mTangents[i].y;
+			vector.z = mesh->mTangents[i].z;
+			vertex.tangent = vector;
+
 			// texture coordinates
 			if (mesh->mTextureCoords[0]){
 				glm::vec2 vec;
@@ -77,6 +83,7 @@ public:
 			
 			vertices.push_back(vertex);
 		}
+
 		for (unsigned int i = 0; i < mesh->mNumFaces; i++){
 			aiFace face = mesh->mFaces[i];
 			// retrieve all indices of the face and store them in the indices vector
@@ -93,7 +100,7 @@ public:
 		std::vector<TextureInfo> specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, "material.specular", scene);
 		textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
 		// 3. normal maps
-		std::vector<TextureInfo> normalMaps = loadMaterialTextures(material, aiTextureType_HEIGHT, "material.normal", scene);
+		std::vector<TextureInfo> normalMaps = loadMaterialTextures(material, aiTextureType_DISPLACEMENT, "material.normal", scene);
 		textures.insert(textures.end(), normalMaps.begin(), normalMaps.end());
 		// 4. height maps
 		std::vector<TextureInfo> heightMaps = loadMaterialTextures(material, aiTextureType_BASE_COLOR, "texture_height", scene);
@@ -131,7 +138,7 @@ public:
 			}
 			else {
 				ResourceManager::getSelf()->loadTexture2D(string, relativePath + string);
-				std::cout << string << std::endl;
+				//std::cout << string << std::endl;
 			}
 
 			//TODO: not best solution, but boost is not working.

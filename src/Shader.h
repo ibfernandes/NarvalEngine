@@ -92,8 +92,16 @@ public:
 		glUniform1f(glGetUniformLocation(id, name.c_str()), value);
 	}
 
+	void setFloatArray(std::string name, int length, float *value) {
+		glUniform1fv(glGetUniformLocation(id, name.c_str()), length, value);
+	}
+
 	void setInteger(std::string name, int value) {
 		glUniform1i(glGetUniformLocation(id, name.c_str()), value);
+	}
+
+	void setIntegerArray(std::string name, int length, int *value) {
+		glUniform1iv(glGetUniformLocation(id, name.c_str()), length, value);
 	}
 
 	void setVec2(std::string name, float x, float y) {
@@ -106,6 +114,9 @@ public:
 
 	void setVec3(std::string name, glm::vec3 vec) {
 		glUniform3f(glGetUniformLocation(id, name.c_str()), vec.x, vec.y, vec.z);
+	}
+	void setIntegerVec3(std::string name, glm::ivec3 vec) {
+		glUniform3i(glGetUniformLocation(id, name.c_str()), vec.x, vec.y, vec.z);
 	}
 
 	void setVec4(std::string name, float x, float y, float z, float w) {

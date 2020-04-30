@@ -201,6 +201,8 @@ class Engine3D{
 		}
 
 		void mainLoop() {
+			GSM.changeStateTo(currentScene);
+
 			while (!glfwWindowShouldClose(window)) {
 
 				if (glfwGetTime() - startTime >= 1.0) {
@@ -292,7 +294,7 @@ class Engine3D{
 
 		void render() {
 			glViewport(0, 0, WIDTH, HEIGHT);
-			glClearColor(0, 0, 0, 1);
+			glClearColor(0, 0, 0, 0);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 			ImGui_ImplOpenGL3_NewFrame();

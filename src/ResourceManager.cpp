@@ -32,7 +32,7 @@ Model ResourceManager::loadModel(std::string name, std::string path, std::string
 	Model model;
 	std::string finalPath = RESOURCES_DIR + path + fileName;
 	Assimp::Importer importer;
-	const aiScene *scene = importer.ReadFile(finalPath, aiProcess_Triangulate | aiProcess_FlipUVs);
+	const aiScene *scene = importer.ReadFile(finalPath, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_CalcTangentSpace);
 
 	if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
 		std::cout << "Error loadModel ASSIMP" << importer.GetErrorString() << std::endl;
@@ -81,8 +81,8 @@ Texture3D ResourceManager::loadVDBasTexture3D(std::string name, std::string path
 	openvdb::tools::Dense<float> dense(dim, originvdb);
 
 	openvdb::tools::copyToDense<openvdb::tools::Dense<float>, openvdb::FloatGrid>(*grid, dense);
-	float *denseData = dense.data();
-	cloud.generateWithData(resZ, resY , resX, 1, denseData);
+
+	cloud.generateWithData(resZ, resY , resX, 1, dense.data());
 	textures3D.insert({ name, cloud });
 
 	return textures3D.at(name);

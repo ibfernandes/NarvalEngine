@@ -4,12 +4,6 @@
 
 FBO::FBO(){
 	glGenFramebuffers(1, &id);
-
-
-	if (!glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE) {
-		// didn't work
-	}
-		
 }
 
 

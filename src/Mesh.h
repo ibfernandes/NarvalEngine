@@ -8,6 +8,7 @@ struct Vertex {
 	glm::vec3 position;
 	glm::vec3 normal;
 	glm::vec2 texCoords;
+	glm::vec3 tangent;
 };
 
 struct TextureInfo {
@@ -48,22 +49,33 @@ public:
 		// vertex texture coords
 		glEnableVertexAttribArray(2);
 		glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, texCoords));
+		// tangent coords
+		glEnableVertexAttribArray(3);
+		glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, tangent));
 
 		glBindVertexArray(0);
 	}
 
-	void render(std::string shaderName){
-		for (unsigned int i = 0; i < textures.size(); i++){
+	void bindTextures(std::string shaderName) {
+		for (unsigned int i = 0; i < textures.size(); i++) {
 			glActiveTexture(GL_TEXTURE0 + i);
 			std::string name = textures[i].bindName;
 
-			ResourceManager::getSelf()->getShader(shaderName).setInteger(name,i);
+			ResourceManager::getSelf()->getShader(shaderName).setInteger(name, i);
 			ResourceManager::getSelf()->getTexture2D(textures[i].name).bind();
 		}
+	}
 
+	void renderVertices() {
 		glBindVertexArray(VAO);
 		glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
+	}
+
+	void render(std::string shaderName){
+		bindTextures(shaderName);
+
+		renderVertices();
 
 		glActiveTexture(GL_TEXTURE0);
 	}

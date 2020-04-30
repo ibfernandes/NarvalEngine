@@ -1,5 +1,6 @@
-list(APPEND CMAKE_MODULE_PATH "C:/vcpkg/package/openvdb_x86-windows/share/openvdb")
+list(APPEND CMAKE_MODULE_PATH "C:/vcpkg/package/openvdb_x64-windows/share/openvdb")
 set(CMAKE_TOOLCHAIN_FILE "C:/vcpkg/scripts/buildsystems/vcpkg.cmake")
+set(CMAKE_GENERATOR_PLATFORM "x64")
 cmake_minimum_required(VERSION 3.9)
 project(NarvalEngine)
 
@@ -197,6 +198,8 @@ endif()
 
 file(COPY "C:/vcpkg/installed/x86-windows/bin/Half-2_3.dll" DESTINATION ${CMAKE_BINARY_DIR}/Debug)
 file(COPY "C:/vcpkg/installed/x86-windows/bin/tbb.dll" DESTINATION ${CMAKE_BINARY_DIR}/Debug)
+file(COPY "C:/vcpkg/installed/x64-windows/bin/Half-2_3.dll" DESTINATION ${CMAKE_BINARY_DIR}/Debug)
+file(COPY "C:/vcpkg/installed/x64-windows/bin/tbb.dll" DESTINATION ${CMAKE_BINARY_DIR}/Debug)
 #set(TBB_BUILD_TYPE DEBUG)
 #https://github.com/xtensor-stack/xtensor/blob/master/cmake/FindTBB.cmake
 
