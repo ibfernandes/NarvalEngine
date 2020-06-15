@@ -1,0 +1,161 @@
+{
+	"version" : "0.0.1a",
+	
+	"materials": [
+		{
+			"name": "diffuse",
+			"type": "diffuse",
+			"albedo": [0.722, 0.451, 0.2]
+		},
+		{
+			"name": "wall",
+			"type": "diffuse",
+			"albedo": [0.5, 0.5, 0.5]
+		},
+		{
+			"name": "m1",
+			"type": "microfacet",
+			"roughness": 0.01,
+			"albedo": [0.722, 0.451, 0.2]
+		},
+		{
+			"name": "m2",
+			"type": "microfacet",
+			"roughness": 0.05,
+			"albedo": [0.722, 0.451, 0.2]
+		},
+		{
+			"name": "m3",
+			"type": "microfacet",
+			"roughness": 0.1,
+			"albedo": [0.722, 0.451, 0.2]
+		},
+		{
+			"name": "m4",
+			"type": "microfacet",
+			"roughness": 0.25,
+			"albedo": [0.722, 0.451, 0.2]
+		},
+		{
+			"name": "m5",
+			"type": "microfacet",
+			"roughness": 0.95,
+			"albedo": [0.3, 0.3, 0.3]
+		},
+		{
+			"name": "emitter",
+			"type": "emitter",
+			"albedo": [0.5, 0.5, 0.5]
+		}
+	],
+	
+	"primitives": [
+		{
+			"name": "sphereLight1",
+			"type": "sphere",
+			"transform": {
+				"position": [-4.8, 7.5, 8.1]
+			},
+			"radius": 1,
+			"materialName": "emitter"
+		},
+		{
+			"name": "sphereLight2",
+			"type": "sphere",
+			"transform": {
+				"position": [0, 7.5, 8.1]
+			},
+			"radius": 0.5,
+			"materialName": "emitter"
+		},
+		{
+			"name": "sphereLight3",
+			"type": "sphere",
+			"transform": {
+				"position": [4.5, 7.5, 8.1]
+			},
+			"radius": 0.15,
+			"materialName": "emitter"
+		},
+		
+		{
+			"name": "box1",
+			"type": "box",
+			"transform": {
+				"position": [0,  4.5, 10.5],
+				"scale": [12, 0.3, 2],
+                "rotation": [65, 0, 0]
+			},
+			"materialName": "m1"
+		},
+		{
+			"name": "box2",
+			"type": "box",
+			"transform": {
+				"position": [0,  2.5, 9.0],
+				"scale": [12, 0.3, 2],
+                "rotation": [50, 0, 0]
+			},
+			"materialName": "m2"
+		},
+		{
+			"name": "box3",
+			"type": "box",
+			"transform": {
+				"position": [0,  1.0, 6.5],
+				"scale": [12, 0.3, 2],
+                "rotation": [30, 0, 0]
+			},
+			"materialName": "m3"
+		},
+		{
+			"name": "box4",
+			"type": "box",
+			"transform": {
+				"position": [0,  0.3, 4.0],
+				"scale": [12, 0.3, 2],
+                "rotation": [15, 0, 0]
+			},
+			"materialName": "m4"
+		},
+		{
+			"name": "wall",
+			"type": "box",
+			"transform": {
+				"position": [0,  0, 15],
+				"scale": [40, 40, 1],
+                "rotation": [0, 0, 0]
+			},
+			"materialName": "m5"
+		},
+		{
+			"name": "globe",
+			"type": "sphere",
+			"transform": {
+				"position": [0, -300.5, 1]
+			},
+			"radius": 300,
+			"materialName": "m5"
+		}
+	],
+
+	"camera": {
+		"position": [0, 3.5, -10],
+		"lookAt": [0, 3.5, 0],
+		"up": [0, 1, 0],
+		"speed": 5,
+		"vfov": 35,
+		"aperture": 0.0001,
+		"autoFocus": true,
+		"focus": 1
+	},
+	
+	"renderer": {
+		"resolution": [400, 200],
+		"spp": 10,
+		"bounces": 3,
+		"mode": "offline",
+		"HDR": false,
+		"toneMapping": false
+	}
+}

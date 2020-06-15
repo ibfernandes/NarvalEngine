@@ -1,0 +1,119 @@
+{
+	"version" : "0.0.1a",
+	
+	"materials": [
+		{
+			"name": "diffuse",
+			"type": "diffuse",
+			"albedo": [0.5, 0.5, 0.5]
+		},
+		{
+			"name": "m1",
+			"type": "microfacet",
+			"roughness": 0.01,
+			"albedo": [0.722, 0.451, 0.2]
+		},
+		{
+			"name": "m2",
+			"type": "microfacet",
+			"roughness": 0.01,
+			"albedo": [0.722, 0.451, 0.2]
+		},
+		{
+			"name": "emitter",
+			"type": "emitter",
+			"albedo": [1.5, 1.5, 1.5]
+		},
+		{
+			"name": "emitter2",
+			"type": "emitter",
+			"albedo": [1.5, 0.5, 0.5]
+		},
+		{
+			"name": "cloud",
+			"type": "volume",
+			"scattering": [0.45, 0.25, 0.25],
+			"absorption": [0.2, 0.1, 0.1],
+			"phaseFunction": "isotropic",
+			"g": 0.9,
+			"path": "vdb/wdas_cloud_sixteenth.vdb"
+		}
+	],
+	
+	"primitives": [
+		{
+			"name": "sphereLight",
+			"type": "sphere",
+			"transform": {
+				"position": [-2.8, 1.2, 0]
+			},
+			"radius": 0.2,
+			"materialName": "emitter"
+		},
+		{
+			"name": "sphereLight1",
+			"type": "sphere",
+			"transform": {
+				"position": [2.8, 1.2, 0.5]
+			},
+			"radius": 0.1,
+			"materialName": "emitter"
+		},
+		{
+			"name": "sphereLight2",
+			"type": "sphere",
+			"transform": {
+				"position": [0.0, 1.2, 0.2]
+			},
+			"radius": 0.2,
+			"materialName": "emitter"
+		},
+		{
+			"name": "test",
+			"type": "sphere",
+			"transform": {
+				"position": [-1, 0.4, 0]
+			},
+			"radius": 0.4,
+			"materialName": "diffuse"
+		},
+		{
+			"name": "test2",
+			"type": "sphere",
+			"transform": {
+				"position": [1.0, 0.5, 1.8]
+			},
+			"radius": 0.8,
+			"materialName": "m1"
+		},
+		{
+			"name": "globe",
+			"type": "sphere",
+			"transform": {
+				"position": [0, -300.5, 1]
+			},
+			"radius": 300,
+			"materialName": "diffuse"
+		}
+	],
+
+	"camera": {
+		"position": [0, 0, -4.5],
+		"lookAt": [0, 0, 1],
+		"up": [0, 1, 0],
+		"speed": 5,
+		"vfov": 45,
+		"aperture": 0.0001,
+		"autoFocus": true,
+		"focus": 1
+	},
+	
+	"renderer": {
+		"resolution": [400, 200],
+		"spp": 100,
+		"bounces": 5,
+		"mode": "offline",
+		"HDR": false,
+		"toneMapping": false
+	}
+}

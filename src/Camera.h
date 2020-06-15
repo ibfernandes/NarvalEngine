@@ -1,5 +1,6 @@
 #pragma once
 #include "InputManager.h"
+#include "Math.h"
 #include "defines.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -19,9 +20,33 @@ private:
 	float movementSpeed = 3.0f / TARGET_UPS;
 	float rotationSpeed = 90.0f / TARGET_UPS;
 
+	//Lens radius = aperture/2
+	float lensRadius;
+	//TODO: init
+	glm::vec3 lowerLeft;
+	glm::vec3 horizontal;
+	glm::vec3 vertical;
+
 public:
 	Camera();
 	~Camera();
+
+	Camera(glm::vec3 lookFrom, glm::vec3 lookAt, glm::vec3 up, float vfov, float aspectRatio, float aperture, float focusDistance) {
+		lensRadius = aperture / 2.0f;
+		float theta = glm::radians(vfov);
+		float halfHeight = tan(theta / 2.0f);
+		float halfWidth = aspectRatio * halfHeight;
+
+		position = lookFrom;
+		front = glm::normalize(lookFrom - lookAt);
+		side = glm::normalize(glm::cross(up, front));
+		this->up = glm::cross(front, side);
+
+		lowerLeft = position - focusDistance * halfWidth * side - focusDistance * halfHeight * this->up - focusDistance * front;
+		horizontal = 2.0f * focusDistance * halfWidth * side;
+		vertical = 2.0f * focusDistance * halfHeight * this->up;
+
+	}
 	
 	void init() {
 	}
@@ -87,6 +112,12 @@ public:
 
 	glm::vec3 *getPreviousPosition() {
 		return &previousPosition;
+	}
+
+	Ray getRayPassingThrough(float s, float t) {
+		glm::vec3 rd = lensRadius * randomInUnitDisk();
+		glm::vec3 offset = side * rd.x + up * rd.y;
+		return Ray(position + offset, glm::normalize(lowerLeft + s * horizontal + t * vertical - position - offset));
 	}
 };
 

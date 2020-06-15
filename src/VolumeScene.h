@@ -120,12 +120,12 @@ public:
 	}
 
 	void lbvhBin() {
-		lbvhres = ResourceManager::getSelf()->getTexture3D(models[currentModel]).getResolution();
+		lbvhres = ResourceManager::getSelf()->getTexture3D(models[currentModel])->getResolution();
 		lbvhres = glm::vec3(256, 256, 256);
 		std::cout << "LBVH size: " << lbvhres.x << ", " << lbvhres.y << ", " << lbvhres.z << std::endl;
 		lbvh = new LBVH(lbvhres);
 
-		nodes.generateWithData(lbvhres.x, lbvhres.y, lbvhres.z, 3, lbvh->data);
+		nodes.loadToMemory(lbvhres.x, lbvhres.y, lbvhres.z, 3, lbvh->data);
 		std::cout << lbvh->data[3];
 
 		GLuint ssboMax;
@@ -137,9 +137,9 @@ public:
 	}
 
 	void lbvhBucket() {
-		lbvhres = ResourceManager::getSelf()->getTexture3D(models[currentModel]).getResolution();
+		lbvhres = ResourceManager::getSelf()->getTexture3D(models[currentModel])->getResolution();
 		std::cout << "LBVH size: " << lbvhres.x << ", " << lbvhres.y << ", " << lbvhres.z << std::endl;
-		lbvh2 = new LBVH2(ResourceManager::getSelf()->getTexture3D(models[currentModel]).data, lbvhres);
+		lbvh2 = new LBVH2(ResourceManager::getSelf()->getTexture3D(models[currentModel])->floatData, lbvhres);
 
 		GLuint ssboNodeData;
 		glGenBuffers(1, &ssboNodeData);
@@ -191,7 +191,7 @@ public:
 		ResourceManager::getSelf()->getShader(currentShader).setFloat("gammaCorrection", gammaCorrection);
 		ResourceManager::getSelf()->getShader(currentShader).setFloat("enableShadow", enableShadow);
 
-		glm::vec3 r = ResourceManager::getSelf()->getTexture3D(models[currentModel]).getResolution();
+		glm::vec3 r = ResourceManager::getSelf()->getTexture3D(models[currentModel])->getResolution();
 		currentModelResolution = "";
 		currentModelResolution = "[" + std::to_string((int)r.x) + ", " + std::to_string((int)r.y) + ", " + std::to_string((int)r.z) + "]";
 
@@ -207,7 +207,7 @@ public:
 		glm::vec3 camPos = *(camera->getPosition());
 		
 
-		glm::vec3 resolution = ResourceManager::getSelf()->getTexture3D(models[currentModel]).getResolution();
+		glm::vec3 resolution = ResourceManager::getSelf()->getTexture3D(models[currentModel])->getResolution();
 		resolution = resolution / resolution.z;
 		resolution = 1.0f * resolution; 
 
@@ -218,7 +218,7 @@ public:
 
 		glActiveTexture(GL_TEXTURE0);
 		ResourceManager::getSelf()->getShader(currentShader).setInteger("volume", 0);
-		ResourceManager::getSelf()->getTexture3D(models[currentModel]).bind();
+		ResourceManager::getSelf()->getTexture3D(models[currentModel])->bind();
 
 		glActiveTexture(GL_TEXTURE1);
 		ResourceManager::getSelf()->getShader(currentShader).setInteger("background", 1);

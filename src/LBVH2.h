@@ -10,15 +10,16 @@
 class LBVH2 {
 public:
 	glm::vec3 size;
+	glm::vec3 gridSize;
 	int vectorSize;
 
-	int bucketSize = 8;
+	int bucketSize = 128;
 	const int bitsPerCoordinate = 10;
 	float *grid;
 	int mortonCodesSize;
 	int treeDepth;
-	glm::vec3 translate = glm::vec3(0.0, 0.0f, 0);
-	glm::vec3 scale = glm::vec3(1);
+	glm::vec3 scale = glm::vec3(1.0f);
+	glm::vec3 translate = glm::vec3( -scale.x/2, 0, 0.1f);
 
 	//total of levels ranging from 0 to levels - 1
 	int levels;
@@ -33,7 +34,7 @@ public:
 	int amountOfBuckets;
 
 	glm::vec3 getWCS(float x, float y, float z) {
-		return ((glm::vec3(x, y, z) / size)) * scale + translate;
+		return ((glm::vec3(x, y, z) / gridSize)) * scale + translate;
 	}
 
 	glm::vec3 getWCS(glm::vec3 v) {
@@ -50,7 +51,7 @@ public:
 		return intersectBox(r, getWCS(node[2]), getWCS(node[3]));
 	}
 
-	glm::vec3 traverseTree(Ray &r) {
+	glm::vec3 traverseTreeUntil(Ray &r, float depth) {
 		int currentNode = 1;
 		int currentLevel = 0;
 
@@ -161,12 +162,15 @@ public:
 					//if intersects this voxel at current bucket, accumulate density and update intersection t's
 					if (t2.x <= t2.y) {
 
-						accumulated += grid[to1D(size.x, size.y, min.x, min.y, min.z)];
+						accumulated += grid[to1D(gridSize.x, gridSize.y, min.x, min.y, min.z)];
 						if (t2.x < finalt.x)
 							finalt.x = t2.x;
 						if (t2.y >= finalt.y)
 							finalt.y = t2.y;
 						//intersectedMorton.push_back(morton);
+						float distance = finalt.y - glm::max(0.0f, finalt.x);
+						if (distance > depth)
+							return glm::vec3(finalt, accumulated);
 					}
 				}
 
@@ -208,15 +212,19 @@ public:
 				break;
 		}
 
-		if (DEBUG_LBVH2)
+		///if (DEBUG_LBVH2)
 			for (int i : intersectedMorton)
 				std::cout << i << std::endl;
 
 		return glm::vec3(finalt, accumulated);
 	}
 
+	glm::vec3 traverseTree(Ray &r) {
+		return traverseTreeUntil(r, 99999.0f);
+	}
+
 	void genTree() {
-		std::cout << "Generating LBVH2 tree..." << std::endl;
+		//std::cout << "Generating LBVH2 tree..." << std::endl;
 		int nodesAtDeepestLevel = vectorSize / bucketSize;
 		int totalNodes = std::pow(2, levels) - 1;
 		int firstNodeAtDeepestLevel = std::pow(2, levels - 1);
@@ -281,7 +289,7 @@ public:
 		}
 
 		totalNodes = std::pow(2, levels) - 1;
-		std::cout << "Finished LBVH2 tree..." << std::endl;
+		///std::cout << "Finished LBVH2 tree..." << std::endl;
 
 		if (DEBUG_LBVH2) {
 			/*std::cout << "Levels " << levels << std::endl;
@@ -360,12 +368,8 @@ public:
 	LBVH2(float *grid, glm::vec3 size) {
 		this->grid = grid;
 		this->size = size;
+		this->gridSize = size;
 		initGrid();
 		genTree();
-		//traverseTree(Ray(getWCS(glm::vec3(0.5, 0.5, 0.5)), glm::vec3(0, 0, -1)));
-
-
-		//while (true)
-		//	continue;
 	}
 };

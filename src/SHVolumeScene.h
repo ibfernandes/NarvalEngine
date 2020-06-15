@@ -63,20 +63,20 @@ public:
 	float currentSlice = 1;
 
 	void initSphericalHarmonics() {
-		srand(time(NULL));
+		/*srand(time(NULL));
 
 		lightCoeffs = new float[gridResolution * gridResolution * gridResolution * lBands * lBands / lod];
 		lightVis = new float[gridResolution * gridResolution * gridResolution * 4 / lod];
-		visibility.generateWithData(gridResolution / lod, gridResolution / lod, gridResolution / lod, 4, lightVis);
+		visibility.generateWithData(gridResolution / lod, gridResolution / lod, gridResolution / lod, 4, lightVis);*/
 	}
 
 	void generateSphericalHarmonics() {
-		Sampler *sampler = new Sampler;
+		/*Sampler *sampler = new Sampler;
 		generateSamples(sampler, nSamples);
 		precomputeSHCoefficients(sampler, lBands);
 		projectLightFunction(lightCoeffs, sampler, lBands, gridResolution, lightVis, lod);
 
-		light.generateWithData(gridResolution * lBands * lBands / lod, gridResolution / lod, gridResolution / lod, 1, lightCoeffs);
+		light.generateWithData(gridResolution * lBands * lBands / lod, gridResolution / lod, gridResolution / lod, 1, lightCoeffs);*/
 	}
 
 	void init(GLint width, GLint height, Renderer *r, Camera *c) {
@@ -89,7 +89,7 @@ public:
 	}
 
 	void renderVolumeSlices() {
-		glDisable(GL_DEPTH_TEST);
+		/*glDisable(GL_DEPTH_TEST);
 
 		std::string currentShader = "visibility";
 		ResourceManager::getSelf()->getShader(currentShader).use();
@@ -112,7 +112,7 @@ public:
 
 		(*renderer).render(ResourceManager::getSelf()->getModel("quadTest"));
 
-		glEnable(GL_DEPTH_TEST);
+		glEnable(GL_DEPTH_TEST);*/
 	}
 
 	void preRender() {

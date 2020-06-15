@@ -3,6 +3,9 @@
 #include <glad/glad.h>
 #include "VAO.h"
 #include "Mesh.h"
+#include "Sphere.h"
+#include "Ray.h"
+#include "Geometry.h"
 #include "Texture2D.h"
 #include "ResourceManager.h"
 #include <assimp/Importer.hpp>
@@ -17,6 +20,7 @@ public:
 	Model();
 	~Model();
 	std::vector<Mesh> meshes;
+	Geometry *geometry;
 
 	GLfloat *vertAttrib;
 	std::string relativePath;
@@ -26,6 +30,10 @@ public:
 	int formatSize;
 	int numberOfVertices;
 	VAO vao;
+
+	void addGeometry(Geometry *g) {
+		this->geometry = g->clone();
+	}
 
 	void processNode(aiNode *node, const aiScene *scene, std::string path){
 		relativePath = path;
@@ -168,4 +176,5 @@ public:
 
 		vao.generate(vertAttrib, vertAttribSize, stride, format, formatSize);
 	}
+
 };

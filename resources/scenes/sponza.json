@@ -1,0 +1,46 @@
+{
+	"version" : "0.0.1a",
+	
+	"materials": [
+	
+	],
+	
+	"primitives": [
+		{
+			"name": "sponza",
+			"type": "obj",
+			"transform": {
+				"position": [-2.8, 1.2, 0]
+			},
+			"path" : "models/sponza/sponza.obj"
+		}
+	],
+	
+	"shaders": [
+		{
+			"name" : "",
+			"language": "glsl",
+			"vertPath": "",
+			"fragPath": "",
+		}
+	],
+
+	"camera": {
+		"position": [0, 0, 4.5],
+		"lookAt": [0, 0, -1],
+		"up": [0, 1, 0],
+		"speed": 5,
+		"vfov": 45,
+		"aperture": 0.0001,
+		"autoFocus": true,
+		"focus": 1
+	},
+	
+	"renderer": {
+		"resolution": [1280, 720],
+		"mode": "realtime",
+		"frustumPlane": [1, 6000],
+		"HDR": true,
+		"toneMapping": false
+	}
+}

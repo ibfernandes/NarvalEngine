@@ -15,6 +15,14 @@ set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 
+# rapidjson paths
+add_subdirectory(includes/rapidjson)
+include_directories(includes/rapidjson)
+include_directories(includes/rapidjson/include)
+find_package(RapidJSON)
+SET( RAPIDJSON_LIBRARIES ${RapidJSON_LIBRARY})
+SET( RAPIDJSON_INCLUDE_DIRS ${RapidJSON_INCLUDE_DIR})
+
 # GLFW paths
 add_subdirectory(includes/glfw)
 include_directories(includes/glfw)
@@ -37,7 +45,7 @@ option(ASSIMP_BUILD_ASSIMP_TOOLS OFF)
 option(ASSIMP_BUILD_SAMPLES OFF)
 option(ASSIMP_BUILD_TESTS OFF)
 add_subdirectory(includes/assimp)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/inncludes/assimp/include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/includes/assimp/include)
 
 # Debug!: For some reason the config.h file is created only in
 # the build directory, so this line below is a workaround to include
@@ -184,8 +192,8 @@ if (OPENEXR_FOUND AND OPENVDB_FOUND AND TBB_FOUND)
 	#add_definitions(-DOPENVDB_ENABLE_3_ABI_COMPATIBLE)
 	#add_definitions(-DOPENVDB_ABI_VERSION_NUMBER=3)
 	#openvdb::OPENVDB_VERSION_NAME
-    include_directories(${OPENVDB_INCLUDE_DIR} ${OPENVDB_INCLUDE_DIRS} ${OPENEXR_INCLUDE_DIR} ${TBB_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
-    set(core_libs ${OPENVDB_LIBRARIES} ${TBB_LIBRARIES} ${OPENEXR_LIBRARIES} ${Boost_LIBRARIES})
+    include_directories(${OPENVDB_INCLUDE_DIR} ${OPENVDB_INCLUDE_DIRS} ${OPENEXR_INCLUDE_DIR} ${TBB_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${RAPIDJSON_INCLUDE_DIRS})
+    set(core_libs ${OPENVDB_LIBRARIES} ${TBB_LIBRARIES} ${OPENEXR_LIBRARIES} ${Boost_LIBRARIES} ${RAPIDJSON_LIBRARIES})
 else()
     if (NOT OPENVDB_FOUND)
         message(STATUS "No OpenVDB detected. Building without .vdb support")

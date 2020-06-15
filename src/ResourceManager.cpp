@@ -1,5 +1,6 @@
 #include "ResourceManager.h"
 #include "Model.h"
+#include "Material.h"
 
 ResourceManager *ResourceManager::self = 0;
 
@@ -20,7 +21,7 @@ ResourceManager::~ResourceManager() {
 }
 
 
-void ResourceManager::addModel(std::string name, Model model) {
+void ResourceManager::addModel(std::string name, Model *model) {
 
 	if (models.count(name) > 0)
 		return;
@@ -28,8 +29,8 @@ void ResourceManager::addModel(std::string name, Model model) {
 	models.insert({ name, model });
 }
 
-Model ResourceManager::loadModel(std::string name, std::string path, std::string fileName) {
-	Model model;
+Model* ResourceManager::loadModel(std::string name, std::string path, std::string fileName) {
+	Model *model = new Model();
 	std::string finalPath = RESOURCES_DIR + path + fileName;
 	Assimp::Importer importer;
 	const aiScene *scene = importer.ReadFile(finalPath, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_CalcTangentSpace);
@@ -38,25 +39,34 @@ Model ResourceManager::loadModel(std::string name, std::string path, std::string
 		std::cout << "Error loadModel ASSIMP" << importer.GetErrorString() << std::endl;
 	}
 
-	model.processNode(scene->mRootNode, scene, path);
+	model->processNode(scene->mRootNode, scene, path);
 
 	models.insert({ name, model });
 	return model;
 }
 
-Model ResourceManager::getModel(std::string name) {
+Model* ResourceManager::getModel(std::string name) {
 	return models.at(name);
 }
 
-Texture3D ResourceManager::getTexture3D(std::string name) {
+void ResourceManager::addMaterial(std::string name, Material *material){
+	if (materials.count(name) > 0)
+		return;
+	materials.insert({name, material});
+}
+
+Material * ResourceManager::getMaterial(std::string name){
+	return materials.at(name);
+}
+
+Texture3D* ResourceManager::getTexture3D(std::string name) {
 	return textures3D.at(name);
 }
 
-Texture3D ResourceManager::loadVDBasTexture3D(std::string name, std::string path) {
+Texture3D* ResourceManager::loadVDBasTexture3D(std::string name, std::string path) {
 	if (textures3D.count(name) > 0)
 		return textures3D.at(name);
 
-	Texture3D cloud;
 
 	openvdb::io::File file(RESOURCES_DIR + path);
 	openvdb::GridBase::Ptr baseGrid;
@@ -82,8 +92,8 @@ Texture3D ResourceManager::loadVDBasTexture3D(std::string name, std::string path
 
 	openvdb::tools::copyToDense<openvdb::tools::Dense<float>, openvdb::FloatGrid>(*grid, dense);
 
-	cloud.generateWithData(resZ, resY , resX, 1, dense.data());
-	textures3D.insert({ name, cloud });
+	textures3D.insert({ name, new Texture3D() });
+	textures3D.at(name)->loadToMemory(resZ, resY, resX, 1, dense.data());
 
 	return textures3D.at(name);
 }
@@ -140,8 +150,7 @@ Shader ResourceManager::loadShaderFromFile(std::string vertexShaderPath, std::st
 		exit(1);
 	}
 
-	while (vc) {
-		getline(vc, buffer);
+	while (getline(vc, buffer)) {
 		vertexCode = vertexCode + buffer + "\n";
 	}
 
@@ -160,4 +169,8 @@ Shader ResourceManager::loadShaderFromFile(std::string vertexShaderPath, std::st
 	Shader* shader = new Shader;
 	shader->compile(vertexCode, fragmentCode, (geometryCode.empty()) ? "" : geometryCode);
 	return *shader;
+}
+
+std::map<std::string, Model*> ResourceManager::getModels() {
+	return models;
 }

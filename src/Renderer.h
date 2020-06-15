@@ -8,9 +8,9 @@ public:
 	~Renderer();	
 	VAO vao;
 
-	void render(Model model) {
-		model.vao.bindVAO();
-		glDrawArrays(GL_TRIANGLES, 0, model.numberOfVertices);
+	void render(Model *model) {
+		model->vao.bindVAO();
+		glDrawArrays(GL_TRIANGLES, 0, model->numberOfVertices);
 		glBindVertexArray(0);
 	}
 

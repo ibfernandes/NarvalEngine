@@ -13,3 +13,6 @@
 [submodule "includes/assimp"]
 	path = includes/assimp
 	url = https://github.com/assimp/assimp.git
+[submodule "includes/rapidjson"]
+	path = includes/rapidjson
+	url = https://github.com/Tencent/rapidjson.git

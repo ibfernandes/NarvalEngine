@@ -287,7 +287,7 @@ class Engine3D{
 			ResourceManager::getSelf()->getShader(currentShader).setMat4("cam", staticCam);
 			ResourceManager::getSelf()->getShader(currentShader).setVec4("rgbColor", 0.3f, 0.3f, 0.3f,1);
 
-			for (Mesh m : ResourceManager::getSelf()->getModel("xyzaxis").meshes) {
+			for (Mesh m : ResourceManager::getSelf()->getModel("xyzaxis")->meshes) {
 				m.render(currentShader);
 			}
 		}

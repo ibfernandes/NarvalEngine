@@ -69,7 +69,7 @@ public:
 	}
 
 	void generateCloudNoiseTextures() {
-		FastNoise *noise = new FastNoise();
+		/*FastNoise *noise = new FastNoise();
 		noise->SetCellularDistanceFunction(noise->Euclidean);
 		noise->SetCellularReturnType(noise->Distance2Add);
 
@@ -127,7 +127,7 @@ public:
 			}
 		}
 
-		curl3.generateWithData(resolution, resolution, 3, data);
+		curl3.generateWithData(resolution, resolution, 3, data);*/
 	}
 };
 

@@ -611,6 +611,47 @@ vec4 pathTracing(vec4 background, vec3 origin, vec3 rayDirection, float depth){
 	return vec4(thisColor, 1);
 }
 
+vec3 calculateLBVHColor(vec3 origin, vec3 rayDirection, vec3 background){
+	vec3 res = traverseTree(Ray(origin, rayDirection)); 
+
+	if(res.z > 0){
+		vec3 tr = background.xyz * exp(-extinction * res.z);
+		return vec3(tr.x, tr.y, tr.z);
+	}else
+		return background.xyz;
+}
+
+vec4 lbvhPathTracing(vec4 background, vec3 origin, vec3 rayDirection, float depth){
+	vec3 thisColor = vec3(0);
+	float e1 = randomUniform(uv) - 0.5f;
+	float e2 = randomUniform(uv) - 0.5f;
+	vec2 frag = vec2(float(gl_FragCoord.x) + e1, float(gl_FragCoord.y) + e2);
+	vec3 screenPosNDC = vec3((frag/screenRes.xy), gl_FragCoord.z) * 2.0f - 1.0f;
+	vec4 pixelModelCoord = vec4(screenPosNDC, 1.0f)/gl_FragCoord.w;
+	pixelModelCoord = vec4(inverse( proj * cam ) * pixelModelCoord);
+	vec3 newRay = vec3(pixelModelCoord) - origin;
+
+	vec4 previousColor = texture(previousCloud, uv);
+
+	//clear color because the camera moved
+	if(previousColor.a == 0)
+		return vec4(calculateLBVHColor(origin, rayDirection, background.xyz), 1);
+	
+	if(frameCount > 1){
+		if(frameCount % 2 == 0 && int(gl_FragCoord.x) % 2 == 0 && int(gl_FragCoord.y) % 2 == 0){
+			thisColor = calculateLBVHColor(origin, rayDirection, background.xyz);
+		}else {
+			thisColor = calculateLBVHColor(origin, rayDirection, background.xyz);
+		}
+
+		vec3 n1 = (1.0f / frameCount) * thisColor; 
+		thisColor = vec3(previousColor) * 1.0f / (1.0f + 1.0f / (frameCount - 1.0f));
+		thisColor += n1;
+	}
+
+	return vec4(thisColor, 1);
+}
+
 void main(){
 	vec4 thisColor;
 	vec3 transmittance;
@@ -633,13 +674,7 @@ void main(){
 			break;
 		//LBVH Monte carlo
 		case 2:
-			if( int(gl_FragCoord.x) % 2 == 0 && int(gl_FragCoord.y) % 2 == 0){
-				float t = traverseTree(incomingRay).z; 
-				thisColor = vec4(t, t, t, 1.0f);
-			}/*else if (frameCount % 2 == 1 && int(gl_FragCoord.x) % 2 == 1 && int(gl_FragCoord.y) % 1 == 0){
-				float t = traverseTree(incomingRay).z; 
-				thisColor = vec4(t, t, t, 1.0f);
-			}*/
+			thisColor = lbvhPathTracing(bg, incomingRay.origin, incomingRay.direction, depth); 
 			break;
 	}
 	

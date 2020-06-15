@@ -117,7 +117,7 @@ public:
 		ResourceManager::getSelf()->getShader(currentShader).setInteger("shadowMap", 12);
 		depthMapTex.bind();
 		
-		for (Mesh m : ResourceManager::getSelf()->getModel(currentModel).meshes) 
+		for (Mesh m : ResourceManager::getSelf()->getModel(currentModel)->meshes) 
 			m.render(currentShader);
 	}
 
@@ -136,7 +136,7 @@ public:
 		ResourceManager::getSelf()->getShader(currentShader).setMat4("view", lightView);
 		ResourceManager::getSelf()->getShader(currentShader).setMat4("proj", lightProjection);
 
-		for (Mesh m : ResourceManager::getSelf()->getModel(currentModel).meshes) 
+		for (Mesh m : ResourceManager::getSelf()->getModel(currentModel)->meshes) 
 			m.renderVertices();
 	}
 
