@@ -13,7 +13,7 @@ public:
 	glm::vec3 gridSize;
 	int vectorSize;
 
-	int bucketSize = 128;
+	int bucketSize = 512;
 	const int bitsPerCoordinate = 10;
 	float *grid;
 	int mortonCodesSize;
@@ -21,7 +21,7 @@ public:
 	glm::vec3 scale = glm::vec3(1.0f);
 	glm::vec3 translate = glm::vec3( -scale.x/2, 0, 0.1f);
 
-	//total of levels ranging from 0 to levels - 1
+	//total of levels (NOT counted as indices, but as quantity)
 	int levels;
 	int nodesSize;
 
@@ -33,8 +33,16 @@ public:
 	int *offsets;
 	int amountOfBuckets;
 
+	//binary (2), quadtree (4), octree (8)
+	enum nTree {bintree, quadtree, octree};
+	nTree treeMode = bintree;
+	int intersectionsCount = 0;
+	int numberOfEmptyNodes = 0;
+
+
 	glm::vec3 getWCS(float x, float y, float z) {
-		return ((glm::vec3(x, y, z) / gridSize)) * scale + translate;
+		return glm::vec3(x, y, z);
+		//return ((glm::vec3(x, y, z) / gridSize)) * scale + translate;
 	}
 
 	glm::vec3 getWCS(glm::vec3 v) {
@@ -43,8 +51,9 @@ public:
 
 	glm::vec3 getWCS(int mortonCode) {
 		int x, y, z;
-		decodeMorton3D(mortonCode, x, y, z);
-		return getWCS(x, y, z);
+		decodeSimple3D(mortonCode, x, y, z);
+		return glm::vec3(x, y, z);
+		//return getWCS(x, y, z);
 	}
 
 	glm::vec2 intersectOuterAABB(Ray r) {
@@ -54,9 +63,11 @@ public:
 	glm::vec3 traverseTreeUntil(Ray &r, float depth) {
 		int currentNode = 1;
 		int currentLevel = 0;
-
+		intersectionsCount = 1;
+			   
 		glm::vec2 t = intersectBox(r, getWCS(node[currentNode * 2]), getWCS(node[currentNode * 2 + 1]));
 		glm::vec2 finalt = glm::vec2(std::numeric_limits<float>::max(), std::numeric_limits<float>::min());
+		
 		if (t.x > t.y)
 			return glm::vec3(finalt, 0);
 
@@ -69,35 +80,37 @@ public:
 		for (int i = 0; i < levels; i++)
 			marker[i] = 0;
 
-
 		while (currentNode != nodesSize) {
 			bool miss = false;
 
+			//If current node is empty, automatically misses
 			if (isEmpty(node[currentNode * 2]))
 				miss = true;
 			else {
 				t = intersectBox(r, getWCS(node[currentNode * 2]), getWCS(node[currentNode * 2 + 1]));
+				intersectionsCount++;
 				if (t.x > t.y)
 					miss = true;
 			}
 
 			marker[currentLevel]++;
 
-			if (DEBUG_LBVH2) {
-				std::cout << "currentNode " << currentNode << std::endl;
-				std::cout << "currentLevel " << currentLevel << std::endl;
+			//if (DEBUG_LBVH2) {
+				//std::cout << "currentNode " << currentNode << std::endl;
+				/*std::cout << "currentLevel " << currentLevel << std::endl;
 				std::cout << "markers  [";
 				for (int i = 0; i < levels; i++)
 					std::cout << marker[i] << ", ";
 				std::cout << "]" << std::endl << std::endl;
-			}
+			}*/
 
 			//if miss
 			if (miss) {
+
 				if (DEBUG_LBVH2) {
 					std::cout << "Missed node: " << currentNode << std::endl;
-					glm::vec3 min = decodeMorton3D(node[currentNode * 2]);
-					glm::vec3 max = decodeMorton3D(node[currentNode * 2 + 1]);
+					glm::vec3 min = decodeSimple3D(node[currentNode * 2]);
+					glm::vec3 max = decodeSimple3D(node[currentNode * 2 + 1]);
 
 					std::cout << "min: " << min.x << ", " << min.y << ", " << min.z << std::endl;
 					std::cout << "max: " << max.x << ", " << max.y << ", " << max.z << std::endl << std::endl;
@@ -128,11 +141,13 @@ public:
 
 				currentNode = 2 * newNode + 1;
 				currentLevel = newLevel;
+				
 				continue;
 			}
 
 			//If we are checking a leaf node
 			if (currentNode >= firstNodeAtDeepestLevel) {
+	
 				int offsetsPosition = currentNode - firstNodeAtDeepestLevel;
 				int startingIndex;
 				int elementsOnThisBucket = 0;
@@ -140,8 +155,7 @@ public:
 				if (offsetsPosition == 0) {
 					startingIndex = 0;
 					elementsOnThisBucket = offsets[offsetsPosition];
-				}
-				else {
+				}else {
 					startingIndex = offsets[offsetsPosition - 1];
 					elementsOnThisBucket = offsets[offsetsPosition] - offsets[offsetsPosition - 1];
 				}
@@ -151,6 +165,7 @@ public:
 
 
 				//for each voxel on this bucket (leaf node), check which ones does in fact intersect this ray.
+				// here we check only mortonCodes that represent non-empty voxels
 				for (int i = 0; i < elementsOnThisBucket; i++) {
 					int morton = mortonCodes[startingIndex + i];
 					glm::vec3 min, max;
@@ -158,6 +173,7 @@ public:
 					max = min + 1.0f;
 
 					glm::vec2 t2 = intersectBox(r, getWCS(min), getWCS(max));
+					intersectionsCount++;
 
 					//if intersects this voxel at current bucket, accumulate density and update intersection t's
 					if (t2.x <= t2.y) {
@@ -194,6 +210,7 @@ public:
 					currentNode = 2 * newNode + 1;
 					currentLevel = newLevel;
 				}
+
 			}
 			else {
 				currentNode = 2 * currentNode;
@@ -205,7 +222,6 @@ public:
 					currentNode++;
 				}
 
-
 			}
 
 			if (currentNode == nodesSize)
@@ -215,7 +231,7 @@ public:
 		///if (DEBUG_LBVH2)
 			for (int i : intersectedMorton)
 				std::cout << i << std::endl;
-
+		//std::cout << "intersections done: " << intersectionsCount << std::endl;
 		return glm::vec3(finalt, accumulated);
 	}
 
@@ -224,11 +240,13 @@ public:
 	}
 
 	void genTree() {
+		int totalNodes, firstNodeAtDeepestLevel, amountOfBuckets;
 		//std::cout << "Generating LBVH2 tree..." << std::endl;
-		int nodesAtDeepestLevel = vectorSize / bucketSize;
-		int totalNodes = std::pow(2, levels) - 1;
-		int firstNodeAtDeepestLevel = std::pow(2, levels - 1);
+
+		totalNodes = std::pow(2, levels) - 1;
+		firstNodeAtDeepestLevel = std::pow(2, levels - 1);
 		amountOfBuckets = std::pow(2, levels) - 1 - firstNodeAtDeepestLevel;
+		
 		offsets = new int[amountOfBuckets];
 		node = new int[totalNodes * 2];
 
@@ -241,6 +259,7 @@ public:
 			glm::vec3 min = glm::vec3(99999, 99999, 99999);
 			glm::vec3 max = glm::vec3(-99999, -99999, -99999);
 
+			//for all morton codes within this bucket range, calculate the whole bucket bbox for non empty voxels
 			while (currentMortonIndex < mortonCodesSize && mortonCodes[currentMortonIndex] < bucketRange) {
 				glm::vec3 coord = decodeMorton3D(mortonCodes[currentMortonIndex]);
 				min = glm::min(min, coord);
@@ -258,37 +277,43 @@ public:
 			if (min.x == 99999) {
 				node[firstNodeAtDeepestLevel * 2] = setEmptyBit(0);
 				node[firstNodeAtDeepestLevel * 2 + 1] = setEmptyBit(0);
-			}
-			else {
-				node[firstNodeAtDeepestLevel * 2] = encodeMorton3D(min.x, min.y, min.z);
-				node[firstNodeAtDeepestLevel * 2 + 1] = encodeMorton3D(max.x, max.y, max.z);
+				numberOfEmptyNodes++;
+			}else {
+				node[firstNodeAtDeepestLevel * 2] = encodeSimple3D(min.x, min.y, min.z);
+				node[firstNodeAtDeepestLevel * 2 + 1] = encodeSimple3D(max.x, max.y, max.z);
 			}
 			firstNodeAtDeepestLevel++;
 		}
 
 		firstNodeAtDeepestLevel = std::pow(2, levels - 1);
-		totalNodes = firstNodeAtDeepestLevel - 1;
+		int currentNode = firstNodeAtDeepestLevel - 1;
+		int offsetMinMax = 2;
 		//Bottom up construction of nodes
 		//since the deepest level is already created, start one above it and walks the tree BFS backwards
 		for (int l = levels - 2; l >= 0; l--) {
+			//for each node on this level
 			for (int i = std::pow(2, l); i > 0; i--) {
-				int leftChildNode = 2 * totalNodes;
-				int rightChildNode = 2 * totalNodes + 1;
+	
+				int leftChildNode = (2 * currentNode);
+				int rightChildNode = (2 * currentNode) + 1;
 
-				if (isEmpty(node[leftChildNode * 2]) && isEmpty(node[rightChildNode * 2])) {
-					node[totalNodes * 2] = setEmptyBit(0);
-					node[totalNodes * 2 + 1] = setEmptyBit(0);
-					totalNodes--;
+				//if both left and right children mins are empty
+				if (isEmpty(node[leftChildNode * offsetMinMax]) && isEmpty(node[rightChildNode * offsetMinMax])) {
+					//current node min
+					node[offsetMinMax * currentNode] = setEmptyBit(0);
+					//current node max
+					node[offsetMinMax * currentNode + 1] = setEmptyBit(0);
+					numberOfEmptyNodes++;
+					currentNode--;
 					continue;
 				}
 
-				node[totalNodes * 2] = encodeMorton3D(glm::min(decodeMorton3D(node[leftChildNode * 2]), decodeMorton3D(node[rightChildNode * 2])));
-				node[totalNodes * 2 + 1] = encodeMorton3D(glm::max(decodeMorton3D(node[leftChildNode * 2 + 1]), decodeMorton3D(node[rightChildNode * 2 + 1])));
-				totalNodes--;
+				node[currentNode * offsetMinMax] = encodeSimple3D(glm::min(decodeSimple3D(node[leftChildNode * 2]), decodeSimple3D(node[rightChildNode * 2])));
+				node[currentNode * offsetMinMax + 1] = encodeSimple3D(glm::max(decodeSimple3D(node[leftChildNode * 2 + 1]), decodeSimple3D(node[rightChildNode * 2 + 1])));
+				currentNode--;
 			}
 		}
 
-		totalNodes = std::pow(2, levels) - 1;
 		///std::cout << "Finished LBVH2 tree..." << std::endl;
 
 		if (DEBUG_LBVH2) {
@@ -355,15 +380,32 @@ public:
 		int highest = 0;
 
 		for (int i = 0; i < 3; i++) {
-			size[i] = std::pow(2, std::ceil(std::log2(size[i])));
+			if (treeMode == bintree)
+				size[i] = std::pow(2, std::ceil(std::log2(size[i])));
+			else if(treeMode == quadtree)
+				size[i] = std::pow(4, std::ceil(log4(size[i])));
+
 			highest = size[i] > highest ? size[i] : highest;
 		}
 
 		vectorSize = highest * highest * highest;
+
 		levels = std::log2(vectorSize / bucketSize) + 1;
 		nodesSize = std::pow(2, levels) - 1;
+
 		dataSize = nodesSize * 2;
 	}
+
+	void printStatus() {
+		std::cout << "-------------------------------" << std::endl;
+		std::cout << "Bucket binary:" << std::endl;
+		std::cout << "Depth: " << levels << std::endl;
+		std::cout << "Number of nodes: " << formatWithCommas(nodesSize) << std::endl;
+		std::cout << "Number of empty nodes: " << formatWithCommas(numberOfEmptyNodes) << std::endl;
+		std::cout << "Bucket size: " << bucketSize << std::endl;
+		std::cout << "-------------------------------" << std::endl;
+	}
+
 
 	LBVH2(float *grid, glm::vec3 size) {
 		this->grid = grid;
@@ -371,5 +413,6 @@ public:
 		this->gridSize = size;
 		initGrid();
 		genTree();
+
 	}
 };

@@ -6,7 +6,3 @@ LBVH3::LBVH3()
 {
 }
 
-
-LBVH3::~LBVH3()
-{
-}

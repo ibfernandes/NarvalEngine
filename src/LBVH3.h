@@ -6,6 +6,7 @@
 #include <stack>
 #include <iostream>
 #include <glm/glm.hpp>
+#include <sstream>
 #define DEBUG_LBVH3 false
 #define BRICK_DIMENSION_SIZE 8
 #define BRICK_SIZE 512
@@ -50,8 +51,10 @@ public:
 
 	Node *nodes;
 	int nodesSize = 0;
+	int levels = 0;
+	int intersectionsCount = 0;
 
-	float calculateInnerBrick(Ray r, glm::vec3 mortonMin, Node *n) {
+	float calculateInnerBrick(Ray r, glm::vec3 mortonMin, Node *n, int &intersectionCount) {
 
 		float acc = 0;
 		for (int i = 0; i < BRICK_SIZE; i++) {
@@ -62,6 +65,7 @@ public:
 				continue;
 
 			glm::vec2 hit = intersectBox(r, vec, vec + 1);
+			intersectionCount++;
 			if (hit.x <= hit.y) {
 				acc += n->brick->grid[i];
 					//printVec3(vec);
@@ -109,6 +113,7 @@ public:
 	glm::vec3 traverse(Ray r) {
 		std::stack<Node*> stack;
 		float acc = 0;
+		intersectionsCount = 0;
 
 		//push root
 		stack.push(&nodes[0]);
@@ -125,6 +130,8 @@ public:
 
 				glm::vec2 hitl = intersectBox(r, leftChild->aabb.min, leftChild->aabb.max);
 				glm::vec2 hitr = intersectBox(r, rightChild->aabb.min, rightChild->aabb.max);
+				intersectionsCount++;
+				intersectionsCount++;
 
 				bool didHitL = (hitl.x > hitl.y) ? false : true;
 				bool didHitR = (hitr.x > hitr.y) ? false : true;
@@ -155,7 +162,7 @@ public:
 
 			closestLeaf = currentNode;
 			if(closestLeaf->isLeaf)
-				acc += calculateInnerBrick(r, decodeMorton3D(closestLeaf->brick->mortonCode), closestLeaf);
+				acc += calculateInnerBrick(r, decodeMorton3D(closestLeaf->brick->mortonCode), closestLeaf, intersectionsCount);
 
 			if (DEBUG_LBVH3 && closestLeaf->isLeaf) {
 				std::cout << "HIT {" << std::endl;
@@ -168,6 +175,7 @@ public:
 			}
 		}
 
+		//std::cout << "intersections done: " << intersectionsCount << std::endl;
 		//std::cout << "acc: " << acc << std::endl;
 		return glm::vec3(0, 0, acc);
 	}
@@ -271,10 +279,12 @@ public:
 
 	void propagateAABB(int numOfLeafs) {
 		int totalNodes = numOfLeafs + numOfLeafs - 1;
-
+		levels = 1;
+		int currLevels = 0;
 
 		for (int idx = numOfLeafs - 1; idx < totalNodes; idx++) { // in parallel
 			Node *node = &nodes[idx];
+			currLevels = 0;
 
 			while (node != nullptr) {
 				if (node->parent == nullptr) // if we reached root
@@ -282,7 +292,11 @@ public:
 				node->parent->aabb = encapsuleAABB(node->parent->aabb, node->aabb);
 
 				node = node->parent;
+				currLevels++;
 			}
+
+			if (currLevels > levels)
+				levels = currLevels;
 		}
 	}
 
@@ -445,7 +459,7 @@ public:
 		
 		for (int b = 0; b < bricksSize; b++) {
 			bricks[b].grid = new float[BRICK_SIZE];
-			bricks[b].grid = new float[BRICK_SIZE];
+
 			glm::ivec3 gridPos;
 			to3D(b, bricksResolution.x, bricksResolution.y, gridPos);
 			gridPos = gridPos * BRICK_DIMENSION_SIZE;
@@ -485,6 +499,23 @@ public:
 			this->grid[i] = 1.0f; 
 	}
 
+	void printStatus() {
+		std::cout << "-------------------------------" << std::endl;
+		std::cout << "Paper:" << std::endl;
+		std::cout << "Depth: " << levels << std::endl;
+		std::cout << "Number of nodes: " << formatWithCommas(nodesSize) << std::endl;
+		std::cout << "Brick size: [8x8x8] = " << 512 << std::endl;
+		std::cout << "-------------------------------" << std::endl;
+	}
+
+	std::string getStatus() {
+		std::stringstream ss;
+		ss << "Depth: " << levels << std::endl;
+		ss << "Number of nodes: " << formatWithCommas(nodesSize) << std::endl;
+		ss << "Brick size: [8x8x8] = " << 512 << std::endl;
+		return ss.str();
+	}
+
 	LBVH3(float *grid, glm::vec3 gridResolution) {
 		this->grid = grid;
 		this->gridResolution = gridResolution;
@@ -496,9 +527,14 @@ public:
 		compactionAndMortonCodeAssignment();
 		generateHierarchy(this->sortedBricksSize);
 
-		testing();
+		//testing();
 	}
 
 	LBVH3();
-	~LBVH3();
+
+	~LBVH3() {
+		delete[] bricks;
+		delete[] sortedBricks;
+		delete[] nodes;
+	}
 };

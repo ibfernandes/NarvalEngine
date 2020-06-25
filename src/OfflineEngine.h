@@ -15,6 +15,8 @@
 #include "GridMaterial.h"
 #include "LBVH2.h"
 #include "LBVH3.h"
+#include "LQTBVH.h"
+#include "LBTBVH.h"
 #include <assert.h>
 #include <Vector>
 #include <limits>
@@ -216,115 +218,442 @@ public:
 		return finalColor;
 	}
 
-	void measurementTests() {
-		glm::vec3 size = glm::vec3(256, 256, 256);;
-		ResourceManager::getSelf()->loadVDBasTexture3D("cloud", "vdb/dragonHavard.vdb");
-		glm::vec3 res = ResourceManager::getSelf()->getTexture3D("cloud")->getResolution();
+	float calculateEmptyRatio(float *grid, int size) {
+		int count = 0;
+		for (int i = 0; i < size; i++)
+			if (grid[i] == 0.0f)
+				count++;
+
+		return float(count) / float(size);
+	}
+
+	void appendResultsToFile(std::string filename, std::string text) {
+		std::ofstream file;
+		file.open("tests\\" + filename + ".txt", std::ios_base::app);
+
+		file << text << "\n";
+
+		file.close();
+	}
+
+	std::string avgConstructionTime(std::string gridName, int bucketSize, std::string *algorithmNames, int numberOfAlgorithms) {
+		ResourceManager::getSelf()->loadVDBasTexture3D(gridName, "vdb/" + gridName);
+		float *grid = ResourceManager::getSelf()->getTexture3D(gridName)->floatData;
+		glm::vec3 gridRes = ResourceManager::getSelf()->getTexture3D(gridName)->getResolution();
+		int numSamples = 5;
+		float *constructionTime = new float[numberOfAlgorithms];
+		constructionTime[0] = 0;
+		constructionTime[1] = 0;
+		constructionTime[2] = 0;
 		Timer *t = new Timer();
 
+		for (int i = 0; i < numSamples; i++) {
+			//binary
+			t->startTimer();
+			LBTBVH *lbtbvh = new LBTBVH(grid, gridRes, bucketSize);
+			t->endTimer();
+			constructionTime[0] += t->getMicroseconds();
+			delete lbtbvh;
+
+			//quad
+			t->startTimer();
+			LQTBVH *lqtbvh = new LQTBVH(grid, gridRes, bucketSize);
+			t->endTimer();
+			constructionTime[1] += t->getMicroseconds();
+			delete lqtbvh;
+
+			//paper
+			t->startTimer();
+			LBVH3 *lbvh3 = new LBVH3(grid, gridRes);
+			t->endTimer();
+			constructionTime[2] += t->getMicroseconds();
+			delete lbvh3;
+		}
+
+		constructionTime[0] = constructionTime[0] / numSamples;
+		constructionTime[1] = constructionTime[1] / numSamples;
+		constructionTime[2] = constructionTime[2] / numSamples;
+
+		std::stringstream ss;
+		for (int i = 0; i < numberOfAlgorithms; i++) {
+			ss << algorithmNames[i] << " avg. construction time: " << constructionTime[i] << std::endl;
+		}
+		ss << std::endl;
+
+		return ss.str();
+	}
+
+	void fileTests() {
+		int const numberOfGrids = 4;
+		int const numberOfBucketSizes = 10;
+		int const numberOfAlgorithms = 3;
+		std::string gridNames[numberOfGrids] = { "dragonHavard.vdb", "wdas_cloud_sixteenth.vdb", "wdas_cloud_eighth.vdb", "wdas_cloud_quarter.vdb" };
+		int bucketSizes[numberOfBucketSizes] = { 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048 };
+		//int bucketSizes[numberOfBucketSizes] = { 512 };
+		std::string algorithmNames[numberOfAlgorithms] = { "Bucket bin. tree", "Bucket quad tree", "Paper point tree" };
+
+		float constructionTime[numberOfAlgorithms];
+		Timer *t = new Timer();
+		glm::vec3 origin = glm::vec3(1.0 + 0.2f, 84.0f + 0.2f, -1.0);
+		glm::vec3 direction = glm::vec3(0, 0, 1);
+		Ray *r = new Ray(origin, direction);
+
+		for (int g = 0; g < numberOfGrids; g++) {
+			ResourceManager::getSelf()->loadVDBasTexture3D(gridNames[g], "vdb/" + gridNames[g]);
+			float *grid = ResourceManager::getSelf()->getTexture3D(gridNames[g])->floatData;
+			glm::vec3 gridRes = ResourceManager::getSelf()->getTexture3D(gridNames[g])->getResolution();
+			std::stringstream ss;
+			ss << "==========================================" << std::endl;
+			ss << "Grid name: " << gridNames[g] << std::endl;
+			ss << "Grid resolution: " << "[" << gridRes.x << ", " << gridRes.y << ", " << gridRes.z << "]" << std::endl;
+			ss << "Emptiness: " << calculateEmptyRatio(grid, gridRes.x * gridRes.y * gridRes.z) * 100 << "% " << std::endl;
+			ss << "==========================================" << std::endl;
+			appendResultsToFile(gridNames[g], ss.str());
+			ss.str("");
+
+			for (int b = 0; b < numberOfBucketSizes; b++) {
+				if (bucketSizes[b] > (gridRes.x * gridRes.y * gridRes.z) / 4.0f)
+					continue;
+
+				//binary
+				t->startTimer();
+				LBTBVH *lbtbvh = new LBTBVH(grid, gridRes, bucketSizes[b]);
+				t->endTimer();
+				constructionTime[0] = t->getMicroseconds();
+
+				//quad
+				t->startTimer();
+				LQTBVH *lqtbvh = new LQTBVH(grid, gridRes, bucketSizes[b]);
+				t->endTimer();
+				constructionTime[1] = t->getMicroseconds();
+
+				//paper
+				t->startTimer();
+				LBVH3 *lbvh3 = new LBVH3(grid, gridRes);
+				t->endTimer();
+				constructionTime[2] = t->getMicroseconds();
+
+				float avgTraverseTime[numberOfAlgorithms] = { 0,0,0 };
+				float avgIntersectionTests[numberOfAlgorithms] = { 0,0,0 };
+				float avgDensity[numberOfAlgorithms] = { 0,0,0 };
+
+				for (int x = 0; x < gridRes.x; x++) {
+					for (int y = 0; y < gridRes.y; y++) {
+						origin = glm::vec3(x + 0.2f, y + 0.2f, 0.5);
+						r = new Ray(origin, direction);
+						glm::vec3 val[numberOfAlgorithms];
+						float time[numberOfAlgorithms];
+
+						//Bucket bin
+						t->startTimer();
+						val[0] = lbtbvh->traverse(*r);
+						t->endTimer();
+						time[0] = t->getMicroseconds();
+						avgTraverseTime[0] += time[0];
+						avgIntersectionTests[0] += lbtbvh->intersectionsCount;
+						avgDensity[0] += val[0].z;
+
+						//quadtree
+						t->startTimer();
+						val[1] = lqtbvh->traverseTree(*r);
+						t->endTimer();
+						time[1] = t->getMicroseconds();
+						avgTraverseTime[1] += time[1];
+						avgIntersectionTests[1] += lqtbvh->intersectionsCount;
+						avgDensity[1] += val[1].z;
+
+						//Paper
+						t->startTimer();
+						val[2] = lbvh3->traverse(Ray(origin, direction));
+						t->endTimer();
+						time[2] = t->getMicroseconds();
+						avgTraverseTime[2] += time[2];
+						avgIntersectionTests[2] += lbvh3->intersectionsCount;
+						avgDensity[2] += val[2].z;
+					}
+				}
+
+				ss << "-----------------------------------------" << std::endl;
+				ss << "Current bucket Size: " << bucketSizes[b] << std::endl;
+				ss << std::endl << std::endl;
+
+				//TODO: estimated memory usage
+				ss << algorithmNames[0] << std::endl;
+				ss << lbtbvh->getStatus() << std::endl;
+
+				ss << algorithmNames[1] << std::endl;
+				ss << lqtbvh->getStatus() << std::endl;
+
+				ss << algorithmNames[2] << std::endl;
+				ss << lbvh3->getStatus() << std::endl;
+
+				ss << std::endl;
+				int winnerId = 0;
+				float bestimer = 99999999;
+				for (int a = 0; a < numberOfAlgorithms; a++) {
+					ss << algorithmNames[a] << " construction time: " << constructionTime[a] << std::endl;
+					if (constructionTime[a] < bestimer) {
+						bestimer = constructionTime[a];
+						winnerId = a;
+					}
+				}
+				ss << "Winner: " << algorithmNames[winnerId] << std::endl;
+				ss << "Ratio (Winner/paper): " << constructionTime[winnerId] / constructionTime[2] << std::endl;
+
+				//ss << std::endl;
+				//ss << avgConstructionTime(gridNames[g], bucketSizes[b], algorithmNames, numberOfAlgorithms);
+				//std::cout << "Avg. construction time done." << std::endl;
+
+				ss << std::endl;
+				winnerId = 0;
+				bestimer = 99999999;
+				for (int a = 0; a < numberOfAlgorithms; a++) {
+					float avgTime = avgTraverseTime[a] / (gridRes.x * gridRes.y);
+					ss << algorithmNames[a] << " avg. traverse time: " << avgTime << std::endl;
+					if (avgTime < bestimer) {
+						bestimer = avgTime;
+						winnerId = a;
+					}
+				}
+				ss << "Winner: " << algorithmNames[winnerId] << std::endl;
+				ss << "Ratio (Winner/paper): " << avgTraverseTime[winnerId] / avgTraverseTime[2] << std::endl;
+
+				ss << std::endl;
+				winnerId = 0;
+				bestimer = 999999999;
+				for (int a = 0; a < numberOfAlgorithms; a++) {
+					float avgIntersec = avgIntersectionTests[a] / (gridRes.x * gridRes.y);
+					ss << algorithmNames[a] << " avg. intersections tests: " << formatWithCommas(avgIntersec) << std::endl;
+					if (avgIntersec < bestimer) {
+						bestimer = avgIntersec;
+						winnerId = a;
+					}
+				}
+				ss << "Winner: " << algorithmNames[winnerId] << std::endl;
+				ss << "Ratio (Winner/paper): " << avgIntersectionTests[winnerId] / avgIntersectionTests[2] << std::endl;
+
+				ss << std::endl;
+				for (int a = 0; a < numberOfAlgorithms; a++) {
+					ss << algorithmNames[a] << " avg. density: " << avgDensity[a] << std::endl;
+				}
+
+				ss << "-----------------------------------------" << std::endl;
+				appendResultsToFile(gridNames[g], ss.str());
+				ss.str("");
+
+				std::cout << "Grid: \"" << gridNames[g] << "\" with bucket size " << bucketSizes[b] << " finished." << std::endl;
+				delete lbtbvh;
+				delete lqtbvh;
+				delete lbvh3;
+			}
+		}
+	}
+
+	void measurementTests() {
+		//fileTests();
+
+		int const numberOfGrids = 1;
+		//std::string gridNames[numberOfGrids] = {"dragonHavard.vdb", "wdas_cloud_sixteenth.vdb", "wdas_cloud_eighth.vdb", "wdas_cloud_quarter.vdb"};
+		std::string gridNames[numberOfGrids] = {"wdas_cloud_eighth.vdb"};
+		int currentGrid = 0;
+		int const numberOfBucketSizes = 1;
+		//int bucketSizes[] = { 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048 };
+		int bucketSizes[numberOfBucketSizes] = {4};
+		int currentBucketSize = 0;
+		int const numberOfAlgorithms = 3;
+		float constructionTime[numberOfAlgorithms];
+		std::string algorithmNames[numberOfAlgorithms] = { "Bucket bin. tree", "Bucket quad tree", "Paper point tree"};
+
+		ResourceManager::getSelf()->loadVDBasTexture3D("cloud", "vdb/" + gridNames[currentGrid]);
+		float *grid = ResourceManager::getSelf()->getTexture3D("cloud")->floatData;
+		glm::vec3 gridRes = ResourceManager::getSelf()->getTexture3D("cloud")->getResolution();
+		bool testGrid = false;
+		if (testGrid) {
+			gridRes = glm::vec3(5, 5, 5);
+			grid = new float[gridRes.x * gridRes.y * gridRes.z];
+			for (int i = 0; i < gridRes.x * gridRes.y * gridRes.z; i++)
+				grid[i] = 1.0f;
+		}
+		Timer *t = new Timer();
+		//glm::vec3 origin = glm::vec3((res.x / 2.0f) + 0.2f, (res.y / 2.0f) + 0.2f, 0.5);
+		glm::vec3 origin = glm::vec3(1.0 + 0.2f, 84.0f + 0.2f, -1.0);
+		//glm::vec3 origin = glm::vec3(0.5f, 0.5f, -1.0);
+		glm::vec3 direction = glm::vec3(0, 0, 1);
+
+		Ray *r = new Ray(origin, direction);
+
 		std::cout << "Grid resolution: ";
-		printVec3(res);
+		printVec3(gridRes);
+		float empt = calculateEmptyRatio(grid, gridRes.x * gridRes.y * gridRes.z);
+		std::cout << "Emptiness: " <<  empt << std::endl;
 
-		LBVH *lbvh = new LBVH(size);
-
-		float constructionTime1, constructionTime2;
-
-		t->startTimer();
-		LBVH2 *lbvh2 = new LBVH2(ResourceManager::getSelf()->getTexture3D("cloud")->floatData, res);
-		t->endTimer();
-		constructionTime1 = t->getMicroseconds();
+		//-------------------------------------------------
+		//Construction
 
 		t->startTimer();
-		LBVH3 *lbvh3 = new LBVH3(ResourceManager::getSelf()->getTexture3D("cloud")->floatData, res);
+		LQTBVH *lqtbvh = new LQTBVH(grid, gridRes, bucketSizes[currentBucketSize]);
 		t->endTimer();
-		constructionTime2 = t->getMicroseconds();
+		constructionTime[0] = t->getMicroseconds();
 
-		glm::vec3 origin = glm::vec3((res.x / 2.0f) + 0.2f, (res.y / 2.0f) + 0.2f, 0.5);
-		glm::vec3 direction= glm::vec3(0, 0, -1);
+		t->startTimer();
+		LBVH3 *lbvh3 = new LBVH3(grid, gridRes);
+		t->endTimer();
+		constructionTime[1] = t->getMicroseconds();
 
-		Ray *r = new Ray(lbvh2->getWCS(origin), direction);
+		t->startTimer();
+		LBTBVH *lbtbvh = new LBTBVH(grid, gridRes, bucketSizes[currentBucketSize]);
+		t->endTimer();
+		constructionTime[2] = t->getMicroseconds();
 
+		//-------------------------------------------------
+		//Tree status
+		lqtbvh->printStatus();
+		lbvh3->printStatus();
+		lbtbvh->printStatus();
+
+		//-------------------------------------------------
+		//Single ray testing
 		std::cout << "------------------------" << std::endl;
-	/*	t->startTimer();
-		res = lbvh->traverseTree(r->o, r->d);
-		t->endTimer();
-		std::cout << "Naive binary tree approach" << std::endl;
-		std::cout << "Accumulated " << res.z << std::endl;
-		t->printlnNanoSeconds();
-		std::cout << std::endl;*/
+		float time[numberOfAlgorithms];
+		glm::vec3 res;
 
 		t->startTimer();
-		res = lbvh2->traverseTree(*r);
+		res = lqtbvh->traverseTree(*r);
 		t->endTimer();
-		std::cout << "Bucket binary tree approach" << std::endl;
+		std::cout << "Bucket quad tree approach" << std::endl;
 		std::cout << "Accumulated " << res.z << std::endl;
+		std::cout << "hit [" << res.x << ", " << res.y << "]" << std::endl;
+		time[0] = t->getMicroseconds();
 		t->printlnNanoSeconds();
 		std::cout << std::endl;
 
 		t->startTimer();
 		res = lbvh3->traverse(Ray(origin, direction));
 		t->endTimer();
-		std::cout << "Linear BVH paper approach" << std::endl;
+		std::cout << "Paper linear time bvh approach" << std::endl;
 		std::cout << "Accumulated " << res.z << std::endl;
+		std::cout << "hit [" << res.x << ", " << res.y << "]" << std::endl;
+		time[1] = t->getMicroseconds();
 		t->printlnNanoSeconds();
+		std::cout << std::endl;
+
+		t->startTimer();
+		res = lbtbvh->traverse(Ray(origin, direction));
+		t->endTimer();
+		std::cout << "Bucket binary tree refactored" << std::endl;
+		std::cout << "Accumulated " << res.z << std::endl;
+		std::cout << "hit [" << res.x << ", " << res.y << "]" << std::endl;
+		time[2] = t->getMicroseconds();
+		t->printlnNanoSeconds();
+		//std::cout << "------------------------" << std::endl;
+		//std::cout << "Performance ratio: " << time[0] / time[2] << std::endl;
+
+		std::cout << "------------------------" << std::endl;
+		std::cout << "Single ray traversing time" << std::endl << std::endl;
+		std::cout << "Bucket time: \t\t" << time[0] << std::endl;
+		std::cout << "Bucket quadtree time: \t" << time[1] << std::endl;
+		std::cout << "Paper time: \t\t" << time[2] << std::endl;
 		std::cout << "------------------------" << std::endl;
 
 		std::cout << "------------------------" << std::endl;
-		std::cout << "Construction time" << std::endl;
-		std::cout << "Bucket time: " << constructionTime1 << std::endl;
-		std::cout << "Paper time: " << constructionTime2 << std::endl;
+		std::cout << "Single ray intersections done" << std::endl << std::endl;
+		std::cout << "Bucket: \t\t" << formatWithCommas(lbtbvh->intersectionsCount) << std::endl;
+		std::cout << "Bucket quadtree: \t" << formatWithCommas(lqtbvh->intersectionsCount) << std::endl;
+		std::cout << "Paper: \t\t\t" << formatWithCommas(lbvh3->intersectionsCount) << std::endl;
 		std::cout << "------------------------" << std::endl;
 
+		std::cout << "------------------------" << std::endl;
+		std::cout << "Construction time" << std::endl << std::endl;
+		std::cout << "Bucket time: \t\t" << constructionTime[0] << std::endl;
+		std::cout << "Bucket quadtree time: \t" << constructionTime[1] << std::endl;
+		std::cout << "Paper time: \t\t" << constructionTime[2] << std::endl;
+		std::cout << "------------------------" << std::endl;
+
+		//while (true)
+		//	continue;
 		res = ResourceManager::getSelf()->getTexture3D("cloud")->getResolution();
-		float avgBucket = 0;
-		float avgPaper = 0;
-		for(int x = 0; x < res.x; x++)
+		float avgTraverseTime[numberOfAlgorithms] = {0,0,0};
+		float avgIntersectionTests[numberOfAlgorithms] = {0,0,0};
+		float avgDensity[numberOfAlgorithms] = {0,0,0};
+		int numberOfCasesWhereILost = 0;
+		int numberOfCasesItWasAccZero = 0;
+		for (int x = 0; x < res.x; x++) {
+			//std::cout << x << " of " << res.x << std::endl;
 			for (int y = 0; y < res.y; y++) {
 				origin = glm::vec3(x + 0.2f, y + 0.2f, 0.5);
-				r = new Ray(lbvh2->getWCS(origin), direction);
-				glm::vec3 val1, val2;
-				float t1, t2;
+				r = new Ray(origin, direction);
+				glm::vec3 val[numberOfAlgorithms];
+				float time[numberOfAlgorithms];
 
-				//Bucket
+				//Bucket bin
 				t->startTimer();
-				val1 = lbvh2->traverseTree(*r);
+				val[0] = lbtbvh->traverse(*r);
 				t->endTimer();
-				t1 = t->getMicroseconds();
-				avgBucket += t1;
+				time[0] = t->getMicroseconds();
+				avgTraverseTime[0] += time[0];
+				avgIntersectionTests[0] += lbtbvh->intersectionsCount;
+				avgDensity[0] += val[0].z;
+
+				//quadtree
+				t->startTimer();
+				val[1] = lqtbvh->traverseTree(*r);
+				t->endTimer();
+				time[1] = t->getMicroseconds();
+				avgTraverseTime[1] += time[1];
+				avgIntersectionTests[1] += lqtbvh->intersectionsCount;
+				avgDensity[1] += val[1].z;
 
 				//Paper
 				t->startTimer();
-				val2 = lbvh3->traverse(Ray(origin, direction));
+				val[2] = lbvh3->traverse(Ray(origin, direction));
 				t->endTimer();
-				t2 = t->getMicroseconds();
-				avgPaper += t2;
+				time[2] = t->getMicroseconds();
+				avgTraverseTime[2] += time[2];
+				avgIntersectionTests[2] += lbvh3->intersectionsCount;
+				avgDensity[2] += val[2].z;
 
-				if (t1 > t2) {
+				if (time[0] > time[2]) {
 					/*std::cout << "Bucket took more time" << std::endl;
 					std::cout << "bucket time: " << t1 << std::endl;
 					std::cout << "paper time: " << t2 << std::endl;
-					std::cout << "bucket acc: " << val1.z << std::endl;
-					std::cout << "paper acc: " << val2.z << std::endl;
+					std::cout << "bucket acc: " << val[0].z << std::endl;
+					std::cout << "paper acc: " << val[2].z << std::endl;
 					printVec3(origin);*/
+					numberOfCasesWhereILost++;
+					if (val[0].z == 0)
+						numberOfCasesItWasAccZero++;
 				}
 
-				if (val1.z != val2.z) {
-					/*std::cout << "bucket: " << val1.z << std::endl;
-					std::cout << "paper:  " << val2.z << std::endl;
+				if (val[0].z != val[2].z) {
+					/*std::cout << "bucket refactored: \t" << val[3].z << std::endl;
+					std::cout << "paper: \t\t\t" << val[2].z << std::endl;
 					std::cout << "ERROR" << std::endl;*/
 				}
 			}
+		}
 
 		std::cout << "------------------------" << std::endl;
-		std::cout << "whole grid testing" << std::endl;
-		std::cout << "Bucket approach" << std::endl;
-		std::cout << "Avg time: " << avgBucket / (res.x * res.y) << std::endl;
+		std::cout << "Whole grid testing" << std::endl << std::endl;
+		std::cout << "Bucket binary approach" << std::endl;
+		std::cout << "Avg time: " << avgTraverseTime[0] / (res.x * res.y) << std::endl;
+		std::cout << "\t ~" << std::endl;
+
+		std::cout << "Bucket quadtree approach" << std::endl;
+		std::cout << "Avg time: " << avgTraverseTime[1] / (res.x * res.y) << std::endl;
 		std::cout << "\t ~" << std::endl;
 
 		std::cout << "Paper approach" << std::endl;
-		std::cout << "Avg time: " << avgPaper / (res.x * res.y) << std::endl;
+		std::cout << "Avg time: " << avgTraverseTime[2] / (res.x * res.y) << std::endl;
+		std::cout << "\t ~" << std::endl;
+
+		std::cout << "Bucket binary refactored approach" << std::endl;
+		std::cout << "Avg time: " << avgTraverseTime[3] / (res.x * res.y) << std::endl;
 		std::cout << "------------------------" << std::endl;
+
+		std::cout << "Cases lost: " << numberOfCasesWhereILost << "/" << res.x*res.y <<std::endl;
+		std::cout << "Cases lost with acc 0: " << numberOfCasesItWasAccZero << "/" << res.x*res.y <<std::endl;
 		std::cout << '\a';
+
 		while (true)
 			continue;
 	}

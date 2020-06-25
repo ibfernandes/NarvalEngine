@@ -3,6 +3,7 @@
 #include "Ray.h"
 #include <limits>
 #include <vector>
+#include <string>
 #include <iostream>
 #include <cmath>
 #include <glm/glm.hpp>
@@ -131,22 +132,46 @@ inline glm::ivec3 decodeMorton3D(int value) {
 	return res;
 }
 
-inline int encodeSimple3D(glm::ivec3 value) {
+inline int encodeSimple3D(int x, int y, int z) {
 	int res = 0;
-	res = value.z << 20;
-	res = res | value.y << 10;
-	res = res | value.x;
+	res = z << 20;
+	res = res | y << 10;
+	res = res | x;
 	return res;
+}
+
+inline int encodeSimple3D(glm::ivec3 v) {
+	return encodeSimple3D(v.x, v.y, v.z);
 }
 
 inline glm::ivec3 decodeSimple3D(int value) {
 	glm::ivec3 res;
 	//If not unsigned right shift was filling with 1's
+	//TODO:remove first two bits
+	value = value & 0b00111111111111111111111111111111;
 	unsigned int v = value;
 	res.z = v >> 20;
 	res.y = (v << 12) >> 22;
 	res.x = (v << 22) >> 22;
 	return res;
+}
+
+inline void decodeSimple3D(int value, int &x, int &y, int &z) {
+	//If not unsigned right shift was filling with 1's
+	value = value & 0b00111111111111111111111111111111;
+	unsigned int v = value;
+	z = v >> 20;
+	y = (v << 12) >> 22;
+	x = (v << 22) >> 22;
+}
+
+inline void decodeSimple3D(int value, glm::ivec3 &vec) {
+	//If not unsigned right shift was filling with 1's
+	value = value & 0b00111111111111111111111111111111;
+	unsigned int v = value;
+	vec.z = v >> 20;
+	vec.y = (v << 12) >> 22;
+	vec.x = (v << 22) >> 22;
 }
 
 inline glm::vec2 intersectBox(glm::vec3 orig, glm::vec3 dir, glm::vec3 bmin, glm::vec3 bmax) {
@@ -423,4 +448,23 @@ inline bool greaterEqualThan(glm::vec3 v1, glm::vec3 v2) {
 	if (v1.x >= v2.x || v1.y >= v2.y || v1.z >= v2.z)
 		return true;
 	return false;
+}
+
+inline float log4(float x) {
+	return log(x) / log(4);
+}
+
+inline float log8(float x) {
+	return log(x) / log(8);
+}
+
+
+inline std::string formatWithCommas(int value){
+	std::string numWithCommas = std::to_string(value);
+	int insertPosition = numWithCommas.length() - 3;
+	while (insertPosition > 0) {
+		numWithCommas.insert(insertPosition, ".");
+		insertPosition -= 3;
+	}
+	return numWithCommas;
 }
