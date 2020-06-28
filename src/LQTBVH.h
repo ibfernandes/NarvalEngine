@@ -224,12 +224,34 @@ public:
 		///if (DEBUG_LBVH2)
 		for (int i : intersectedMorton)
 			std::cout << i << std::endl;
-		//std::cout << "intersections done: " << intersectionsCount << std::endl;
+
 		return glm::vec3(finalt, accumulated);
 	}
 
 	glm::vec3 traverseTree(Ray &r) {
 		return traverseTreeUntil(r, 99999.0f);
+	}
+
+	//returns true if fitted succesfully
+	bool fitMortonCodesInThisBucket(glm::vec3 &min, glm::vec3 &max, int &currentMortonIndex, int &bucketRange, int &sum) {
+		int count = 0;
+
+		while (currentMortonIndex < mortonCodesSize && mortonCodes[currentMortonIndex] < bucketRange) {
+			glm::vec3 coord = decodeMorton3D(mortonCodes[currentMortonIndex]);
+			min = glm::min(min, coord);
+			max = glm::max(max, coord + 1.0f);
+
+			count++;
+			sum++;
+			currentMortonIndex++;
+		}
+
+		if (count == 0 && bucketRange <= mortonCodes[mortonCodesSize - 1]) {
+			bucketRange += bucketSize;
+			return true;
+		}
+
+		return false;
 	}
 
 	void genTree() {
@@ -252,18 +274,10 @@ public:
 			glm::vec3 max = glm::vec3(-99999, -99999, -99999);
 
 			//for all morton codes within this bucket range, calculate the whole bucket bbox for non empty voxels
-			while (currentMortonIndex < mortonCodesSize && mortonCodes[currentMortonIndex] < bucketRange) {
-				glm::vec3 coord = decodeMorton3D(mortonCodes[currentMortonIndex]);
-				min = glm::min(min, coord);
-				max = glm::max(max, coord + 1.0f);
-
-				sum++;
-				currentMortonIndex++;
-			}
+			while(fitMortonCodesInThisBucket(min, max, currentMortonIndex, bucketRange, sum))
+				continue;
 
 			offsets[i] = sum;
-
-			bucketRange += bucketSize;
 
 			//If there's no actual data in this bucket, set empty flag
 			if (min.x == 99999) {
@@ -320,55 +334,36 @@ public:
 				
 			}
 		}
+	}
 
-		///std::cout << "Finished LBVH2 tree..." << std::endl;
+	bool fitMortonCodesInThisBucket(int &currentMortonIndex, int &bucketRange) {
+		int count = 0;
 
-		if (DEBUG_LQTBVH) {
-			/*std::cout << "Levels " << levels << std::endl;
-			int offsetMinMax = 2;
-
-			std::cout << "Offset: " << std::endl;
-			for (int i = 0; i < amountOfBuckets; i++)
-				std::cout << offsets[i] << ", ";
-			std::cout << std::endl;
-
-			std::cout << "Buckets: " << std::endl;
-			for (int i = 0; i < amountOfBuckets; i++) {
-				std::cout << "Bucket: " << std::endl;
-				std::cout << "Pos Array: " << firstNodeAtDeepestLevel <<  std::endl;
-				std::cout << "Morton Range: " << i * bucketSize <<" - " << (i+1) * bucketSize <<  std::endl;
-				glm::vec3 mi = decodeSimple3D(node[firstNodeAtDeepestLevel * offsetMinMax]);
-				glm::vec3 ma = decodeSimple3D(node[firstNodeAtDeepestLevel * offsetMinMax + 1]);
-				if (isEmpty(node[firstNodeAtDeepestLevel * offsetMinMax]))
-					std::cout << "Empty" << std::endl;
-				else {
-					std::cout << "min: ";
-					printVec3(mi);
-					std::cout << "max: ";
-					printVec3(ma);
-				}
-				std::cout << "" << std::endl;
-				firstNodeAtDeepestLevel++;
-			}
-
-			std::cout << "Tree: " << std::endl;
-			for (int i = 1; i <= numberOfNodes; i++) {
-				std::cout << "node["<< i <<"] {" << std::endl;
-				glm::vec3 mi = decodeSimple3D(node[i * offsetMinMax]);
-				glm::vec3 ma = decodeSimple3D(node[i * offsetMinMax + 1]);
-				if (isEmpty(node[i * offsetMinMax]))
-					std::cout << "Empty" << std::endl;
-				else {
-					std::cout << "min: ";
-					printVec3(mi);
-					std::cout << "max: ";
-					printVec3(ma);
-				}
-				std::cout << "}" << std::endl << std::endl;
-			}
-
-			std::cout << std::endl;*/
+		while (currentMortonIndex < mortonCodesSize && mortonCodes[currentMortonIndex] < bucketRange) {
+			count++;
+			currentMortonIndex++;
 		}
+
+		if (count == 0 && bucketRange <= mortonCodes[mortonCodesSize - 1]) {
+			bucketRange += bucketSize;
+			return true;
+		}
+
+		return false;
+	}
+
+	int findNonEmptyBuckets() {
+		int bucketRange = bucketSize;
+		int currentMortonIndex = 0;
+		int nonEmptyBuckets = 0;
+
+		while (currentMortonIndex < mortonCodesSize) {
+			while (fitMortonCodesInThisBucket(currentMortonIndex, bucketRange))
+				continue;
+			nonEmptyBuckets++;
+		}
+
+		return nonEmptyBuckets;
 	}
 
 	void initGrid() {
@@ -387,17 +382,8 @@ public:
 		mortonCodesSize = count;
 		radixSort(mortonCodes, mortonCodesSize);
 
-		int highest = 0;
-
-		for (int i = 0; i < 3; i++) {
-			size[i] = powBase4(std::ceil(log4(size[i])));
-			highest = size[i] > highest ? size[i] : highest;
-		}
-
-		vectorSize = highest * highest * highest;
-
-		levels = log4(vectorSize / bucketSize) + 1;
-		//levels = std::ceil(log4(vectorSize / float(bucketSize))) + 1;
+		int nonEmptyBuckets = findNonEmptyBuckets();
+		levels = std::ceil(log4(nonEmptyBuckets)) + 1;
 
 		sumOfBase4Table = new int[levels];
 		sumOfBase4Table[0] = 1;
@@ -407,16 +393,6 @@ public:
 			numberOfNodes += powBase4(l);
 			sumOfBase4Table[l] = numberOfNodes;
 		}
-		//dataSize = nodesSize * 2;
-	}
-
-	void printStatus() {
-		std::cout << "-------------------------------" << std::endl;
-		std::cout << "Bucket Quadtree:" << std::endl;
-		std::cout << "Depth: " << levels << std::endl;
-		std::cout << "Number of nodes: " << formatWithCommas(numberOfNodes) << std::endl;
-		std::cout << "Bucket size: " << bucketSize << std::endl;
-		std::cout << "-------------------------------" << std::endl;
 	}
 
 	std::string getStatus() {
@@ -429,25 +405,12 @@ public:
 		return ss.str();
 	}
 
-	void genTestGrid() {
-		glm::vec3 gridRes = glm::vec3(4,4,4);
-		grid = new float[gridRes.x * gridRes.y * gridRes.z];
-		for (int i = 0; i < gridRes.x * gridRes.y * gridRes.z; i++)
-			grid[i] = 1.0f;
-
-		this->size = gridRes;
-		this->gridSize = gridRes;
-	}
-
 	LQTBVH(float *grid, glm::vec3 size) {
 		this->grid = grid;
 		this->size = size;
 		this->gridSize = size;
-		//genTestGrid();
 		initGrid();
 		genTree();
-
-		//traverseTreeUntil( Ray(glm::vec3(0.5f, 0.5f, -1), glm::vec3(0, 0, 1)), 99999);
 	}
 
 	LQTBVH(float *grid, glm::vec3 size, int bucketSize) {
@@ -455,7 +418,6 @@ public:
 		this->grid = grid;
 		this->size = size;
 		this->gridSize = size;
-		//genTestGrid();
 		initGrid();
 		genTree();
 	}

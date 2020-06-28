@@ -287,7 +287,7 @@ public:
 		int const numberOfGrids = 4;
 		int const numberOfBucketSizes = 10;
 		int const numberOfAlgorithms = 3;
-		std::string gridNames[numberOfGrids] = { "dragonHavard.vdb", "wdas_cloud_sixteenth.vdb", "wdas_cloud_eighth.vdb", "wdas_cloud_quarter.vdb" };
+		std::string gridNames[numberOfGrids] = {"dragonHavard.vdb", "wdas_cloud_sixteenth.vdb", "wdas_cloud_eighth.vdb", "wdas_cloud_quarter.vdb" };
 		int bucketSizes[numberOfBucketSizes] = { 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048 };
 		//int bucketSizes[numberOfBucketSizes] = { 512 };
 		std::string algorithmNames[numberOfAlgorithms] = { "Bucket bin. tree", "Bucket quad tree", "Paper point tree" };
@@ -450,7 +450,7 @@ public:
 	}
 
 	void measurementTests() {
-		//fileTests();
+		fileTests();
 
 		int const numberOfGrids = 1;
 		//std::string gridNames[numberOfGrids] = {"dragonHavard.vdb", "wdas_cloud_sixteenth.vdb", "wdas_cloud_eighth.vdb", "wdas_cloud_quarter.vdb"};
@@ -469,7 +469,7 @@ public:
 		glm::vec3 gridRes = ResourceManager::getSelf()->getTexture3D("cloud")->getResolution();
 		bool testGrid = false;
 		if (testGrid) {
-			gridRes = glm::vec3(5, 5, 5);
+			gridRes = glm::vec3(3, 3, 3);
 			grid = new float[gridRes.x * gridRes.y * gridRes.z];
 			for (int i = 0; i < gridRes.x * gridRes.y * gridRes.z; i++)
 				grid[i] = 1.0f;
@@ -507,9 +507,9 @@ public:
 
 		//-------------------------------------------------
 		//Tree status
-		lqtbvh->printStatus();
+		std::cout << lqtbvh->getStatus();
 		lbvh3->printStatus();
-		lbtbvh->printStatus();
+		std::cout << lbtbvh->getStatus();
 
 		//-------------------------------------------------
 		//Single ray testing

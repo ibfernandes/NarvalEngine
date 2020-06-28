@@ -230,7 +230,6 @@ public:
 		return traverseTreeUntil(r, 99999.0f);
 	}
 
-
 	//returns true if fitted succesfully
 	bool fitMortonCodesInThisBucket(glm::vec3 &min, glm::vec3 &max, int &currentMortonIndex, int &bucketRange, int &sum) {
 		int count = 0;
@@ -272,22 +271,11 @@ public:
 			glm::vec3 min = glm::vec3(99999, 99999, 99999);
 			glm::vec3 max = glm::vec3(-99999, -99999, -99999);
 
-			//for all morton codes within this bucket range, calculate the whole bucket bbox for non empty voxels
-			while (currentMortonIndex < mortonCodesSize && mortonCodes[currentMortonIndex] < bucketRange) {
-				glm::vec3 coord = decodeMorton3D(mortonCodes[currentMortonIndex]);
-				min = glm::min(min, coord);
-				max = glm::max(max, coord + 1.0f);
-
-				sum++;
-				currentMortonIndex++;
-			}
-
-			//while (fitMortonCodesInThisBucket(min, max, currentMortonIndex, bucketRange, sum))
-			//	continue;
+			while (fitMortonCodesInThisBucket(min, max, currentMortonIndex, bucketRange, sum))
+				continue;
 
 			offsets[i] = sum;
-			bucketRange += bucketSize;
-
+			
 			//If there's no actual data in this bucket, set empty flag
 			if (min.x == 99999) {
 				node[firstNodeAtDeepestLevel * offsetMinMax - 1] = setEmptyBit(0);
@@ -340,28 +328,36 @@ public:
 				currentNode--;
 			}
 		}
+	}
 
-		/*for (int n = firstNodeAtDeepestLevel; n < numberOfNodes; n++) {
-			int offsetsPosition = n - firstNodeAtDeepestLevel;
-			int startingIndex;
-			int elementsOnThisBucket = 0;
+	bool fitMortonCodesInThisBucket(int &currentMortonIndex, int &bucketRange) {
+		int count = 0;
 
-			if (offsetsPosition == 0) {
-				startingIndex = 0;
-				elementsOnThisBucket = offsets[offsetsPosition];
-			}else {
-				startingIndex = offsets[offsetsPosition - 1];
-				elementsOnThisBucket = offsets[offsetsPosition] - offsets[offsetsPosition - 1];
-			}
+		while (currentMortonIndex < mortonCodesSize && mortonCodes[currentMortonIndex] < bucketRange) {
+			count++;
+			currentMortonIndex++;
+		}
 
-			for (int i = 0; i < elementsOnThisBucket; i++) {
-				int morton = mortonCodes[startingIndex + i];
-				std::cout << morton << ", ";
-			}
-			if (elementsOnThisBucket == 0)
-				std::cout << "empty";
-			std::cout << std::endl;
-		}*/
+		if (count == 0 && bucketRange <= mortonCodes[mortonCodesSize - 1]) {
+			bucketRange += bucketSize;
+			return true;
+		}
+
+		return false;
+	}
+
+	int findNonEmptyBuckets() {
+		int bucketRange = bucketSize;
+		int currentMortonIndex = 0;
+		int nonEmptyBuckets = 0;
+
+		while (currentMortonIndex < mortonCodesSize) {
+			while (fitMortonCodesInThisBucket(currentMortonIndex, bucketRange))
+				continue;
+			nonEmptyBuckets++;
+		}
+
+		return nonEmptyBuckets;
 	}
 
 	void initGrid() {
@@ -380,18 +376,9 @@ public:
 		mortonCodesSize = count;
 		radixSort(mortonCodes, mortonCodesSize);
 
-		int highest = 0;
+		int nonEmptyBuckets = findNonEmptyBuckets();
+		levels = std::ceil(std::log2(nonEmptyBuckets)) + 1;
 
-		for (int i = 0; i < 3; i++) {
-			size[i] = powBase2(std::ceil(std::log2(size[i])));
-			highest = size[i] > highest ? size[i] : highest;
-		}
-
-		vectorSize = highest * highest * highest;
-
-		levels = std::log2(vectorSize / bucketSize) + 1;
-		//levels = std::ceil(std::log2(vectorSize / float(bucketSize))) + 1;
-		//levels = std::ceil(std::log2((mortonCodes[mortonCodesSize - 1] / float(bucketSize)) + 1)) + 1;
 		sumOfBase2Table = new int[levels];
 		sumOfBase2Table[0] = 1;
 		numberOfNodes = 1;
@@ -401,16 +388,6 @@ public:
 			sumOfBase2Table[l] = numberOfNodes;
 		}
 
-	}
-
-	void printStatus() {
-		std::cout << "-------------------------------" << std::endl;
-		std::cout << "Bucket binary refactored:" << std::endl;
-		std::cout << "Depth: " << levels << std::endl;
-		std::cout << "Number of nodes: " << formatWithCommas(numberOfNodes) << std::endl;
-		std::cout << "Number of empty nodes: " << formatWithCommas(numberOfEmptyNodes) << std::endl;
-		std::cout << "Bucket size: " << bucketSize << std::endl;
-		std::cout << "-------------------------------" << std::endl;
 	}
 
 	std::string getStatus() {
