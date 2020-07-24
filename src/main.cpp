@@ -161,7 +161,7 @@ int main(){
 	SceneReader scene("scenes/veach.json");
 	//SceneReader scene("scenes/offlinetesting.json");
 	Settings settings = scene.getSettings();
-	//settings.renderMode = REALTIME_RENDERING_MODE;
+	settings.renderMode = REALTIME_RENDERING_MODE;
 
 	Engine3D *engine = new Engine3D();
 	OfflineEngine *offEngine = new OfflineEngine();
@@ -177,7 +177,7 @@ int main(){
 		generateCubeTestModel();
 		generateTestModel();
 		//must changfe to pointer
-		ResourceManager::getSelf()->getTexture3D("cloud")->loadToOpenGL();
+		//ResourceManager::getSelf()->getTexture3D("cloud")->loadToOpenGL();
 
 		ResourceManager::getSelf()->loadShader("monocolor", "shaders/monoColor.vert", "shaders/monoColor.frag", "");
 		ResourceManager::getSelf()->loadShader("randomVisualizer", "shaders/random.vert", "shaders/random.frag", "");
@@ -200,7 +200,17 @@ int main(){
 		ResourceManager::getSelf()->loadShader("volumelbvh", "shaders/volumeLBVH.vert", "shaders/volumeLBVH.frag", "");
 		ResourceManager::getSelf()->loadShader("simpleLightDepth", "shaders/simpleLightDepth.vert", "shaders/simpleLightDepth.frag", "");
 
-		//ResourceManager::getSelf()->loadVDBasTexture3D("cloud", "vdb/wdas_cloud_sixteenth.vdb"); //512
+		ResourceManager::getSelf()->loadVDBasTexture3D("cloud", "vdb/wdas_cloud_quarter.vdb"); //512
+		ResourceManager::getSelf()->getTexture3D("cloud")->loadToOpenGL();
+		ResourceManager::getSelf()->loadVDBasTexture3D("dragonHavard", "vdb/dragonHavard.vdb"); //512
+		ResourceManager::getSelf()->getTexture3D("dragonHavard")->loadToOpenGL();
+		ResourceManager::getSelf()->loadVDBasTexture3D("fireball", "vdb/fireball.vdb"); //512
+		ResourceManager::getSelf()->getTexture3D("fireball")->loadToOpenGL();
+		ResourceManager::getSelf()->loadVDBasTexture3D("explosion", "vdb/explosion.vdb"); //512
+		ResourceManager::getSelf()->getTexture3D("explosion")->loadToOpenGL();
+		ResourceManager::getSelf()->loadVDBasTexture3D("bunny_cloud", "vdb/bunny_cloud.vdb"); //512
+		ResourceManager::getSelf()->getTexture3D("bunny_cloud")->loadToOpenGL();
+
 		//ResourceManager::getSelf()->loadVDBasTexture3D("cloudlowres", "vdb/wdas_cloud_eighth.vdb"); //512
 		//ResourceManager::getSelf()->loadVDBasTexture3D("smoke", "vdb/colored_smoke.vdb");
 		//ResourceManager::getSelf()->loadVDBasTexture3D("fireball", "vdb/fireball.vdb");

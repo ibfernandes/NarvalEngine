@@ -64,8 +64,8 @@ public:
 	Texture2D fboDepthTex;
 	glm::vec3 gradientDownNight = glm::vec3(57 / 255.0f, 65 / 255.0f, 73 / 255.0f);
 	glm::vec3 gradientUpNight = glm::vec3(19 / 155.0f, 21 / 255.0f, 23 / 255.0f);
-	glm::vec3 gradientDownDay = glm::vec3(236 / 255.0f, 240 / 255.0f, 241 / 255.0f);
-	glm::vec3 gradientUpDay = glm::vec3(186 / 255.0f, 199 / 255.0f, 200 / 255.0f);
+	glm::vec3 gradientDownDay = glm::vec3(1);
+	glm::vec3 gradientUpDay = glm::vec3(1);
 
 	GLint WIDTH, HEIGHT;
 	float aspectRatio;
@@ -74,7 +74,7 @@ public:
 	int SPP = 1;
 	bool clearRayTracing = true;
 	int currentModel = 0;
-	const char* models[6] = {"cloud", "cloudlowres", "smoke", "fireball", "bunny", "explosion"};
+	const char* models[6] = {"cloud", "dragonHavard", "fireball", "explosion", "bunny_cloud", "explosion"};
 	std::string currentModelResolution = "";
 
 	int currentRenderMode = 0;

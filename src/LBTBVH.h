@@ -151,10 +151,10 @@ public:
 				if (rightmostChild == currentNode) {
 					currentNode = getParent(currentNode) + 1;
 					currentLevel--;
-				}else if (getRightmostChild(currentNode, currentLevel) == currentNode) {
+				}/*else if (getRightmostChild(currentNode, currentLevel) == currentNode) {
 					currentNode = getParent(currentNode) + 1;
 					currentLevel--;
-				}else {
+				}*/else {
 					currentNode = currentNode + 1;
 				}
 
