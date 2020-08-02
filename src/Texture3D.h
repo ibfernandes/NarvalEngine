@@ -22,7 +22,7 @@ public:
 		this->depth = depth;
 		this->channels = nmrChannels;
 		this->floatData = new float[width * height * depth * nmrChannels];
-		std::copy(data, data + width * height * depth, this->floatData);
+		std::copy(data, data + width * height * depth, this->floatData); //TODO: multiply size by nmrchannel
 	}
 
 	void loadToMemory(int width, int height, int depth, int nmrChannels, int *data) {

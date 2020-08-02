@@ -9,14 +9,12 @@
 #include "Volume.h"
 #include "Math.h"
 #include "DiffuseMaterial.h"
+#include "RoughConductorBRDF.h"
 #include "DielectricMaterial.h"
 #include "DiffuseLight.h"
 #include "MetalMaterial.h"
 #include "GridMaterial.h"
-#include "LBVH2.h"
-#include "LBVH3.h"
-#include "LQTBVH.h"
-#include "LBTBVH.h"
+#include "BucketLBVH.h"
 #include <assert.h>
 #include <Vector>
 #include <limits>
@@ -34,20 +32,20 @@ public:
 	std::vector<Model*> models;
 	std::vector<Model*> emitters;
 	Camera cam;
-	const int bitsPerChannel = 8;
+	const int bitsPerChannel = 16;
 	const int maxValueChannel = std::pow(2, bitsPerChannel) - 1;
 	std::thread *threads;
 	std::atomic<bool> *isThreadDone;
 	int numOfThreads;
 	int spp = 100;
-	int maxDepth = 3;
+	int maxBounces = 3;
 	glm::ivec2 numOfTiles;
 	glm::ivec2 tileSize;
 	 int windowWidth = 400, windowHeight = 200, totalPixels = windowWidth * windowHeight;
 	glm::ivec3 *pixels;
 
 	glm::vec3 lightPos = glm::vec3(2.8f, 1.2f, 0.f);
-	glm::vec3 upColor = glm::vec3(0.0f);
+	glm::vec3 upColor = glm::vec3(0.00f);
 	glm::vec3 bottomColor = glm::vec3(0.0f);
 
 	glm::vec3 blend(glm::vec3 v1, glm::vec3 v2, float t) {
@@ -65,21 +63,22 @@ public:
 				hitAnything = true;
 				closestHit = tempHit.t;
 				hit = tempHit;
+				hit.modelId = (*models.at(i)).modelId;
 			}
 		}
 
 		return hitAnything;
 	}
 
-	glm::vec3 calculateColor(Ray r, int depth) {
+	glm::vec3 calculateColorRecursive(Ray r, int depth) {
 		Hit hit;
 
-		//if (depth >= maxDepth)
+		//if (depth >= maxBounces)
 		//	return glm::vec3(0, 0, 0);
-		if (depth == maxDepth)
+		if (depth == maxBounces)
 			r.direction = glm::normalize(lightPos - r.o);
 
-		if (depth > maxDepth)
+		if (depth > maxBounces)
 			return glm::vec3(0, 0, 0);
 
 		if (!checkHits(r, 0.001, std::numeric_limits<float>::max(), hit)) {
@@ -98,7 +97,7 @@ public:
 
 		//float pdf =  1.0f / spherePDF(hit.p, lightPos, hit.normal, 0.2f);
 
-		return emitted + attenuation * calculateColor(scattered, depth + 1) ;
+		return emitted + attenuation * calculateColorRecursive(scattered, depth + 1) ;
 		//emitted + att (emitted + att( ... ))
 	}
 
@@ -107,7 +106,7 @@ public:
 		glm::vec3 finalColor(0.0f);
 		glm::vec3 throughput(1.0f);
 
-		for (int i = 0; i < maxDepth; i++) {
+		for (int i = 0; i < maxBounces; i++) {
 
 			if (!checkHits(r, 0.001, std::numeric_limits<float>::max(), hit)) {
 				glm::vec3 dir = glm::normalize(r.direction);
@@ -115,7 +114,6 @@ public:
 				finalColor += throughput * blend(bottomColor, upColor, t);
 				break;
 			}
-
 
 			Ray scattered;
 			glm::vec3 attenuation(1, 1, 1);
@@ -133,50 +131,82 @@ public:
 		return finalColor;
 	}
 
+	glm::vec3 calculateColorBRDF(Ray r, int depth) {
+		Hit hit;
+		glm::vec3 finalColor(0.0f);
+		glm::vec3 throughput(1.0f);
+		Ray incoming = r;
 
+		for (int i = 0; i < maxBounces; i++) {
+
+			if (!checkHits(r, 0.001, std::numeric_limits<float>::max(), hit)) {
+				glm::vec3 dir = glm::normalize(r.direction);
+				float t = 0.5f * (dir.y + 1.0);
+				finalColor += throughput * blend(bottomColor, upColor, t);
+				break;
+			}
+
+			Ray scattered;
+			glm::vec3 emitted = hit.material->emitted(0, 0, glm::vec3(0));
+			float pdf;
+			bool isEmissive = !isAllZero(emitted);
+
+			if (isEmissive) 
+				finalColor += emitted * throughput;
+
+			if (isAllZero(emitted)) {
+				float pdf = 1;
+				hit.material->brdf->sample(incoming, scattered, hit);
+				glm::vec3 brdf = hit.material->brdf->eval(incoming, scattered, hit, pdf);
+				brdf = brdf * ( 1.0f / pdf);
+				throughput *= brdf;
+			}
+
+			r = scattered;
+		}
+
+		return finalColor;
+	}
 
 	//evaluates BRDF * Li
-	glm::vec3 estimateDirect(Ray &incoming, Ray &scattered, Hit hit, Model *emitter, glm::vec3 attenuation) {
+	glm::vec3 estimateDirect(Model *emitter, Ray incoming, Hit hit) {
 		glm::vec3 directLight(0);
 		Sphere *s = (Sphere*)emitter->geometry;
-		if (hit.material->hasSpecularLobe)
-			return directLight;
 
-		//glm::vec3 Li = hit.material->emitted(0,0, glm::vec3(0));
-		glm::vec3 Li = s->material->emitted(0,0,glm::vec3(0));
+		glm::vec3 Li = s->material->emitted(0, 0, glm::vec3(0));
+		bool isEmissive = !isAllZero(Li);
 
-		
-		//trocar essas nomral
-		glm::vec4 pdf = spherePDF(hit.p, s->center, s->radius);
-		//incoming.direction = glm::vec3(pdf);
+		//dir.xyz = direction towards sphere
+		//dir.w = pdf of direction
+		glm::vec4 dir = sampleSphere(hit.p, s->center, s->radius);
+		Ray scattered;
+		scattered.o = hit.p;
+		scattered.d = dir;
 
-		if (pdf.w != 0 && !isAllZero(Li)) {
-			
-			float dotNL = glm::clamp(glm::dot(glm::vec3(pdf), glm::normalize(hit.normal)), 0.0f, 1.0f);
-			scattered = Ray(incoming.o, glm::normalize(glm::vec3(pdf)));
-			glm::vec3 bsdf = hit.material->brdf->eval(incoming, scattered, hit, attenuation);
+		Ray occlusionRay{ hit.p, glm::vec3(dir) };
+		Hit occlusionHit;
+		if (checkHits(occlusionRay, 0.001, std::numeric_limits<float>::max(), occlusionHit)) {
+			//If it is occluded and this object is not emissive, no contribution is computed
+			if (isAllZero(occlusionHit.material->emitted(0, 0, glm::vec3(0, 0, 0))))
+				return directLight;
+		}
 
-			Hit d;
-		
-			if (dotNL > 0 && !checkHits(Ray(hit.p, pdf), 0.001, glm::length(glm::vec3(pdf)), d))
-				directLight += bsdf * /*dotNL **/ Li * pdf.w;
-		
+		if (dir.w != 0 && isAllZero(hit.material->emitted(0,0,glm::vec3(0)))) {
+			float pdf;
+			glm::vec3 brdf = hit.material->brdf->eval(incoming, scattered, hit, pdf);
+			directLight += brdf * Li *  (1.0f / dir.w);
 		}
 
 		return directLight;
 	}
 
-	glm::vec3 sampleLights(Ray &incoming, Ray &scattered, Hit t, glm::vec3 attenuation) {
+	glm::vec3 sampleLights(Ray &incoming, Hit hit) {
 
 		glm::vec3 l(0);
-		//iterate over all lights
 		for (int i = 0; i < emitters.size(); i++) {
-			//if current hit is light, continue
-			//if (t.material->emitted() == 0)
-				//continue;
-			if (t.material == emitters.at(i)->geometry->material)
+			if (hit.modelId == emitters.at(i)->modelId)
 				continue;
-			l = l + estimateDirect(incoming, scattered, t, emitters.at(i), attenuation);
+			l = l + estimateDirect(emitters.at(i), incoming, hit);
 		}
 
 		return l;
@@ -186,8 +216,9 @@ public:
 		Hit hit;
 		glm::vec3 finalColor(0.0f);
 		glm::vec3 throughput(1.0f);
+		Ray incoming = r;
 
-		for (int i = 0; i < maxDepth; i++) {
+		for (int bounce = 0; bounce < maxBounces; bounce++) {
 
 			if (!checkHits(r, 0.001, std::numeric_limits<float>::max(), hit)) {
 				glm::vec3 dir = glm::normalize(r.direction);
@@ -196,23 +227,33 @@ public:
 				break;
 			}
 
-
 			Ray scattered;
-			float pdf;
 			glm::vec3 attenuation(1, 1, 1);
 			glm::vec3 emitted = hit.material->emitted(0, 0, glm::vec3(0));
+			float pdf;
+			bool isEmissive = !isAllZero(emitted);
 
-			if ((/*hit.material->hasSpecularLobe ||*/ !hit.material->scatter(r, hit, attenuation, scattered, pdf)) && i == 0) {
-				finalColor += emitted * throughput;
-				//break;
+			if (isEmissive && bounce == 0) {
+				finalColor += throughput * emitted;
 			}
 
+			// Calculate the direct lighting
+			
+			//direct light contribution
+			finalColor += throughput * sampleLights(incoming, hit);
 
-			finalColor += throughput * sampleLights(r, scattered, hit, attenuation);
+			if (isAllZero(emitted)) {
+				float pdf = 1;
+				hit.material->brdf->sample(incoming, scattered, hit);
+				glm::vec3 brdf = hit.material->brdf->eval(incoming, scattered, hit, pdf);
+				if (pdf != 0)
+					brdf = brdf * (1.0f / pdf);
+				else
+					brdf = glm::vec3(0);
+				throughput *= brdf;
+			}
 
-			//r = scattered;
-
-			throughput *= attenuation;
+			r = scattered;
 		}
 
 		return finalColor;
@@ -227,450 +268,13 @@ public:
 		return float(count) / float(size);
 	}
 
-	void appendResultsToFile(std::string filename, std::string text) {
-		std::ofstream file;
-		file.open("tests\\" + filename + ".txt", std::ios_base::app);
-
-		file << text << "\n";
-
-		file.close();
-	}
-
-	std::string avgConstructionTime(std::string gridName, int bucketSize, std::string *algorithmNames, int numberOfAlgorithms) {
-		ResourceManager::getSelf()->loadVDBasTexture3D(gridName, "vdb/" + gridName);
-		float *grid = ResourceManager::getSelf()->getTexture3D(gridName)->floatData;
-		glm::vec3 gridRes = ResourceManager::getSelf()->getTexture3D(gridName)->getResolution();
-		int numSamples = 5;
-		float *constructionTime = new float[numberOfAlgorithms];
-		constructionTime[0] = 0;
-		constructionTime[1] = 0;
-		constructionTime[2] = 0;
-		Timer *t = new Timer();
-
-		for (int i = 0; i < numSamples; i++) {
-			//binary
-			t->startTimer();
-			LBTBVH *lbtbvh = new LBTBVH(grid, gridRes, bucketSize);
-			t->endTimer();
-			constructionTime[0] += t->getMicroseconds();
-			delete lbtbvh;
-
-			//quad
-			t->startTimer();
-			LQTBVH *lqtbvh = new LQTBVH(grid, gridRes, bucketSize);
-			t->endTimer();
-			constructionTime[1] += t->getMicroseconds();
-			delete lqtbvh;
-
-			//paper
-			t->startTimer();
-			LBVH3 *lbvh3 = new LBVH3(grid, gridRes);
-			t->endTimer();
-			constructionTime[2] += t->getMicroseconds();
-			delete lbvh3;
-		}
-
-		constructionTime[0] = constructionTime[0] / numSamples;
-		constructionTime[1] = constructionTime[1] / numSamples;
-		constructionTime[2] = constructionTime[2] / numSamples;
-
-		std::stringstream ss;
-		for (int i = 0; i < numberOfAlgorithms; i++) {
-			ss << algorithmNames[i] << " avg. construction time: " << constructionTime[i] << std::endl;
-		}
-		ss << std::endl;
-
-		return ss.str();
-	}
-
-	void fileTests() {
-		int const numberOfGrids = 4;
-		int const numberOfBucketSizes = 10;
-		int const numberOfAlgorithms = 3;
-		std::string gridNames[numberOfGrids] = {"dragonHavard.vdb", "wdas_cloud_sixteenth.vdb", "wdas_cloud_eighth.vdb", "wdas_cloud_quarter.vdb" };
-		int bucketSizes[numberOfBucketSizes] = { 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048 };
-		//int bucketSizes[numberOfBucketSizes] = { 512 };
-		std::string algorithmNames[numberOfAlgorithms] = { "Bucket bin. tree", "Bucket quad tree", "Paper point tree" };
-
-		float constructionTime[numberOfAlgorithms];
-		Timer *t = new Timer();
-		glm::vec3 origin = glm::vec3(1.0 + 0.2f, 84.0f + 0.2f, -1.0);
-		glm::vec3 direction = glm::vec3(0, 0, 1);
-		Ray *r = new Ray(origin, direction);
-
-		for (int g = 0; g < numberOfGrids; g++) {
-			ResourceManager::getSelf()->loadVDBasTexture3D(gridNames[g], "vdb/" + gridNames[g]);
-			float *grid = ResourceManager::getSelf()->getTexture3D(gridNames[g])->floatData;
-			glm::vec3 gridRes = ResourceManager::getSelf()->getTexture3D(gridNames[g])->getResolution();
-			std::stringstream ss;
-			ss << "==========================================" << std::endl;
-			ss << "Grid name: " << gridNames[g] << std::endl;
-			ss << "Grid resolution: " << "[" << gridRes.x << ", " << gridRes.y << ", " << gridRes.z << "]" << std::endl;
-			ss << "Emptiness: " << calculateEmptyRatio(grid, gridRes.x * gridRes.y * gridRes.z) * 100 << "% " << std::endl;
-			ss << "==========================================" << std::endl;
-			appendResultsToFile(gridNames[g], ss.str());
-			ss.str("");
-
-			for (int b = 0; b < numberOfBucketSizes; b++) {
-				if (bucketSizes[b] > (gridRes.x * gridRes.y * gridRes.z) / 4.0f)
-					continue;
-
-				//binary
-				t->startTimer();
-				LBTBVH *lbtbvh = new LBTBVH(grid, gridRes, bucketSizes[b]);
-				t->endTimer();
-				constructionTime[0] = t->getMicroseconds();
-
-				//quad
-				t->startTimer();
-				LQTBVH *lqtbvh = new LQTBVH(grid, gridRes, bucketSizes[b]);
-				t->endTimer();
-				constructionTime[1] = t->getMicroseconds();
-
-				//paper
-				t->startTimer();
-				LBVH3 *lbvh3 = new LBVH3(grid, gridRes);
-				t->endTimer();
-				constructionTime[2] = t->getMicroseconds();
-
-				float avgTraverseTime[numberOfAlgorithms] = { 0,0,0 };
-				float avgIntersectionTests[numberOfAlgorithms] = { 0,0,0 };
-				float avgDensity[numberOfAlgorithms] = { 0,0,0 };
-
-				for (int x = 0; x < gridRes.x; x++) {
-					for (int y = 0; y < gridRes.y; y++) {
-						origin = glm::vec3(x + 0.2f, y + 0.2f, 0.5);
-						r = new Ray(origin, direction);
-						glm::vec3 val[numberOfAlgorithms];
-						float time[numberOfAlgorithms];
-
-						//Bucket bin
-						t->startTimer();
-						val[0] = lbtbvh->traverse(*r);
-						t->endTimer();
-						time[0] = t->getMicroseconds();
-						avgTraverseTime[0] += time[0];
-						avgIntersectionTests[0] += lbtbvh->intersectionsCount;
-						avgDensity[0] += val[0].z;
-
-						//quadtree
-						t->startTimer();
-						val[1] = lqtbvh->traverseTree(*r);
-						t->endTimer();
-						time[1] = t->getMicroseconds();
-						avgTraverseTime[1] += time[1];
-						avgIntersectionTests[1] += lqtbvh->intersectionsCount;
-						avgDensity[1] += val[1].z;
-
-						//Paper
-						t->startTimer();
-						val[2] = lbvh3->traverse(Ray(origin, direction));
-						t->endTimer();
-						time[2] = t->getMicroseconds();
-						avgTraverseTime[2] += time[2];
-						avgIntersectionTests[2] += lbvh3->intersectionsCount;
-						avgDensity[2] += val[2].z;
-					}
-				}
-
-				ss << "-----------------------------------------" << std::endl;
-				ss << "Current bucket Size: " << bucketSizes[b] << std::endl;
-				ss << std::endl << std::endl;
-
-				//TODO: estimated memory usage
-				ss << algorithmNames[0] << std::endl;
-				ss << lbtbvh->getStatus() << std::endl;
-
-				ss << algorithmNames[1] << std::endl;
-				ss << lqtbvh->getStatus() << std::endl;
-
-				ss << algorithmNames[2] << std::endl;
-				ss << lbvh3->getStatus() << std::endl;
-
-				ss << std::endl;
-				int winnerId = 0;
-				float bestimer = 99999999;
-				for (int a = 0; a < numberOfAlgorithms; a++) {
-					ss << algorithmNames[a] << " construction time: " << constructionTime[a] << std::endl;
-					if (constructionTime[a] < bestimer) {
-						bestimer = constructionTime[a];
-						winnerId = a;
-					}
-				}
-				ss << "Winner: " << algorithmNames[winnerId] << std::endl;
-				ss << "Ratio (Winner/paper): " << constructionTime[winnerId] / constructionTime[2] << std::endl;
-
-				//ss << std::endl;
-				//ss << avgConstructionTime(gridNames[g], bucketSizes[b], algorithmNames, numberOfAlgorithms);
-				//std::cout << "Avg. construction time done." << std::endl;
-
-				ss << std::endl;
-				winnerId = 0;
-				bestimer = 99999999;
-				for (int a = 0; a < numberOfAlgorithms; a++) {
-					float avgTime = avgTraverseTime[a] / (gridRes.x * gridRes.y);
-					ss << algorithmNames[a] << " avg. traverse time: " << avgTime << std::endl;
-					if (avgTime < bestimer) {
-						bestimer = avgTime;
-						winnerId = a;
-					}
-				}
-				ss << "Winner: " << algorithmNames[winnerId] << std::endl;
-				ss << "Ratio (Winner/paper): " << avgTraverseTime[winnerId] / avgTraverseTime[2] << std::endl;
-
-				ss << std::endl;
-				winnerId = 0;
-				bestimer = 999999999;
-				for (int a = 0; a < numberOfAlgorithms; a++) {
-					float avgIntersec = avgIntersectionTests[a] / (gridRes.x * gridRes.y);
-					ss << algorithmNames[a] << " avg. intersections tests: " << formatWithCommas(avgIntersec) << std::endl;
-					if (avgIntersec < bestimer) {
-						bestimer = avgIntersec;
-						winnerId = a;
-					}
-				}
-				ss << "Winner: " << algorithmNames[winnerId] << std::endl;
-				ss << "Ratio (Winner/paper): " << avgIntersectionTests[winnerId] / avgIntersectionTests[2] << std::endl;
-
-				ss << std::endl;
-				for (int a = 0; a < numberOfAlgorithms; a++) {
-					ss << algorithmNames[a] << " avg. density: " << avgDensity[a] << std::endl;
-				}
-
-				ss << "-----------------------------------------" << std::endl;
-				appendResultsToFile(gridNames[g], ss.str());
-				ss.str("");
-
-				std::cout << "Grid: \"" << gridNames[g] << "\" with bucket size " << bucketSizes[b] << " finished." << std::endl;
-				delete lbtbvh;
-				delete lqtbvh;
-				delete lbvh3;
-			}
-		}
-	}
-
-	void measurementTests() {
-		fileTests();
-
-		int const numberOfGrids = 1;
-		//std::string gridNames[numberOfGrids] = {"dragonHavard.vdb", "wdas_cloud_sixteenth.vdb", "wdas_cloud_eighth.vdb", "wdas_cloud_quarter.vdb"};
-		std::string gridNames[numberOfGrids] = {"wdas_cloud_eighth.vdb"};
-		int currentGrid = 0;
-		int const numberOfBucketSizes = 1;
-		//int bucketSizes[] = { 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048 };
-		int bucketSizes[numberOfBucketSizes] = {4};
-		int currentBucketSize = 0;
-		int const numberOfAlgorithms = 3;
-		float constructionTime[numberOfAlgorithms];
-		std::string algorithmNames[numberOfAlgorithms] = { "Bucket bin. tree", "Bucket quad tree", "Paper point tree"};
-
-		ResourceManager::getSelf()->loadVDBasTexture3D("cloud", "vdb/" + gridNames[currentGrid]);
-		float *grid = ResourceManager::getSelf()->getTexture3D("cloud")->floatData;
-		glm::vec3 gridRes = ResourceManager::getSelf()->getTexture3D("cloud")->getResolution();
-		bool testGrid = false;
-		if (testGrid) {
-			gridRes = glm::vec3(3, 3, 3);
-			grid = new float[gridRes.x * gridRes.y * gridRes.z];
-			for (int i = 0; i < gridRes.x * gridRes.y * gridRes.z; i++)
-				grid[i] = 1.0f;
-		}
-		Timer *t = new Timer();
-		//glm::vec3 origin = glm::vec3((res.x / 2.0f) + 0.2f, (res.y / 2.0f) + 0.2f, 0.5);
-		glm::vec3 origin = glm::vec3(1.0 + 0.2f, 84.0f + 0.2f, -1.0);
-		//glm::vec3 origin = glm::vec3(0.5f, 0.5f, -1.0);
-		glm::vec3 direction = glm::vec3(0, 0, 1);
-
-		Ray *r = new Ray(origin, direction);
-
-		std::cout << "Grid resolution: ";
-		printVec3(gridRes);
-		float empt = calculateEmptyRatio(grid, gridRes.x * gridRes.y * gridRes.z);
-		std::cout << "Emptiness: " <<  empt << std::endl;
-
-		//-------------------------------------------------
-		//Construction
-
-		t->startTimer();
-		LQTBVH *lqtbvh = new LQTBVH(grid, gridRes, bucketSizes[currentBucketSize]);
-		t->endTimer();
-		constructionTime[0] = t->getMicroseconds();
-
-		t->startTimer();
-		LBVH3 *lbvh3 = new LBVH3(grid, gridRes);
-		t->endTimer();
-		constructionTime[1] = t->getMicroseconds();
-
-		t->startTimer();
-		LBTBVH *lbtbvh = new LBTBVH(grid, gridRes, bucketSizes[currentBucketSize]);
-		t->endTimer();
-		constructionTime[2] = t->getMicroseconds();
-
-		//-------------------------------------------------
-		//Tree status
-		std::cout << lqtbvh->getStatus();
-		lbvh3->printStatus();
-		std::cout << lbtbvh->getStatus();
-
-		//-------------------------------------------------
-		//Single ray testing
-		std::cout << "------------------------" << std::endl;
-		float time[numberOfAlgorithms];
-		glm::vec3 res;
-
-		t->startTimer();
-		res = lqtbvh->traverseTree(*r);
-		t->endTimer();
-		std::cout << "Bucket quad tree approach" << std::endl;
-		std::cout << "Accumulated " << res.z << std::endl;
-		std::cout << "hit [" << res.x << ", " << res.y << "]" << std::endl;
-		time[0] = t->getMicroseconds();
-		t->printlnNanoSeconds();
-		std::cout << std::endl;
-
-		t->startTimer();
-		res = lbvh3->traverse(Ray(origin, direction));
-		t->endTimer();
-		std::cout << "Paper linear time bvh approach" << std::endl;
-		std::cout << "Accumulated " << res.z << std::endl;
-		std::cout << "hit [" << res.x << ", " << res.y << "]" << std::endl;
-		time[1] = t->getMicroseconds();
-		t->printlnNanoSeconds();
-		std::cout << std::endl;
-
-		t->startTimer();
-		res = lbtbvh->traverse(Ray(origin, direction));
-		t->endTimer();
-		std::cout << "Bucket binary tree refactored" << std::endl;
-		std::cout << "Accumulated " << res.z << std::endl;
-		std::cout << "hit [" << res.x << ", " << res.y << "]" << std::endl;
-		time[2] = t->getMicroseconds();
-		t->printlnNanoSeconds();
-		//std::cout << "------------------------" << std::endl;
-		//std::cout << "Performance ratio: " << time[0] / time[2] << std::endl;
-
-		std::cout << "------------------------" << std::endl;
-		std::cout << "Single ray traversing time" << std::endl << std::endl;
-		std::cout << "Bucket time: \t\t" << time[0] << std::endl;
-		std::cout << "Bucket quadtree time: \t" << time[1] << std::endl;
-		std::cout << "Paper time: \t\t" << time[2] << std::endl;
-		std::cout << "------------------------" << std::endl;
-
-		std::cout << "------------------------" << std::endl;
-		std::cout << "Single ray intersections done" << std::endl << std::endl;
-		std::cout << "Bucket: \t\t" << formatWithCommas(lbtbvh->intersectionsCount) << std::endl;
-		std::cout << "Bucket quadtree: \t" << formatWithCommas(lqtbvh->intersectionsCount) << std::endl;
-		std::cout << "Paper: \t\t\t" << formatWithCommas(lbvh3->intersectionsCount) << std::endl;
-		std::cout << "------------------------" << std::endl;
-
-		std::cout << "------------------------" << std::endl;
-		std::cout << "Construction time" << std::endl << std::endl;
-		std::cout << "Bucket time: \t\t" << constructionTime[0] << std::endl;
-		std::cout << "Bucket quadtree time: \t" << constructionTime[1] << std::endl;
-		std::cout << "Paper time: \t\t" << constructionTime[2] << std::endl;
-		std::cout << "------------------------" << std::endl;
-
-		//while (true)
-		//	continue;
-		res = ResourceManager::getSelf()->getTexture3D("cloud")->getResolution();
-		float avgTraverseTime[numberOfAlgorithms] = {0,0,0};
-		float avgIntersectionTests[numberOfAlgorithms] = {0,0,0};
-		float avgDensity[numberOfAlgorithms] = {0,0,0};
-		int numberOfCasesWhereILost = 0;
-		int numberOfCasesItWasAccZero = 0;
-		for (int x = 0; x < res.x; x++) {
-			//std::cout << x << " of " << res.x << std::endl;
-			for (int y = 0; y < res.y; y++) {
-				origin = glm::vec3(x + 0.2f, y + 0.2f, 0.5);
-				r = new Ray(origin, direction);
-				glm::vec3 val[numberOfAlgorithms];
-				float time[numberOfAlgorithms];
-
-				//Bucket bin
-				t->startTimer();
-				val[0] = lbtbvh->traverse(*r);
-				t->endTimer();
-				time[0] = t->getMicroseconds();
-				avgTraverseTime[0] += time[0];
-				avgIntersectionTests[0] += lbtbvh->intersectionsCount;
-				avgDensity[0] += val[0].z;
-
-				//quadtree
-				t->startTimer();
-				val[1] = lqtbvh->traverseTree(*r);
-				t->endTimer();
-				time[1] = t->getMicroseconds();
-				avgTraverseTime[1] += time[1];
-				avgIntersectionTests[1] += lqtbvh->intersectionsCount;
-				avgDensity[1] += val[1].z;
-
-				//Paper
-				t->startTimer();
-				val[2] = lbvh3->traverse(Ray(origin, direction));
-				t->endTimer();
-				time[2] = t->getMicroseconds();
-				avgTraverseTime[2] += time[2];
-				avgIntersectionTests[2] += lbvh3->intersectionsCount;
-				avgDensity[2] += val[2].z;
-
-				if (time[0] > time[2]) {
-					/*std::cout << "Bucket took more time" << std::endl;
-					std::cout << "bucket time: " << t1 << std::endl;
-					std::cout << "paper time: " << t2 << std::endl;
-					std::cout << "bucket acc: " << val[0].z << std::endl;
-					std::cout << "paper acc: " << val[2].z << std::endl;
-					printVec3(origin);*/
-					numberOfCasesWhereILost++;
-					if (val[0].z == 0)
-						numberOfCasesItWasAccZero++;
-				}
-
-				if (val[0].z != val[2].z) {
-					/*std::cout << "bucket refactored: \t" << val[3].z << std::endl;
-					std::cout << "paper: \t\t\t" << val[2].z << std::endl;
-					std::cout << "ERROR" << std::endl;*/
-				}
-			}
-		}
-
-		std::cout << "------------------------" << std::endl;
-		std::cout << "Whole grid testing" << std::endl << std::endl;
-		std::cout << "Bucket binary approach" << std::endl;
-		std::cout << "Avg time: " << avgTraverseTime[0] / (res.x * res.y) << std::endl;
-		std::cout << "\t ~" << std::endl;
-
-		std::cout << "Bucket quadtree approach" << std::endl;
-		std::cout << "Avg time: " << avgTraverseTime[1] / (res.x * res.y) << std::endl;
-		std::cout << "\t ~" << std::endl;
-
-		std::cout << "Paper approach" << std::endl;
-		std::cout << "Avg time: " << avgTraverseTime[2] / (res.x * res.y) << std::endl;
-		std::cout << "\t ~" << std::endl;
-
-		std::cout << "Bucket binary refactored approach" << std::endl;
-		std::cout << "Avg time: " << avgTraverseTime[3] / (res.x * res.y) << std::endl;
-		std::cout << "------------------------" << std::endl;
-
-		std::cout << "Cases lost: " << numberOfCasesWhereILost << "/" << res.x*res.y <<std::endl;
-		std::cout << "Cases lost with acc 0: " << numberOfCasesItWasAccZero << "/" << res.x*res.y <<std::endl;
-		std::cout << '\a';
-
-		while (true)
-			continue;
-	}
-
 	void init(Camera c, Settings s) {
-	
-		measurementTests();
-		while (true) continue;
-		//glm::vec3 lookFrom(0.0f, 0, 4.5f);
-		//glm::vec3 lookAt(0, 0, -1);
-		//Camera cam(lookFrom, lookAt, glm::vec3(0, 1, 0), 45.0f, float(windowWidth) / float(windowHeight), 0.0001f, (lookFrom - lookAt).length());
 		cam = c;
 		spp = s.spp;
 		windowWidth = s.resolution.x;
 		windowHeight = s.resolution.y;
 		totalPixels = windowWidth * windowHeight;
-		maxDepth = s.bounces;
+		maxBounces = s.bounces;
 
 		//Transfers all data from ResourceManager to local vector for faster processing
 		std::map<std::string, Model*> m = ResourceManager::getSelf()->getModels();
@@ -683,25 +287,6 @@ public:
 			if(!isAllZero(m->emitted(0,0,glm::vec3(0))))
 				emitters.push_back(it->second);
 		}
-
-		//LBVH2 *lbvh = new LBVH2(ResourceManager::getSelf()->getTexture3D("cloud")->floatData, ResourceManager::getSelf()->getTexture3D("cloud")->getResolution());
-		//models.push_back(new Volume(new GridMaterial(lbvh), lbvh));
-		//models.push_back(new Sphere(lightPos, 0.2f, new DiffuseLight(glm::vec3(20.5f))));
-		//models.push_back(new Sphere(glm::vec3(0, 1.0, 1.0f), 0.5f, new DiffuseMaterial(glm::vec3(1.0, 0.1, 0.1))));
-		//models.push_back(new Sphere(glm::vec3(1.0f, 1.0, -1.0f), 0.5f, new DielectricMaterial(1.5f)));
-		//models.push_back(new Sphere(glm::vec3(0, -300.5f, -1), 300.0f, new DiffuseMaterial(glm::vec3(0.5, 0.5, 0.5))));
-
-		/*for (int x = 0; x < 0; x++) {
-			glm::vec3 center((2 * random() - 1) * 3, 0.0f, 3.0f * (2 * random() - 1));
-			float materialChance = random();
-
-			if (materialChance < 0.8)
-				models.push_back(&*(new Sphere(center, 0.35f * random(), new DiffuseMaterial(glm::vec3(random()*random(), random()*random(), random()*random())))));
-			else if (materialChance < 0.95)
-				models.push_back(&*(new Sphere(center, 0.35f * random(), new MetalMaterial(glm::vec3(0.5 * (1 + random()), 0.5 * (1 + random()), 0.5 * (1 + random()))))));
-			else
-				models.push_back(&*(new Sphere(center, 0.35f * random(), new DielectricMaterial(1.5f))));
-		}*/
 
 		if (MULTI_THREAD_MODE) {
 			numOfThreads = 8;
@@ -716,8 +301,21 @@ public:
 	}
 
 	//TODO: gamma correction and tone mapping
-	glm::ivec3 postProcessing(glm::vec3 v) {
-		return glm::max( glm::vec3(0,0,0), glm::min(v, glm::vec3(maxValueChannel)));
+	glm::ivec3 postProcessing(glm::vec3 hdrColor) {
+		const float gamma = 2.2;
+		const float exposure = 0.5;
+
+		// reinhard tone mapping
+		//glm::vec3 mapped = hdrColor / (hdrColor + glm::vec3(1.0f));
+
+		//exposure tone mapping
+		glm::vec3 mapped = glm::vec3(1.0) - glm::exp(-hdrColor * exposure);
+		// gamma correction 
+		mapped = glm::pow(mapped, glm::vec3(1.0f / gamma));
+
+		mapped *= float(maxValueChannel);
+
+		return glm::max( glm::vec3(0,0,0), glm::min(mapped, glm::vec3(maxValueChannel)));
 	}
 
 	void tiledRendering(Camera cam, int index, std::atomic<bool> &p) {
@@ -734,22 +332,67 @@ public:
 					float v = float(y + random()) / windowHeight;
 					Ray r = cam.getRayPassingThrough(u, v);
 					//color += calculateColor(r, 0);
-					color += calculateColorWithExplicitLight(r, 0);
+					//color += calculateColorWithExplicitLight(r, 0);
+					color += calculateColorBRDF(r, 0);
 					//color += calculateColorNaive(r, 0);
 				}
 				color = color / float(spp);
-				color = float(maxValueChannel) * glm::vec3(sqrt(color.x), sqrt(color.y), sqrt(color.z));
+				//color = float(maxValueChannel) * glm::vec3(sqrt(color.x), sqrt(color.y), sqrt(color.z));
 				pixels[to1D(windowWidth, windowHeight, x, y, 0)] = postProcessing(color); 
 			}
 
 		p = true;
 	}
 
+	void test() {
+		glm::vec3 albedo = glm::vec3(0.722, 0.451, 0.2);
+		RoughConductorBRDF *brdf = new RoughConductorBRDF(0.01f, 1.0f, albedo);
+		glm::vec3 incomingDir = glm::normalize(glm::vec3(1,-1,0));
+		Ray incoming{glm::vec3(-100,100,0), incomingDir};
+		Ray scattered;
+		Hit hit;
+		hit.normal = glm::vec3(0,1,0);
+		hit.p = glm::vec3(-10, 10, 0);
+		float pdf = 0;
+
+		float batata = 1.0f / 10000000000.0f;
+		std::cout << "cocota " << batata << std::endl;
+		
+		brdf->sample(incoming, scattered, hit);
+		//scattered.d = glm::reflect(glm::normalize(incoming.d), glm::normalize(hit.normal));
+		//scattered.d = glm::normalize(glm::vec3(1, 0.01, 0));
+		glm::vec3 scatteredDir = scattered.direction;
+		glm::vec3 norm = glm::normalize(scatteredDir);
+		glm::vec3 res = brdf->eval(incoming, scattered, hit, pdf);
+		glm::vec3 resWithPdf = res * 1.0f/pdf;
+		std::cout << "incoming: \t";
+		printVec3(-incoming.direction);
+		std::cout << "scattered: \t";
+		printVec3(scattered.direction);
+		std::cout << "albedo: \t";
+		printVec3(albedo);
+		std::cout << "BRDF: \t\t";
+		printVec3(res);
+		std::cout << "PDF: \t\t";
+		std::cout << pdf << std::endl;
+		std::cout << "BRDF * PDF: \t";
+		printVec3(res*pdf);
+		std::cout << "BRDF * 1/PDF: \t";
+		printVec3(res * 1.0f / pdf);
+		float angle = glm::dot(-incoming.direction, scatteredDir);
+		int stop = 0;
+
+
+		while (true)
+			continue;
+	}
+
 	void mainLoop() {
+		//test();
 		Timer t;
 		std::ofstream file;
-		file.open("output.ppm");
-		file << "P3\n" << windowWidth << " " << windowHeight << "\n" << maxValueChannel << "\n";
+		file.open("output.ppm", std::ios::binary);
+		file << "P6\n" << windowWidth << " " << windowHeight << "\n" << maxValueChannel << "\n";
 		std::cout << "Processing..." << std::endl;
 		t.startTimer();
 
@@ -778,8 +421,27 @@ public:
 			for (int i = 0; i < numOfThreads; i++)
 				threads[i].join();
 
-			for(int i = totalPixels - 1; i >= 0 ; i--)
-				file << (int)pixels[i].x << " " << (int)pixels[i].y << " " << (int)pixels[i].z << "\n";
+			for (int i = totalPixels - 1; i >= 0; i--) {
+				//file << (int)pixels[i].x << " " << (int)pixels[i].y << " " << (int)pixels[i].z << "\n";
+				uint16_t x = pixels[i].x;
+				uint16_t y = pixels[i].y;
+				uint16_t z = pixels[i].z;
+				//std::cout << x << " " << y << " " << z << std::endl;
+				
+				uint8_t out[2];
+				out[0] = (x >> 8) & 0xFF;
+				out[1] = x & 0xFF;
+				file.write(reinterpret_cast<const char*>(&out), sizeof(uint16_t));
+
+				out[0] = (y >> 8) & 0xFF;
+				out[1] = y & 0xFF;
+				file.write(reinterpret_cast<const char*>(&out), sizeof(uint16_t));
+
+				out[0] = (z >> 8) & 0xFF;
+				out[1] = z & 0xFF;
+				file.write(reinterpret_cast<const char*>(&out), sizeof(uint16_t));
+
+			}
 
 		}else {
 			//writes from left to right, from top to bottom.
@@ -807,7 +469,7 @@ public:
 						float u = float(x + random()) / windowWidth;
 						float v = float(y + random()) / windowHeight;
 						Ray r = cam.getRayPassingThrough(u, v);
-						color += calculateColor(r, 0);
+						color += calculateColorRecursive(r, 0);
 					}
 					color = color / float(spp);
 					color = float(maxValueChannel) * glm::vec3(sqrt(color.x), sqrt(color.y), sqrt(color.z));

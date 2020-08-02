@@ -32,6 +32,10 @@ public:
 	virtual glm::vec3 emitted(float u, float v, glm::vec3 p) {
 		return glm::vec3(0);
 	}
+	virtual glm::vec3 getAlbedo(float u, float v, glm::vec3 p) {
+		return glm::vec3(0);
+	}
 
+	/*Given incoming ray and hit context, generates scattered ray, attenuation and pdf*/
 	virtual bool scatter(Ray &rayIn, Hit &hit, glm::vec3 &attenuation, Ray &scattered, float &pdf) = 0;
 };

@@ -6,8 +6,7 @@
 #include "Texture1D.h"
 #include "FBO.h"
 #include "imgui.h"
-#include "LBVH.h"
-#include "LBVH2.h"
+#include "BucketLBVH.h"
 #include <glm/glm.hpp>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -73,7 +72,7 @@ public:
 	bool firstPass = true;
 	int SPP = 1;
 	bool clearRayTracing = true;
-	int currentModel = 0;
+	int currentModel = 1;
 	const char* models[6] = {"cloud", "dragonHavard", "fireball", "explosion", "bunny_cloud", "explosion"};
 	std::string currentModelResolution = "";
 
@@ -82,12 +81,9 @@ public:
 	const char* phaseFunctionOptions[3] = { "Isotropic", "Rayleigh", "Henyey-Greenstein" };
 
 	//LBVH
-	LBVH *lbvh;
-	glm::vec3 lbvhres = glm::vec3(512, 512, 512);
+	BucketLBVH *lbvh;
+	glm::vec3 lbvhres;
 	Texture3D nodes;
-
-	//LBVH2
-	LBVH2 *lbvh2;
 
 	void init(GLint width, GLint height, Renderer *r, Camera *c) {
 		this->WIDTH = width;
@@ -119,53 +115,52 @@ public:
 		staticCam = glm::lookAt(position, position + front, up);
 	}
 
-	void lbvhBin() {
-		lbvhres = ResourceManager::getSelf()->getTexture3D(models[currentModel])->getResolution();
-		lbvhres = glm::vec3(256, 256, 256);
-		std::cout << "LBVH size: " << lbvhres.x << ", " << lbvhres.y << ", " << lbvhres.z << std::endl;
-		lbvh = new LBVH(lbvhres);
-
-		nodes.loadToMemory(lbvhres.x, lbvhres.y, lbvhres.z, 3, lbvh->data);
-		std::cout << lbvh->data[3];
-
-		GLuint ssboMax;
-		glGenBuffers(1, &ssboMax);
-		glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssboMax);
-		glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(int) * lbvhres.x * lbvhres.y * lbvhres.z * 3, lbvh->data, GL_STATIC_DRAW);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 10, ssboMax);
-		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-	}
-
+	GLuint ssboNode, ssboOffsets, ssboMorton;
+	Texture2D *nodeTex, *offsetsTex;
 	void lbvhBucket() {
 		lbvhres = ResourceManager::getSelf()->getTexture3D(models[currentModel])->getResolution();
 		std::cout << "LBVH size: " << lbvhres.x << ", " << lbvhres.y << ", " << lbvhres.z << std::endl;
-		lbvh2 = new LBVH2(ResourceManager::getSelf()->getTexture3D(models[currentModel])->floatData, lbvhres);
+		lbvh = new BucketLBVH(ResourceManager::getSelf()->getTexture3D(models[currentModel])->floatData, lbvhres, 32);
 
-		GLuint ssboNodeData;
-		glGenBuffers(1, &ssboNodeData);
-		glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssboNodeData);
-		glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(int) * lbvh2->dataSize, lbvh2->node, GL_STATIC_DRAW);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 10, ssboNodeData);
+		std::cout << lbvh->node[2] << ", " << lbvh->node[3] << std::endl;
+		std::cout << decodeSimple3D(lbvh->node[3]).x << ", " << decodeSimple3D(lbvh->node[3]).y << ", " << decodeSimple3D(lbvh->node[3]).z << std::endl;
+		std::cout << lbvh->offsets[1] << ", " << lbvh->offsets[2] << ", " << lbvh->offsets[3] << std::endl;
+
+		glGenBuffers(1, &ssboNode);
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssboNode);
+		glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(int) * lbvh->nodesSize, lbvh->node, GL_STATIC_DRAW);
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, ssboNode);
 		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
-		GLuint ssboOffsets;
 		glGenBuffers(1, &ssboOffsets);
 		glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssboOffsets);
-		glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(int) * lbvh2->amountOfBuckets, lbvh2->offsets, GL_STATIC_DRAW);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 11, ssboOffsets);
+		glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(int) * lbvh->amountOfBuckets, lbvh->offsets, GL_STATIC_DRAW);
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, ssboOffsets);
 		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
-		GLuint ssboMax;
-		glGenBuffers(1, &ssboMax);
-		glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssboMax);
-		glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(int) * lbvh2->mortonCodesSize, lbvh2->mortonCodes, GL_STATIC_DRAW);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 12, ssboMax);
+		glGenBuffers(1, &ssboMorton);
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssboMorton);
+		glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(int) * lbvh->mortonCodesSize, lbvh->mortonCodes, GL_STATIC_DRAW);
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, ssboMorton);
 		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+
+
+		int stride = 256; //should be maxTex2D dimension -1?
+		nodeTex = new Texture2D();
+		int height = lbvh->nodesSize/ stride;
+		int width = stride;
+		int vecSize = height * width * 2;
+		int *data = new int[height * width * 2];
+
+		std::fill(data, data + vecSize, 0);
+		std::copy(lbvh->node, lbvh->node + lbvh->nodesSize, data);
+		std::cout << data[2] << ", " << data[3] << std::endl;
+		nodeTex->loadToMemory(width, height, 1, lbvh->node);
+		nodeTex->loadToOpenGL(width, height, GL_R32I, GL_RED_INTEGER, GL_INT, GL_CLAMP_TO_BORDER, GL_NEAREST, data);
 	}
 
 	void load() {
-		lbvhBin();
-		//lbvhBucket();
+		lbvhBucket();
 	}
 
 	void updateUI() {
@@ -204,6 +199,9 @@ public:
 
 		currentShader = "volumelbvh";
 		ResourceManager::getSelf()->getShader(currentShader).use();
+		//glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, ssboNode);
+		//glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, ssboOffsets);
+		//glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, ssboMorton);
 		glm::vec3 camPos = *(camera->getPosition());
 		
 
@@ -232,6 +230,12 @@ public:
 		ResourceManager::getSelf()->getShader(currentShader).setInteger("previousCloud", 3);
 		previousFrame.bind();
 
+		glActiveTexture(GL_TEXTURE4);
+		ResourceManager::getSelf()->getShader(currentShader).setInteger("nodeTex", 4);
+		nodeTex->bind();
+		ResourceManager::getSelf()->getShader(currentShader).setIntegerVec2("nodeTexSize", nodeTex->getResolution());
+
+
 		ResourceManager::getSelf()->getShader(currentShader).setIntegerVec3("lbvhSize", lbvhres);
 
 		float time = ((sin(glm::radians(glfwGetTime() * 100)) + 1) / 2) * 1;
@@ -246,13 +250,13 @@ public:
 		ResourceManager::getSelf()->getShader(currentShader).setMat4("proj", proj);
 		ResourceManager::getSelf()->getShader(currentShader).setFloat("time", glfwGetTime());
 		ResourceManager::getSelf()->getShader(currentShader).setInteger("SPP", SPP);
-		ResourceManager::getSelf()->getShader(currentShader).setInteger("frameCount", frameCount);
-		//ResourceManager::getSelf()->getShader(currentShader).setInteger("levels", lbvh2->levels);
-		//ResourceManager::getSelf()->getShader(currentShader).setInteger("nodesSize", lbvh2->nodesSize);
+		ResourceManager::getSelf()->getShader(currentShader).setInteger("frameCount", frameCount++);
+		ResourceManager::getSelf()->getShader(currentShader).setInteger("numberOfNodes", lbvh->numberOfNodes);
+		ResourceManager::getSelf()->getShader(currentShader).setInteger("levels", lbvh->levels);
+		ResourceManager::getSelf()->getShader(currentShader).setInteger("nodesSize", lbvh->nodesSize);
 		ResourceManager::getSelf()->getShader(currentShader).setVec3("cameraPosition", camPos.x, camPos.y, camPos.z);
 
 		(*renderer).render(ResourceManager::getSelf()->getModel("cubeTest"));
-		frameCount++;
 	}
 
 	void renderLightPosition() {

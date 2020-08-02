@@ -3,18 +3,18 @@
 #include "Ray.h"
 #include "Material.h"
 #include "GridMaterial.h"
-#include "LBVH2.h"
+#include "BucketLBVH.h"
 #include "Math.h"
 #include <bitset>
 #include <limits>
 #include <glm/glm.hpp>
-#define DEBUG_VOLUME false
+//#define DEBUG_VOLUME false
 
 class Volume : public Model {
 public:
 	float radius;
 	GridMaterial *material;
-	LBVH2 *lbvh;
+	BucketLBVH *lbvh;
 
 	Volume(GridMaterial *material) {
 		this->lbvh = material->lbvh;

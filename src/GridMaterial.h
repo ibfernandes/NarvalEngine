@@ -1,7 +1,6 @@
 #pragma once
 #include "Material.h"
-#include "LBVH.h"
-#include "LBVH2.h"
+#include "BucketLBVH.h"
 #include "Math.h"
 #include <vector>
 #include <math.h>
@@ -28,10 +27,10 @@ public:
 		absorptionAvg = (absorption.x + absorption.y + absorption.z) / 3.0f;
 		phaseFunctionOption = phaseFunction;
 
-		lbvh = new LBVH2(ResourceManager::getSelf()->getTexture3D(material)->floatData, ResourceManager::getSelf()->getTexture3D(material)->getResolution());
+		lbvh = new BucketLBVH(ResourceManager::getSelf()->getTexture3D(material)->floatData, ResourceManager::getSelf()->getTexture3D(material)->getResolution());
 	}
 
-	LBVH2 *lbvh;
+	BucketLBVH *lbvh;
 	glm::vec3 scattering = glm::vec3(0.45f, 0.25f, 0.25f);
 	glm::vec3 absorption = glm::vec3(1.801f, 0.801f, 0.801f);
 	glm::vec3 extinction = absorption + scattering;

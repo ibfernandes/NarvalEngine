@@ -14,6 +14,15 @@ uniform mat4 proj;
 uniform vec3 cameraPosition;
 
 void main(){
+
+    scale.x = model[0][0];
+    scale.y = model[1][1];
+    scale.z = model[2][2];
+
+    translation.x = model[3][0];
+    translation.y = model[3][1];
+    translation.z = model[3][2];
+    
     vertCoord = vertex;
     vec3 posWCS = vec3(model * vec4(vertex, 1.0));
     rayDirection = posWCS - cameraPosition;

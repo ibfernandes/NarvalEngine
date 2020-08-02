@@ -23,6 +23,7 @@ class ResourceManager {
 private:
 	ResourceManager();
 	static ResourceManager* self;
+	int modelId = 0;
 	std::map<std::string, Shader> shaders;
 	std::map<std::string, Model*> models;
 	std::map<std::string, Material*> materials;

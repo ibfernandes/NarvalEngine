@@ -4,6 +4,7 @@
 class Material;
 struct Hit {
 	float t;
+	int modelId;
 	glm::vec3 p;
 	glm::vec3 normal;
 	Material *material;

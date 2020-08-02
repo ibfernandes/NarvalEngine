@@ -21,6 +21,7 @@ public:
 	~Model();
 	std::vector<Mesh> meshes;
 	Geometry *geometry;
+	int modelId;
 
 	GLfloat *vertAttrib;
 	std::string relativePath;

@@ -5,13 +5,45 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 #include <iostream>
+#include <glm/glm.hpp>
 
 class Texture2D
 {
+private:
+	int width, height;
+	int channels;
 public:
 	Texture2D();
 	~Texture2D();
 	GLuint id;
+	int *intData;
+
+	void loadToMemory(int width, int height, int nmrChannels, int *data) {
+		this->width = width;
+		this->height = height;
+		this->channels = nmrChannels;
+		this->intData = new int[width * height];
+		std::copy(data, data + width * height, this->intData);
+	}
+
+	void loadToOpenGL(int width, int height, int internalFormat, int format, int type, int wrap, int filter, int *data) {
+		glGenTextures(1, &(this->id));
+		glBindTexture(GL_TEXTURE_2D, id);
+
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap);
+
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter);
+
+		glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, type, data);
+
+		glBindTexture(GL_TEXTURE_2D, 0);
+	}
+
+	glm::vec2 getResolution() {
+		return glm::vec2(width, height);
+	}
 
 	void generateWithData(const aiTexture *t) {
 		this->width = t->mWidth;
@@ -115,8 +147,5 @@ public:
 	void bind() {
 		glBindTexture(GL_TEXTURE_2D, id);
 	}
-
-private:
-	int width, height;
 };
 

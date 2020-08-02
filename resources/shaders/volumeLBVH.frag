@@ -6,30 +6,37 @@
 out vec4 color; 
 in vec3 rayDirection;
 in vec3 vertCoord;
+in vec3 translation;
+in vec3 scale;
 
 //LBVH
-uniform ivec3 lbvhSize;
-
 //interleaved as node, min, max for LBVH1
 // and min, max for LBVH2
-layout(std430, binding = 10) readonly buffer nodeBlock
+layout(std140, binding = 1) readonly buffer nodeBlock
 {
-    int node[];
+    ivec4 node[];
 };
 
-layout(std430, binding = 11) readonly buffer offsetsBlock
+layout(std140, binding = 2) readonly buffer offsetsBlock
 {
-    int offsets[];
+    ivec4 offsets[];
 };
 
-layout(std430, binding = 12) readonly buffer mortonCodesBlock
+layout(std140, binding = 3) readonly buffer mortonCodesBlock
 {
-    int mortonCodes[];
+    ivec4 mortonCodes[];
 };
 
-uniform int levels;
 uniform int nodesSize;
-uniform isampler3D nodes;
+uniform int numberOfNodes;
+uniform int levels;
+uniform ivec3 lbvhSize;
+uniform isampler2D nodeTex;
+uniform ivec2 nodeTexSize;
+uniform isampler2D offsetsTex;
+uniform isampler2D mortonCodesTex;
+//0 = binary, 1 = quad, 2 = oct
+uniform int treeMode = 0;
 
 uniform sampler3D volume;
 uniform sampler2D background;
@@ -145,17 +152,31 @@ vec2 intersectBox(vec3 orig, vec3 dir) {
 	return intersectBox(orig, dir, boxMin, boxMax);
 }
 
+vec3 decodeSimple3D(int value) {
+	uvec3 res;
+	uint v = value & 0x3FFFFFFF;
+	res.z = v >> 20;
+	res.y = (v << 12) >> 22;
+	res.x = (v << 22) >> 22;
+	return res;
+}
+
+vec3 convertToWorldCoordinates(vec3 vec){
+	return (vec / lbvhSize) * scale + translation;
+}
+
+vec3 getWCS(vec3 v){
+	return convertToWorldCoordinates(v);	
+}
+
+vec3 getWCSNode(int simpleEncoded){
+	vec3 r = decodeSimple3D(simpleEncoded);
+	return convertToWorldCoordinates(r);
+}
+
 vec3 getWCS(int morton) {
 	vec3 r = decodeMorton3D(morton);
-	return vec3(r.x, r.y, r.z) / lbvhSize;
-}
-
-vec3 getWCS(float x, float y, float z) {
-	return vec3(x, y, z) / lbvhSize;
-}
-
-vec3 getWCS(vec3 m) {
-	return getWCS(m.x, m.y, m.z);
+	return convertToWorldCoordinates(r);
 }
 
 int setEmptyBit(int mortonCode) {
@@ -164,145 +185,6 @@ int setEmptyBit(int mortonCode) {
 
 bool isEmpty(int mortonCode) {
   return ((mortonCode & 0x80000000) == 0x80000000) ? true : false;
-}
-
-vec3 traverseTree2(Ray r) {
-	int currentNode = 1;
-	int currentLevel = 0;
-
-	vec2 t = intersectBox(r.origin, r.direction, getWCS(node[currentNode * 2]), getWCS(node[currentNode * 2 + 1]));
-	vec2 finalt = vec2(FLOAT_MAX, -FLOAT_MAX);
-	if (t.x > t.y)
-		return vec3(finalt, 0);
-
-
-	float accumulated = 0;
-	int firstNodeAtDeepestLevel = int(pow(2, levels - 1));
-
-	int marker[MAX_LEVELS];
-	for (int i = 0; i < levels; i++)
-		marker[i] = 0;
-
-
-	while (currentNode != nodesSize) {
-		bool miss = false;
-
-		if (isEmpty(node[currentNode * 2]))
-			miss = true;
-		else {
-			t = intersectBox(r.origin, r.direction, getWCS(node[currentNode * 2]), getWCS(node[currentNode * 2 + 1]));
-			if (t.x > t.y)
-				miss = true;
-		}
-
-		marker[currentLevel]++;
-
-		//if miss
-		if (miss) {
-
-			int tempNode = currentNode;
-
-			//find rightmost leaf
-			while (tempNode * 2 + 1 <= nodesSize)
-				tempNode = 2 * tempNode + 1;
-
-			//if rightmost leaf is the last one of the tree, which means we're on root's right child, then this miss means a break 
-			if (tempNode == nodesSize)
-				break;
-
-			int newLevel;
-			//Starts at parent level and checks the first one with an odd marker
-			for (int i = currentLevel; i >= 0; i--)
-				//if odd, means that we should go to the right child of the parent node of current node at this level
-				if (marker[i] % 2 == 1) {
-					newLevel = i;
-					break;
-				}
-
-			int newNode = currentNode;
-			for (int i = 0; i <= (currentLevel - newLevel); i++)
-				newNode = newNode / 2;
-
-			currentNode = 2 * newNode + 1;
-			currentLevel = newLevel;
-			continue;
-		}
-
-		//If we are checking a leaf node
-		if (currentNode >= firstNodeAtDeepestLevel) {
-			int offsetsPosition = currentNode - firstNodeAtDeepestLevel;
-			int startingIndex;
-			int elementsOnThisBucket = 0;
-
-			if (offsetsPosition == 0) {
-				startingIndex = 0;
-				elementsOnThisBucket = offsets[offsetsPosition];
-			}
-			else {
-				startingIndex = offsets[offsetsPosition - 1];
-				elementsOnThisBucket = offsets[offsetsPosition] - offsets[offsetsPosition - 1];
-			}
-
-			//for each voxel on this bucket (leaf node), check which ones does in fact intersect this ray.
-			for (int i = 0; i < elementsOnThisBucket; i++) {
-				int morton = mortonCodes[startingIndex + i];
-				vec3 min, max;
-				min = decodeMorton3D(morton);
-				max = min + 1.0f;
-
-				vec2 t2 = intersectBox(r.origin, r.direction, getWCS(min), getWCS(max));
-
-				//if intersects this voxel at current bucket, accumulate density and update intersection t's
-				if (t2.x <= t2.y) {
-
-					accumulated += texture(volume, getWCS(min.x, min.y, min.z)).r;
-					if (t2.x < finalt.x)
-						finalt.x = t2.x;
-					if (t2.y >= finalt.y)
-						finalt.y = t2.y;
-					//intersectedMorton.push_back(morton);
-				}
-			}
-
-			//if this leaft node is the left child of its parent, then the next one to test is the right child of its parent.
-			if (currentNode % 2 == 0)
-				currentNode++;
-			else {
-				int newLevel;
-				//Starts at parent level and checks the first one with an odd marker
-				for (int i = currentLevel - 1; i >= 0; i--)
-					//if odd, means that we should go to the right child of the parent node of current node at this level
-					if (marker[i] % 2 == 1) {
-						newLevel = i;
-						break;
-					}
-
-				int newNode = currentNode;
-				for (int i = 0; i <= (currentLevel - newLevel); i++)
-					newNode = newNode / 2;
-
-				currentNode = 2 * newNode + 1;
-				currentLevel = newLevel;
-			}
-		}
-		else {
-			currentNode = 2 * currentNode;
-			currentLevel++;
-
-			if (currentNode > nodesSize) {
-				currentNode = currentNode / 2;
-				currentLevel--;
-				currentNode++;
-			}
-
-
-		}
-
-		if (currentNode == nodesSize)
-			break;
-	}
-
-	return vec3(finalt, accumulated);
 }
 
 vec3 get3DTexAs1D(int index, isampler3D tex){
@@ -316,94 +198,213 @@ vec3 get3DTexAs1D(int index, isampler3D tex){
 	return texture(tex, coord).rgb;
 }
 
+int powBase8(int exponent) {
+	return 1 << (exponent * 3);
+}
+
+int powBase2(int exponent) {
+	return 1 << (exponent);
+}
+
+int sumOfBase2(int exponent) {
+	int sum = 1;
+	for (int i = 1; i <= exponent; i++)
+		sum += powBase2(i);
+	return sum;
+}
+
+int sumOfBase8(int exponent) {
+	int sum = 1;
+	for (int i = 1; i <= exponent; i++)
+		sum += powBase8(i);
+	return sum;
+}
+
+int sumOfBaseN(int exponent) {
+	if(treeMode == 0){
+		return sumOfBase2(exponent);
+	}else if(treeMode == 2){
+		return sumOfBase8(exponent);
+	}
+	return -1;
+}
+
+int getLeftmostChild(int node, int leftmost, int rightmost) {
+	if(treeMode == 0)
+		return node + (rightmost - node) + 2 * (node - leftmost) + 1;
+	else if(treeMode == 2)
+		return node + (rightmost - node) + 8 * (node - leftmost) + 1;
+}
+
+int getRightmostChild(int node, int leftmost, int rightmost) {
+	if(treeMode == 0)
+		return getLeftmostChild(node, leftmost, rightmost) + 1;
+	else if(treeMode == 2)
+		return getLeftmostChild(node, leftmost, rightmost) + 7;
+}
+
+int getLeftmosChild(int node, int lvl) {
+	int leftmost;
+	int rightmost;
+	if(treeMode == 0){
+		leftmost = sumOfBase2(lvl) - powBase2(lvl) + 1;
+		rightmost = sumOfBase2(lvl);
+	}else if(treeMode == 2){
+		leftmost = sumOfBase8(lvl) - powBase8(lvl) + 1;
+		rightmost = sumOfBase8(lvl);
+	}
+	return getLeftmostChild(node, leftmost, rightmost);
+}
+
+int getRightmostChild(int node, int lvl) {
+	if(treeMode == 0)
+		return getLeftmosChild(node, lvl) + 1;
+	else if(treeMode == 2)
+		return getLeftmosChild(node, lvl) + 7;
+}
+
+int getParent(int node) {
+	float div;
+	float res;
+
+	if (treeMode == 0) {
+		div = node / 2.0f;
+		res = floor(div);
+	}else if(treeMode == 2) {
+		div = node / 8.0f;
+		res = ceil(div - 0.125f);
+	}
+	return int(div);
+}
+
+int getNode(int index){
+	/*int arrIndex = index/4;
+	int coord = index % 4;
+	return node[arrIndex][coord];*/
+
+	int y = index/nodeTexSize.x;
+	int x = index % nodeTexSize.x;
+	
+	return texelFetch(nodeTex, ivec2(x, y), 0).r;
+}
+
+int getOffset(int index){
+	int arrIndex = index/4;
+	int coord = index % 4;
+	return offsets[arrIndex][coord];
+}
+
+int getMorton(int index){
+	int arrIndex = index/4;
+	int coord = index % 4;
+	return mortonCodes[arrIndex][coord];
+}
+
 vec3 traverseTree(Ray r) {
 	int currentNode = 1;
-	int side = 0;
-	vec2 t = intersectBox(r.origin, r.direction, getWCS(node[currentNode * 3 + 1]), getWCS(node[currentNode * 3 + 2]));
-	vec2 finalt = vec2(FLOAT_MAX, -FLOAT_MAX);
-	int currentMorton = 0;
+	int currentLevel = 0;
+	int offsetMinMax = 2;
+
+	vec2 t = intersectBox(r.origin, r.direction, getWCSNode(getNode(currentNode * offsetMinMax - 1)), getWCSNode(getNode(currentNode * offsetMinMax)));
+	vec2 finalt = vec2(99999, -99999);
+
+	if (t.x > t.y)
+		return vec3(finalt, 0);
+
 	float accumulated = 0;
-	int vectorSize = int(lbvhSize.x * lbvhSize.y * lbvhSize.z);
+	int firstNodeAtDeepestLevel;
+	if (treeMode == 0) 
+		firstNodeAtDeepestLevel = numberOfNodes - powBase2(levels - 1) + 1;
+	else if (treeMode == 2)
+		firstNodeAtDeepestLevel = numberOfNodes - powBase8(levels - 1) + 1;
 
-	if (t.x > t.y) {
-		return vec3(9999.0f, -9999.0f, 0.0f);
-	}
+	while (currentNode != numberOfNodes) {
+		bool miss = false;
 
-	//Three ways of ignoring a sub tree:
-	// 1 - empty bit is set to 1, which means there's no density.
-	// 2 - Already visited
-	// 3 - Doesn't intersect
-	//while (currentMorton != (vectorSize - 2)) {
-	while (true) {
-		currentMorton = node[currentNode * 3];
-		t = intersectBox(r.origin, r.direction, getWCS(node[currentNode * 3 + 1]), getWCS(node[currentNode * 3 + 2]));
-		
+		//If current node is empty, automatically misses
+		if (isEmpty(getNode(currentNode * offsetMinMax)))
+			miss = true;
+		else {
+			t = intersectBox(r.origin, r.direction, getWCSNode(getNode(currentNode * offsetMinMax - 1)), getWCSNode(getNode(currentNode * offsetMinMax)));
+			if (t.x > t.y)
+				miss = true;
+		}
+
 		//if miss
-		if (t.x > t.y) {
-			int tempNode = currentNode;
-
-			//find leaf
-			while (tempNode * 2 + 1 < vectorSize)
-				tempNode = 2 * tempNode + 1;
-
-			if (node[tempNode * 3 ] == (vectorSize - 2))
+		if (miss) {
+			//If it's the rightmost node current level, end
+			if (currentNode == sumOfBaseN(currentLevel))
 				break;
-			else
-				currentNode = tempNode;
 
-			int nextParent = node[currentNode * 3] + 1;
-			currentMorton = node[currentNode * 3];
-			int n = currentNode;
-
-			while (currentMorton != nextParent) {
-				n = (n - 0) / 2;
-				currentMorton = node[n * 3];
+			//if this node is the rightmost child of its parent
+			int parent = getParent(currentNode);
+			int rightmostChild = getRightmostChild(parent, currentLevel - 1);
+			if (rightmostChild == currentNode) {
+				currentNode = getParent(currentNode) + 1;
+				currentLevel--;
+			}else if (getRightmostChild(currentNode, currentLevel) == currentNode) {
+				currentNode = getParent(currentNode) + 1;
+				currentLevel--;
+			}else {
+				currentNode = currentNode + 1;
 			}
-			currentNode = 2 * n + 1;
-			side = 0;
 
 			continue;
 		}
 
-		vec3 v = decodeMorton3D(node[currentNode * 3]);
-		vec2 t2 = intersectBox(r.origin, r.direction, getWCS(v.x, v.y, v.z), getWCS(v.x + 1, v.y + 1, v.z + 1));
+		//If we are checking a leaf node
+		if (currentNode >= firstNodeAtDeepestLevel) {
 
-		//bool test = false;
-		if (t2.x <= t2.y) 
-			accumulated += texture(volume, getWCS(v.x, v.y, v.z)).r;
+			int offsetsPosition = currentNode - firstNodeAtDeepestLevel;
+			int startingIndex;
+			int elementsOnThisBucket = 0;
 
-		if (t.x < finalt.x)
-			finalt.x = t.x;
-		if (t.y >= finalt.y)
-			finalt.y = t.y;
+			if (offsetsPosition == 0) {
+				startingIndex = 0;
+				elementsOnThisBucket = getOffset(offsetsPosition);
+			}else {
+				startingIndex = getOffset(offsetsPosition - 1);
+				elementsOnThisBucket = getOffset(offsetsPosition) - getOffset(offsetsPosition - 1);
+			}
 
-		if (currentMorton == (vectorSize - 2))
-			break;
- 
-		//if not a leaf then keep going down
-		if (currentNode * 2 + side < vectorSize) 
-			currentNode = 2 * currentNode + side;
-		else {
-			if (side == 1) {
-				currentNode = (currentNode - 0) / 2;
-				currentNode = 2 * currentNode + 1;
-				int nextParent = node[currentNode * 3] + 1;
-				currentMorton = node[currentNode * 3];
-				int n = currentNode;
-				while (currentMorton != nextParent) {
-					n = (n - 0) / 2;
-					currentMorton = node[n * 3];
+			//for each voxel on this bucket (leaf node), check which ones does in fact intersect this ray.
+			// here we check only mortonCodes that represent non-empty voxels
+			for (int i = 0; i < elementsOnThisBucket; i++) {
+				int morton = getMorton(startingIndex + i);
+				vec3 minVar, maxVar;
+				minVar = decodeMorton3D(morton);
+				maxVar = minVar + 1.0f;
+
+				vec2 t2 = intersectBox(r.origin, r.direction, getWCS(minVar), getWCS(maxVar));
+
+				//if intersects this voxel at current bucket, accumulate density and update intersection t's
+				if (t2.x <= t2.y) {
+					//accumulated += texture(volume, getWCS(minVar)).r;
+					accumulated += 1;
+					if (t2.x < finalt.x)
+						finalt.x = t2.x;
+					if (t2.y >= finalt.y)
+						finalt.y = t2.y;
+
+					float distance = finalt.y - max(finalt.x, 0.0f);
+					if (distance > 99999)
+						return vec3(finalt, accumulated);
 				}
-				currentNode = 2 * n + 1;
-			}
-			else {
-				currentNode = (currentNode - 0) / 2;
-				currentNode = 2 * currentNode + 1;
 			}
 
-			side = ++side % 2;
+			if (getRightmostChild(getParent(currentNode), currentLevel - 1) == currentNode) {
+				currentNode = getParent(currentNode) + 1;
+				currentLevel--;
+			}else {
+				currentNode = currentNode + 1;
+			}
+		}else {
+			currentNode = getLeftmosChild(currentNode, currentLevel);
+			currentLevel++;
 		}
 
+		if (currentNode == numberOfNodes)
+			break;
 	}
 
 	return vec3(finalt, accumulated);
@@ -638,12 +639,15 @@ vec4 lbvhPathTracing(vec4 background, vec3 origin, vec3 rayDirection, float dept
 		return vec4(calculateLBVHColor(origin, rayDirection, background.xyz), 1);
 	
 	if(frameCount > 1){
-		if(frameCount % 2 == 0 && int(gl_FragCoord.x) % 2 == 0 && int(gl_FragCoord.y) % 2 == 0){
-			thisColor = calculateLBVHColor(origin, rayDirection, background.xyz);
-		}else {
-			thisColor = calculateLBVHColor(origin, rayDirection, background.xyz);
-		}
+		int steps = 64;
+		thisColor = previousColor.xyz;
 
+		for(int i = 0; i < steps; i++)
+			if(frameCount % steps == i && int(gl_FragCoord.x) % steps == i){
+				thisColor = calculateLBVHColor(origin, rayDirection, background.xyz);
+				break;
+			}
+		
 		vec3 n1 = (1.0f / frameCount) * thisColor; 
 		thisColor = vec3(previousColor) * 1.0f / (1.0f + 1.0f / (frameCount - 1.0f));
 		thisColor += n1;

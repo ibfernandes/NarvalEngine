@@ -63,7 +63,7 @@ public:
 
 		nor = glm::vec3(model * glm::vec4(nor, 0.0));
 
-		return glm::vec4(tN, nor);
+		return glm::vec4(tN, glm::normalize(nor));
 	}
 
 

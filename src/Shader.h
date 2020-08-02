@@ -107,6 +107,9 @@ public:
 	void setVec2(std::string name, float x, float y) {
 		glUniform2f(glGetUniformLocation(id, name.c_str()), x, y);
 	}
+	void setIntegerVec2(std::string name, glm::ivec2 vec) {
+		glUniform2i(glGetUniformLocation(id, name.c_str()), vec.x, vec.y);
+	}
 
 	void setVec3(std::string name, float x, float y, float z) {
 		glUniform3f(glGetUniformLocation(id, name.c_str()), x, y, z);

@@ -16,36 +16,58 @@
 			"name": "m1",
 			"type": "microfacet",
 			"roughness": 0.01,
+			"metallic": 1.0,
 			"albedo": [0.722, 0.451, 0.2]
 		},
 		{
 			"name": "m2",
 			"type": "microfacet",
 			"roughness": 0.05,
+			"metallic": 1.0,
 			"albedo": [0.722, 0.451, 0.2]
 		},
 		{
 			"name": "m3",
 			"type": "microfacet",
 			"roughness": 0.1,
+			"metallic": 1.0,
 			"albedo": [0.722, 0.451, 0.2]
 		},
 		{
 			"name": "m4",
 			"type": "microfacet",
 			"roughness": 0.25,
+			"metallic": 1.0,
 			"albedo": [0.722, 0.451, 0.2]
 		},
 		{
 			"name": "m5",
 			"type": "microfacet",
 			"roughness": 0.95,
+			"metallic": 1.0,
 			"albedo": [0.3, 0.3, 0.3]
 		},
 		{
-			"name": "emitter",
+			"name": "env",
+			"type": "microfacet",
+			"roughness": 0.95,
+			"metallic": 0.0,
+			"albedo": [0.8, 0.8, 0.8]
+		},
+		{
+			"name": "emitter1",
 			"type": "emitter",
-			"albedo": [0.5, 0.5, 0.5]
+			"albedo": [10.5, 1.5, 1.5]
+		},
+		{
+			"name": "emitter2",
+			"type": "emitter",
+			"albedo": [5.5, 1.25, 1.25]
+		},
+		{
+			"name": "emitter3",
+			"type": "emitter",
+			"albedo": [1.25, 5.5, 5.5]
 		}
 	],
 	
@@ -57,7 +79,7 @@
 				"position": [-4.8, 7.5, 8.1]
 			},
 			"radius": 1,
-			"materialName": "emitter"
+			"materialName": "emitter1"
 		},
 		{
 			"name": "sphereLight2",
@@ -66,7 +88,7 @@
 				"position": [0, 7.5, 8.1]
 			},
 			"radius": 0.5,
-			"materialName": "emitter"
+			"materialName": "emitter2"
 		},
 		{
 			"name": "sphereLight3",
@@ -75,9 +97,8 @@
 				"position": [4.5, 7.5, 8.1]
 			},
 			"radius": 0.15,
-			"materialName": "emitter"
+			"materialName": "emitter3"
 		},
-		
 		{
 			"name": "box1",
 			"type": "box",
@@ -94,7 +115,7 @@
 			"transform": {
 				"position": [0,  2.5, 9.0],
 				"scale": [12, 0.3, 2],
-                "rotation": [50, 0, 0]
+                "rotation": [47, 0, 0]
 			},
 			"materialName": "m2"
 		},
@@ -104,7 +125,7 @@
 			"transform": {
 				"position": [0,  1.0, 6.5],
 				"scale": [12, 0.3, 2],
-                "rotation": [30, 0, 0]
+                "rotation": [33, 0, 0]
 			},
 			"materialName": "m3"
 		},
@@ -114,7 +135,7 @@
 			"transform": {
 				"position": [0,  0.3, 4.0],
 				"scale": [12, 0.3, 2],
-                "rotation": [15, 0, 0]
+                "rotation": [22, 0, 0]
 			},
 			"materialName": "m4"
 		},
@@ -126,7 +147,7 @@
 				"scale": [40, 40, 1],
                 "rotation": [0, 0, 0]
 			},
-			"materialName": "m5"
+			"materialName": "env"
 		},
 		{
 			"name": "globe",
@@ -135,7 +156,7 @@
 				"position": [0, -300.5, 1]
 			},
 			"radius": 300,
-			"materialName": "m5"
+			"materialName": "env"
 		}
 	],
 

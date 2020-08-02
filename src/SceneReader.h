@@ -5,10 +5,9 @@
 #include "Material.h"
 #include "GridMaterial.h"
 #include "RoughConductorBRDF.h"
-#include "BeckmannBRDF.h"
 #include "MaterialBRDF.h"
 #include "Volume.h"
-#include "LBVH2.h"
+#include "BucketLBVH.h"
 #include "OBB.h"
 #include "Sphere.h"
 #include "DiffuseMaterial.h"
@@ -86,9 +85,10 @@ public:
 		}else if (type.compare("microfacet") == 0) {
 			glm::vec3 albedo = getVec3(material["albedo"]);
 			float roughness = material["roughness"].GetFloat();
+			float metallic = material["metallic"].GetFloat();
 			//BeckmannBRDF brdf;
 
-			ResourceManager::getSelf()->addMaterial(name, new MaterialBRDF(new RoughConductorBRDF(roughness), albedo));
+			ResourceManager::getSelf()->addMaterial(name, new MaterialBRDF(new RoughConductorBRDF(roughness, metallic, albedo), albedo));
 			ResourceManager::getSelf()->getMaterial(name)->hasSpecularLobe = false;
 
 		}else if (type.compare("emitter") == 0) {

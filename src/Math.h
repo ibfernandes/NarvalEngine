@@ -343,7 +343,7 @@ inline glm::vec3 sphericalToCartesian(float r, float theta, float phi) {
 
 //vec4.xyz = direction from surfaceP to sphere sampled point
 //vec4.w = pdf
-inline glm::vec4 spherePDF(glm::vec3 surfaceP, glm::vec3 lightCenterP, float r) {
+inline glm::vec4 sampleSphere(glm::vec3 surfaceP, glm::vec3 lightCenterP, float r) {
 	glm::vec3 w = lightCenterP - surfaceP;
 	float distanceToCenter = glm::length(w);
 	w = glm::normalize(w);
@@ -357,29 +357,13 @@ inline glm::vec4 spherePDF(glm::vec3 surfaceP, glm::vec3 lightCenterP, float r) 
 	float theta = std::acos(1 - r1 + r1 * q);
 	float phi = TWO_PI * r2;
 
-
 	glm::vec3 local =  sphericalToCartesian(r, theta, phi);
 	//direction to x'
 	glm::vec3 nwp = toWorld(local, w, u, v);
-	//nwp = (lightCenterP + r * local) - surfaceP;
-	//nwp = glm::normalize(nwp);
 
-	//std::cout << nwp.x << " " << nwp.y << " " << nwp.z << std::endl;
-
-	
-	//float dotNL = glm::clamp(glm::dot(nwp, surfaceNormal), 0.0f, 1.0f);
-
-	//the dist^2 and dotNL from the pdf cancel out
 	float pdf = 1.0f / (2.0f * PI * (1.0f - q));
-	//float pdf = glm::max(EPSILON, 1 / (2 * PI * (1.0f - q)));
-	return  glm::vec4(nwp, 1.0f / pdf);
-	//pdf = dotNL * (1.0f / pdf);
-	
-	//return 1 / (4 * PI * r * r);
-	//if (dotNL > 0.0f) 
-		//return pdf;
-	
-	//else return 1;
+	pdf = glm::max(float(EPSILON), pdf);
+	return  glm::vec4(glm::normalize(nwp), pdf);
 }
 
 inline bool isAllZero(glm::vec3 v) {

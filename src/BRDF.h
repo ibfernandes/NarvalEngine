@@ -6,12 +6,15 @@ public:
 	/*
 		Calculates outgoing scattered ray and its pdf
 	*/
-	virtual bool sample(Ray &rayIn, Ray &scattered, glm::vec3 hitpoint, glm::vec3 normal, glm::vec3 albedo, float &pdfVal) = 0;
+	virtual bool sample(Ray rayIn, Ray &scattered, Hit h) = 0;
 
 	/*
 		Calculates the microfacet BRDF fr(wi, wo, theta) equation and returns it
 	*/
-	virtual glm::vec3 eval(Ray rayIn, Ray scattered, Hit hit, glm::vec3 attenuation) = 0;
+	virtual glm::vec3 eval(Ray rayIn, Ray scattered, Hit hit, float &pdf) = 0;
+
+	virtual float pdf() = 0;
+
 	BRDF();
 	~BRDF();
 };

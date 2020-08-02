@@ -25,7 +25,7 @@ void ResourceManager::addModel(std::string name, Model *model) {
 
 	if (models.count(name) > 0)
 		return;
-
+	model->modelId = modelId++;
 	models.insert({ name, model });
 }
 
