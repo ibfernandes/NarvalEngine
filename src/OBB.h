@@ -2,6 +2,7 @@
 #include "Geometry.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 //source: https://www.shadertoy.com/view/ld23DV
 // and https://iquilezles.org/www/articles/boxfunctions/boxfunctions.htm
@@ -10,7 +11,7 @@ public:
 	glm::vec3 center, size, rotation;
 	glm::mat4 model;
 
-	//size = half-size
+	//this->size = half-size
 	OBB(glm::vec3 center, glm::vec3 size, glm::vec3 rotation, Material *material) {
 		this->center = center;
 		this->size = size / 2.0f;
@@ -39,13 +40,15 @@ public:
 		return rotateAxis(glm::vec3(1, 0, 0), angles.x) * rotateAxis(glm::vec3(0, 1, 0), angles.y) * rotateAxis(glm::vec3(0, 0, 1), angles.z);
 	}
 
-	glm::vec4 collision(Ray r){
+	glm::vec3 collision(Ray r, float &tNear, float &tFar){
+		tNear = -1;
+		tFar = -1;
 		// convert from ray to box space
 		glm::vec3 rdd = glm::vec3( glm::inverse(model) * glm::vec4(r.direction, 0.0));
 		glm::vec3 roo = glm::vec3( glm::inverse(model) * glm::vec4(r.origin, 1.0));
 
 		// ray-box intersection in box space
-		glm::vec3 m = 1.0f / rdd;
+		glm::vec3 m = 1.0f / rdd; //TODO: take Care of div by 0
 		glm::vec3 n = m * roo;
 		glm::vec3 k = abs(m) * size;
 
@@ -55,25 +58,33 @@ public:
 		float tN = glm::max(glm::max(t1.x, t1.y), t1.z);
 		float tF = glm::min(glm::min(t2.x, t2.y), t2.z);
 
-		if (tN > tF || tF < 0.0) return glm::vec4(-1.0);
+		if (tN > tF || tF < 0.0) return glm::vec3(-1.0);
 
 		glm::vec3 nor = -glm::sign(rdd) * glm::step(glm::vec3(t1.y, t1.z, t1.x), t1) * glm::step(glm::vec3(t1.z, t1.x, t1.y), t1);
 
 		// convert to ray space
-
 		nor = glm::vec3(model * glm::vec4(nor, 0.0));
+		tNear = glm::max(tN, 0.0f); //Not most elegant solution
+		tFar = tF;
+		
 
-		return glm::vec4(tN, glm::normalize(nor));
+		return glm::normalize(nor);
 	}
 
 
 	bool hit(Ray &r, float tMin, float tMax, Hit &hit) {
-		glm::vec4 v = collision(r);
-		if (v.x >= 0 && v.x >tMin && v.x < tMax) {
-			hit.t = v.x;
-			hit.p = r.o + v.x * r.d;
-			hit.normal = glm::vec3(v.y, v.z, v.w);
+		float tNear; 
+		float tFar;
+		glm::vec3 v = collision(r, tNear, tFar);
+		//if tMax < 0, whole AABB is behind ray origin
+		//if tMin < 0, ray origin is inside AABB
+		if (/*tNear >= 0 &&*/ tNear > tMin && tNear < tMax && tMax > 0) {
+			hit.t = tNear;
+			hit.tFar = tFar;
+			hit.p = r.o + tNear * r.d;
+			hit.normal = v;
 			hit.material = this->material;
+			hit.collider = this;
 			return true;
 		}else
 			return false;

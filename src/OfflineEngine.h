@@ -15,6 +15,8 @@
 #include "MetalMaterial.h"
 #include "GridMaterial.h"
 #include "BucketLBVH.h"
+#include "MaterialBRDF.h"
+#include "OBB.h"
 #include <assert.h>
 #include <Vector>
 #include <limits>
@@ -46,7 +48,7 @@ public:
 
 	glm::vec3 lightPos = glm::vec3(2.8f, 1.2f, 0.f);
 	glm::vec3 upColor = glm::vec3(0.00f);
-	glm::vec3 bottomColor = glm::vec3(0.0f);
+	glm::vec3 bottomColor = glm::vec3(0.00f);
 
 	glm::vec3 blend(glm::vec3 v1, glm::vec3 v2, float t) {
 		return (1.0f - t) * v1 + t * v2;
@@ -200,16 +202,266 @@ public:
 		return directLight;
 	}
 
+	Model *getModelById(int modelId) {
+		for (Model *m : models)
+			if (m->modelId == modelId)
+				return m;
+		return nullptr;
+	}
+
+	//TODO: measure min and max pdf
+	float brdfmin = 9999999999;
+	float brdfmax = 0;
+	float lightmin = 9999999999;
+	float lightmax = 0;
+
+	glm::vec3 estimateDirectMIS(Model *emitter, Ray incoming, Hit hit) {
+		glm::vec3 directLight(0);
+		Sphere *s = (Sphere*)emitter->geometry;
+
+		glm::vec3 Li = s->material->emitted(0, 0, glm::vec3(0));
+		bool isEmissive = !isAllZero(Li);
+
+		//dir.xyz = direction towards sphere
+		//dir.w = pdf of direction
+		glm::vec4 dir = sampleSphere(hit.p, s->center, s->radius);
+		float lightPDF = dir.w;
+		Ray scattered;
+		scattered.o = hit.p;
+		scattered.d = dir;
+
+		Ray occlusionRay{ hit.p, glm::vec3(dir) };
+		Hit occlusionHit;
+		if (checkHits(occlusionRay, 0.001, std::numeric_limits<float>::max(), occlusionHit)) {
+			//If it is occluded and this object is not emissive, no contribution is computed
+			if (isAllZero(occlusionHit.material->emitted(0, 0, glm::vec3(0, 0, 0))))
+				return directLight;
+		}
+
+		//Eval light
+		float brdfPDF = 0;
+		float NdotWo = glm::max(0.0f, glm::dot(hit.normal, scattered.d));
+		if (NdotWo > 0 && lightPDF != 0 && isAllZero(hit.material->emitted(0, 0, glm::vec3(0)))) {
+			glm::vec3 brdf = hit.material->brdf->eval(incoming, scattered, hit, brdfPDF);
+
+			brdfmin = glm::min(brdfmin, brdfPDF);
+			brdfmax = glm::max(brdfmax, brdfPDF);
+
+			lightmin = glm::min(lightmin, lightPDF);
+			lightmax = glm::max(lightmax, lightPDF);
+
+			if (brdfPDF != 0) {
+				float weight = powerHeuristic(lightPDF, brdfPDF);
+				directLight += brdf * Li *  weight / lightPDF;
+			}
+		}
+		
+		//Eval BRDF
+		hit.material->brdf->sample(incoming, scattered, hit);
+		glm::vec3 brdf = hit.material->brdf->eval(incoming, scattered, hit, brdfPDF);
+		occlusionRay.o = hit.p;
+		occlusionRay.d = scattered.d;
+		Hit brdfHit;
+		brdfHit.modelId = -1;
+		NdotWo = glm::max(0.0f, glm::dot(hit.normal, scattered.d));
+
+		if (hit.modelId == 4) // first plate
+			float kk = 0;
+
+		if (NdotWo > 0 && brdfPDF != 0.0f && !isAllZero(brdf)) {
+			if (checkHits(occlusionRay, 0.01, std::numeric_limits<float>::max(), brdfHit)) {
+				//If it is occluded and this object is not emissive, no contribution is computed
+				if (isAllZero(brdfHit.material->emitted(0, 0, glm::vec3(0, 0, 0))))
+					return directLight;
+			}
+			else {
+				return directLight;
+			}
+
+			if(brdfHit.modelId != emitter->modelId)
+				return directLight;
+
+			/*if (brdfHit.modelId!=-1 && !isAllZero(brdfHit.material->emitted(0, 0, glm::vec3(0, 0, 0))))
+				s = (Sphere*)getModelById(brdfHit.modelId);
+			else
+				return directLight;*/
+
+			lightPDF = spherePDF(hit.p, s->center, s->radius);
+
+			if (lightPDF == 0.0f) {
+				// We didn't hit anything, so ignore the brdf sample	
+				return directLight;
+			}
+
+			//float weight = powerHeuristic(brdfPDF, lightPDF/1000.0f);
+			float weight = powerHeuristic(brdfPDF, lightPDF);
+			directLight += brdf * Li * weight / brdfPDF;
+		}
+
+		return directLight;
+	}
+
 	glm::vec3 sampleLights(Ray &incoming, Hit hit) {
+		if (!isAllZero(hit.material->emitted(0, 0, glm::vec3(0))))
+			return glm::vec3(0);
 
 		glm::vec3 l(0);
 		for (int i = 0; i < emitters.size(); i++) {
 			if (hit.modelId == emitters.at(i)->modelId)
 				continue;
-			l = l + estimateDirect(emitters.at(i), incoming, hit);
+			//l = l + estimateDirect(emitters.at(i), incoming, hit);
+			l = l + estimateDirectMIS(emitters.at(i), incoming, hit);
 		}
 
 		return l;
+	}
+
+	glm::vec3 integrateToLight(Ray dirToLight, GridMaterial *gm, Geometry *collider) {
+
+		Hit h;
+		bool didHit = collider->hit(dirToLight, -0.001f, 99999, h);
+		//happens when we just hit the boundary
+		if (!didHit)
+			return glm::vec3(1);
+
+		glm::vec3 thit = gm->lbvh->traverseTreeUntil(dirToLight, 999999);
+		float density = thit.z;
+		glm::vec3 Tr = exp(-gm->extinction * density);
+
+		return Tr;
+	}
+
+	//"samplelights"
+	glm::vec3 volumetricShadowRay(glm::vec3 volumePoint, GridMaterial *gm, Geometry *collider) {
+
+		glm::vec3 l(0);
+		for (int i = 0; i < emitters.size(); i++) {
+			Sphere *s = (Sphere*)emitters.at(i)->geometry;
+			glm::vec3 Li = s->material->emitted(0, 0, glm::vec3(0));
+			//TODO: instead of center should cone sample
+			glm::vec3 dirToLight = glm::normalize(s->center - volumePoint);
+
+			l = l + Li * integrateToLight(Ray(volumePoint, dirToLight), gm, collider);
+		}
+
+		return l;
+	}
+
+	//kind of a lambertian brdf?
+	float isotropicPhaseFunction() {
+		return 1.0f / (4.0f * PI);
+	}
+
+	bool integrateVolume(Ray incoming, Ray &scattered, Hit &hit, glm::vec3 &tr, glm::vec3 &inScattering, GridMaterial *gm, glm::vec3 throughtput) {
+		glm::vec3 totalTr = glm::vec3(1.0f);
+		glm::vec3 currentTr = glm::vec3(0);
+		glm::vec3 inScatter = glm::vec3(0.0f);
+		//move ray origin to hit point on the volume boundary
+		incoming.o = incoming.o + hit.t * incoming.d;
+
+		float t = -std::log(1 - random()) / gm->extinctionAvg;
+		glm::vec3 thit = gm->lbvh->traverseTreeUntil(incoming, t);
+		thit.x = glm::max(0.0f, thit.x);
+
+		//point is outside volume bounding box
+		if (t > hit.tFar) {
+			t = hit.tFar + 0.01f;
+		}
+
+		//missed all lbvh nodes inside this bounding box
+		//glm::vec3 thitThrought = gm->lbvh->traverseTreeUntil(incoming, 999999);
+		if (thit.x > thit.y || thit.z == 0) {
+			tr = totalTr;
+			inScattering = inScatter;
+			scattered.d = incoming.d;
+			t = (hit.tFar - hit.t) + 0.01f;
+			scattered.o = incoming.o + t * incoming.d;
+			return false;
+		}
+
+		//only change direction if hit anything
+		scattered.d = sampleUnitSphere();
+		scattered.o = incoming.o + thit.y * incoming.d;
+
+		float density = thit.z; //TODO should not have thit.y
+
+		currentTr = exp(-gm->extinction * density);
+		totalTr *= currentTr;
+		//throughtput *= currentTr;
+
+		glm::vec3 Ls = volumetricShadowRay(scattered.o, gm, hit.collider) * isotropicPhaseFunction();
+		//Integrate Ls from 0 to d
+		Ls = (Ls - Ls * currentTr) / gm->extinction;
+
+		inScatter += throughtput * gm->scattering * Ls;
+
+		tr = totalTr;
+		inScattering = inScatter;
+		return true;
+	}
+
+	glm::vec3 integrateToLightHomogeneous(Ray dirToLight, GridMaterial *gm, Geometry *collider) {
+
+		Hit h;
+		bool didHit = collider->hit(dirToLight, -0.001f, 99999, h);
+		//happens when we just hit the boundary
+		if (!didHit)
+			return glm::vec3(1);
+		float volumeDensityAcross = 3.1f;
+		float density = volumeDensityAcross * h.tFar;
+		glm::vec3 Tr = exp(-gm->extinction * density);
+
+		return Tr;
+	}
+
+	//"samplelights"
+	glm::vec3 volumetricShadowRayHomogeneous(glm::vec3 volumePoint, GridMaterial *gm, Geometry *collider) {
+
+		glm::vec3 l(0);
+		for (int i = 0; i < emitters.size(); i++) {
+			Sphere *s = (Sphere*)emitters.at(i)->geometry;
+			glm::vec3 Li = s->material->emitted(0, 0, glm::vec3(0));
+			//TODO: instead of center should cone sample
+			glm::vec3 dirToLight = glm::normalize(s->center - volumePoint);
+
+			l = l + Li * integrateToLightHomogeneous(Ray(volumePoint, dirToLight), gm, collider);
+		}
+
+		return l;
+	}
+
+	bool integrateVolumeHomogeneous(Ray incoming, Ray &scattered, Hit &hit, glm::vec3 &tr, glm::vec3 &inScattering, GridMaterial *gm) {
+		glm::vec3 totalTr = glm::vec3(1.0f);
+		glm::vec3 currentTr = glm::vec3(0);
+		glm::vec3 inScatter = glm::vec3(0.0f);
+		//move ray origin to hit point on the volume boundary
+		incoming.o = incoming.o + hit.t * incoming.d;
+		float volumeDensityAcross = 3.1f;
+
+		float t = -std::log(1 - random()) / gm->extinctionAvg;
+
+		//point is outside volume
+		if (t > hit.tFar) {
+			t = hit.tFar + 0.01f;
+		}
+
+		scattered.d = sampleUnitSphere();
+		scattered.o = incoming.o + t * incoming.d; //TODO: THIS HERE IS WRONG, I ALREADY MESSED WITH INCOMING.O UP THERE
+
+		float density = volumeDensityAcross * t;
+
+		currentTr = exp(-gm->extinction * density);
+		totalTr *= currentTr;
+
+		glm::vec3 Ls = volumetricShadowRayHomogeneous(scattered.o, gm, hit.collider) * isotropicPhaseFunction();
+		//Integrate Ls from 0 to d
+		Ls = (Ls - Ls * currentTr) / gm->extinction;
+
+		inScatter += totalTr * gm->scattering * Ls;
+
+		tr = totalTr;
+		inScattering = inScatter;
+		return true;
 	}
 
 	glm::vec3 calculateColorWithExplicitLight(Ray r, int depth) {
@@ -220,8 +472,8 @@ public:
 
 		for (int bounce = 0; bounce < maxBounces; bounce++) {
 
-			if (!checkHits(r, 0.001, std::numeric_limits<float>::max(), hit)) {
-				glm::vec3 dir = glm::normalize(r.direction);
+			if (!checkHits(incoming, -0.001, std::numeric_limits<float>::max(), hit)) {
+				glm::vec3 dir = glm::normalize(incoming.direction);
 				float t = 0.5f * (dir.y + 1.0);
 				finalColor += throughput * blend(bottomColor, upColor, t);
 				break;
@@ -238,12 +490,24 @@ public:
 			}
 
 			// Calculate the direct lighting
-			
+			if (GridMaterial *gm = dynamic_cast<GridMaterial*>(hit.material)) {
+				glm::vec3 tr(1);
+				glm::vec3 inScattering(0);
+				//bool sampled = integrateVolumeHomogeneous(incoming, scattered, hit, tr, inScattering, gm);
+				bool sampled = integrateVolume(incoming, scattered, hit, tr, inScattering, gm, throughput);
+				
+				incoming = scattered;
+				finalColor += throughput * inScattering;
+				throughput *=  tr ;
+
+				continue;
+			}
+
 			//direct light contribution
 			finalColor += throughput * sampleLights(incoming, hit);
 
 			if (isAllZero(emitted)) {
-				float pdf = 1;
+				float pdf = 0;
 				hit.material->brdf->sample(incoming, scattered, hit);
 				glm::vec3 brdf = hit.material->brdf->eval(incoming, scattered, hit, pdf);
 				if (pdf != 0)
@@ -253,7 +517,7 @@ public:
 				throughput *= brdf;
 			}
 
-			r = scattered;
+			incoming = scattered;
 		}
 
 		return finalColor;
@@ -300,7 +564,6 @@ public:
 		}
 	}
 
-	//TODO: gamma correction and tone mapping
 	glm::ivec3 postProcessing(glm::vec3 hdrColor) {
 		const float gamma = 2.2;
 		const float exposure = 0.5;
@@ -332,63 +595,18 @@ public:
 					float v = float(y + random()) / windowHeight;
 					Ray r = cam.getRayPassingThrough(u, v);
 					//color += calculateColor(r, 0);
-					//color += calculateColorWithExplicitLight(r, 0);
-					color += calculateColorBRDF(r, 0);
+					color += calculateColorWithExplicitLight(r, 0);
+					//color += calculateColorBRDF(r, 0);
 					//color += calculateColorNaive(r, 0);
 				}
 				color = color / float(spp);
-				//color = float(maxValueChannel) * glm::vec3(sqrt(color.x), sqrt(color.y), sqrt(color.z));
 				pixels[to1D(windowWidth, windowHeight, x, y, 0)] = postProcessing(color); 
 			}
 
 		p = true;
 	}
 
-	void test() {
-		glm::vec3 albedo = glm::vec3(0.722, 0.451, 0.2);
-		RoughConductorBRDF *brdf = new RoughConductorBRDF(0.01f, 1.0f, albedo);
-		glm::vec3 incomingDir = glm::normalize(glm::vec3(1,-1,0));
-		Ray incoming{glm::vec3(-100,100,0), incomingDir};
-		Ray scattered;
-		Hit hit;
-		hit.normal = glm::vec3(0,1,0);
-		hit.p = glm::vec3(-10, 10, 0);
-		float pdf = 0;
-
-		float batata = 1.0f / 10000000000.0f;
-		std::cout << "cocota " << batata << std::endl;
-		
-		brdf->sample(incoming, scattered, hit);
-		//scattered.d = glm::reflect(glm::normalize(incoming.d), glm::normalize(hit.normal));
-		//scattered.d = glm::normalize(glm::vec3(1, 0.01, 0));
-		glm::vec3 scatteredDir = scattered.direction;
-		glm::vec3 norm = glm::normalize(scatteredDir);
-		glm::vec3 res = brdf->eval(incoming, scattered, hit, pdf);
-		glm::vec3 resWithPdf = res * 1.0f/pdf;
-		std::cout << "incoming: \t";
-		printVec3(-incoming.direction);
-		std::cout << "scattered: \t";
-		printVec3(scattered.direction);
-		std::cout << "albedo: \t";
-		printVec3(albedo);
-		std::cout << "BRDF: \t\t";
-		printVec3(res);
-		std::cout << "PDF: \t\t";
-		std::cout << pdf << std::endl;
-		std::cout << "BRDF * PDF: \t";
-		printVec3(res*pdf);
-		std::cout << "BRDF * 1/PDF: \t";
-		printVec3(res * 1.0f / pdf);
-		float angle = glm::dot(-incoming.direction, scatteredDir);
-		int stop = 0;
-
-
-		while (true)
-			continue;
-	}
-
 	void mainLoop() {
-		//test();
 		Timer t;
 		std::ofstream file;
 		file.open("output.ppm", std::ios::binary);
@@ -486,6 +704,7 @@ public:
 		t.printlnMinutes();
 		std::cout << '\a';
 	}
+	
 	OfflineEngine();
 	~OfflineEngine();
 };

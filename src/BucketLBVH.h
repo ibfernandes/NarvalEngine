@@ -17,8 +17,8 @@ public:
 	int bucketSize = 512;
 	float *grid;
 	int mortonCodesSize;
-	glm::vec3 scale = glm::vec3(1.0f);
-	glm::vec3 translate = glm::vec3(-scale.x / 2, 0, 0.1f);
+	glm::vec3 scale = glm::vec3(3.0f);
+	glm::vec3 translate = glm::vec3(0 - scale.x/2.0f, 4.5f - scale.y/2.0f, 10.5f - scale.z/2.0f);
 
 	//total of levels (NOT counted as indices, but as quantity)
 	int levels;
@@ -42,8 +42,8 @@ public:
 	TREEDIMENSION treeMode = BINARYTREE;
 
 	glm::vec3 getWCS(float x, float y, float z) {
-		return glm::vec3(x, y, z);
-		//return ((glm::vec3(x, y, z) / gridSize)) * scale + translate;
+		//return glm::vec3(x, y, z);
+		return (glm::vec3(x, y, z) / gridSize) * scale + translate;
 	}
 
 	glm::vec3 getWCS(glm::vec3 v) {
@@ -53,8 +53,7 @@ public:
 	glm::vec3 getWCS(int mortonCode) {
 		int x, y, z;
 		decodeSimple3D(mortonCode, x, y, z);
-		return glm::vec3(x, y, z);
-		//return getWCS(x, y, z);
+		return getWCS(x, y, z);
 	}
 
 	int getLeftmostChild(int node, int leftmost, int rightmost) {
@@ -123,6 +122,7 @@ public:
 		return intersectBox(r, getWCS(node[1]), getWCS(node[2]));
 	}
 
+	//TODO: density sum should be dist * dens + dist * dens...
 	glm::vec3 traverseTreeUntil(Ray &r, float depth) {
 		int currentNode = 1;
 		int currentLevel = 0;
@@ -224,6 +224,9 @@ public:
 					max = min + 1.0f;
 
 					glm::vec2 t2 = intersectBox(r, getWCS(min), getWCS(max));
+					//if t.x is negative, this voxel is behind the ray
+					if (t2.x < 0) //TODO: not that efficient, should this on all other intersections too
+						continue;
 					intersectionsCount++;
 
 					//if intersects this voxel at current bucket, accumulate density and update intersection t's

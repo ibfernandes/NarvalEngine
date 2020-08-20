@@ -86,7 +86,6 @@ public:
 			glm::vec3 albedo = getVec3(material["albedo"]);
 			float roughness = material["roughness"].GetFloat();
 			float metallic = material["metallic"].GetFloat();
-			//BeckmannBRDF brdf;
 
 			ResourceManager::getSelf()->addMaterial(name, new MaterialBRDF(new RoughConductorBRDF(roughness, metallic, albedo), albedo));
 			ResourceManager::getSelf()->getMaterial(name)->hasSpecularLobe = false;
@@ -104,7 +103,7 @@ public:
 				pf = ISOTROPIC;
 			else if (phaseFunction.compare("rayleigh") == 0)
 				pf = RAYLEIGH;
-			else if (phaseFunction.compare("rayleigh") == 0)
+			else if (phaseFunction.compare("henyeyGreenstein") == 0)
 				pf = HENYEY_GREENSTEIN;
 			else
 				assert("ERROR: invalid phase function" && false);
@@ -142,9 +141,21 @@ public:
 			ResourceManager::getSelf()->addModel(name, m);
 		}else if (type.compare("volume") == 0) {
 			std::string materialName = primitive["materialName"].GetString();
-			Volume *v = new Volume( (GridMaterial*)ResourceManager::getSelf()->getMaterial(materialName));
+			glm::vec3 scale = getVec3(primitive["transform"]["scale"]);
+			glm::vec3 rotate = getVec3(primitive["transform"]["rotation"]);
+			//Volume *v = new Volume( (GridMaterial*)ResourceManager::getSelf()->getMaterial(materialName));
+			
+			GridMaterial *mat = (GridMaterial*)ResourceManager::getSelf()->getMaterial(materialName);
+			mat->lbvh->scale = scale;
+			mat->lbvh->translate = pos - scale/2.0f;
 
-			ResourceManager::getSelf()->addModel(name , v);
+			OBB *obb = new OBB(pos, scale, rotate, mat);
+			Model *m = new Model();
+			m->addGeometry(obb);
+
+
+			ResourceManager::getSelf()->addModel(name , m);
+
 		}else if (type.compare("box") == 0) {
 			std::string materialName = primitive["materialName"].GetString();
 			glm::vec3 scale = getVec3(primitive["transform"]["scale"]);

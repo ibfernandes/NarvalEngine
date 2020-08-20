@@ -371,6 +371,7 @@ public:
 		glEnable(GL_DEPTH_TEST);
 	}
 
+
 	void render(){
 		renderImGUI();
 		fbo.bind();

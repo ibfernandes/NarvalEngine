@@ -2,12 +2,15 @@
 #include "Ray.h"
 
 class Material;
+class Geometry;
 struct Hit {
 	float t;
+	float tFar;
 	int modelId;
 	glm::vec3 p;
 	glm::vec3 normal;
 	Material *material;
+	Geometry *collider;
 };
 
 class Geometry{

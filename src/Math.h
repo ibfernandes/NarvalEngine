@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Ray.h"
+#include "Sphere.h"
 #include <limits>
 #include <vector>
 #include <string>
@@ -10,6 +11,8 @@
 #include <glm/gtx/norm.hpp>
 #include <random>
 #define EPSILON 0.0000000001
+#define EPSILON5 0.00001
+#define EPSILON3 0.001
 #define PI 3.14159265358979323846264338327950288
 #define TWO_PI 6.283185307179586476925286766559
 
@@ -179,7 +182,7 @@ inline glm::vec2 intersectBox(glm::vec3 orig, glm::vec3 dir, glm::vec3 bmin, glm
 	// o + t*d = y
 	// t = (y - o)/d
 	//when t is negative, the box is behind the ray origin
-	glm::vec3 tMinTemp = (bmin - orig) / dir;
+	glm::vec3 tMinTemp = (bmin - orig) / dir; //TODO: div by 0
 	glm::vec3 tmaxTemp = (bmax - orig) / dir;
 
 	glm::vec3 tMin = glm::min(tMinTemp, tmaxTemp);
@@ -249,7 +252,7 @@ inline glm::vec3 sampleUnitSphere() {
 	
 	//Varies from	     -1 <= x <= 1 
 	//				180 deg <= x <= 0 deg
-	float phi = acos(1.0f - 2.0f * random());
+	float phi = acos(1.0f - 2.0f * random()); //TODO: why acos?
 
 	return glm::vec3(sin(phi) * cos(theta), sin(phi) * sin(theta), cos(phi));
 }
@@ -270,7 +273,7 @@ inline glm::vec3 sampleUnitHemisphere() {
 	//Varies from	0 <= x <= 1
 	//since sin(0 deg) = 0 and sin(90 deg) = 1, we can simply generate a random number r on [0, 1] without need
 	//to caculate the actual sin()
-	float sinTheta = std::sqrt(1.0f - e1 * e1);
+	float sinTheta = std::sqrt(glm::max(0.0f, 1.0f - e1 * e1));
 
 	//Varies from     0 <= x <= 2PI
 	//			  0 deg <= x <= 360 deg
@@ -341,6 +344,21 @@ inline glm::vec3 sphericalToCartesian(float r, float theta, float phi) {
 	return r * glm::vec3(std::cos(phi) * std::sin(theta), std::sin(phi) * std::sin(theta), std::cos(theta));
 }
 
+//shirley1996 - Monte Carlo Techniques for Direct Lighting Calculations
+inline float spherePDF(glm::vec3 surfaceP, glm::vec3 lightCenterP, float r) {
+	glm::vec3 w = lightCenterP - surfaceP;
+	float distanceToCenter = glm::length(w);
+	float q = glm::max(0.0, std::sqrt(1.0 - (r / distanceToCenter) * (r / distanceToCenter)));
+	float pdf;
+
+	if (q == 0)
+		pdf = 0;
+	else
+		pdf = 1.0f / (2.0f * PI * (1.0f - q));
+
+	return pdf;
+}
+
 //vec4.xyz = direction from surfaceP to sphere sampled point
 //vec4.w = pdf
 inline glm::vec4 sampleSphere(glm::vec3 surfaceP, glm::vec3 lightCenterP, float r) {
@@ -348,62 +366,49 @@ inline glm::vec4 sampleSphere(glm::vec3 surfaceP, glm::vec3 lightCenterP, float 
 	float distanceToCenter = glm::length(w);
 	w = glm::normalize(w);
 
-	float q = std::sqrt(1.0 - (r / distanceToCenter) * (r / distanceToCenter));
-	glm::vec3 u, v;
-	generateOrthonormalCS(w, u, v);
+	float q = glm::max(0.0, std::sqrt(1.0 - (r / distanceToCenter) * (r / distanceToCenter)));
+	glm::vec3 v, u;
+	generateOrthonormalCS(w, v, u);
 
 	float r1 = random();
 	float r2 = random();
 	float theta = std::acos(1 - r1 + r1 * q);
 	float phi = TWO_PI * r2;
 
-	glm::vec3 local =  sphericalToCartesian(r, theta, phi);
+	glm::vec3 local =  glm::normalize(sphericalToCartesian(r, theta, phi));
 	//direction to x'
-	glm::vec3 nwp = toWorld(local, w, u, v);
+	glm::vec3 nwp = glm::normalize(toWorld(local, w, v, u));
 
-	float pdf = 1.0f / (2.0f * PI * (1.0f - q));
-	pdf = glm::max(float(EPSILON), pdf);
-	return  glm::vec4(glm::normalize(nwp), pdf);
+	/*Sphere s(lightCenterP, r);
+	Hit h;
+	Ray ray(surfaceP, nwp);
+	s.hit(ray, 0.001f, 9999999, h);
+
+
+	//w' dot n'
+	float sWdotsN = glm::dot(h.normal, -nwp);
+	sWdotsN = glm::max(0.0f, sWdotsN);
+	//||x - x'|| ^2
+	float distBetweenXandXs = glm::length2(surfaceP - h.p);
+
+	float pdf = sWdotsN / (2.0f * PI * (1.0f - q) * distBetweenXandXs);
+	if(q == 1 || distBetweenXandXs == 0)
+		pdf = 0;*/
+
+	float pdf;
+	if (q == 0)
+		pdf = 0;
+	else
+		pdf = 1.0f / (2.0f * PI * (1.0f - q));
+	if (pdf < EPSILON5)
+		pdf = 0;
+
+	return  glm::vec4(nwp, pdf);
 }
+
 
 inline bool isAllZero(glm::vec3 v) {
 	return (v.x == 0 && v.y == 0 && v.z == 0) ? true : false;
-}
-
-inline float cosTheta(glm::vec3 w) { return w.z; }
-inline float cos2Theta(glm::vec3 w) { return w.z * w.z; }
-inline float absCosTheta(glm::vec3 w) { return glm::abs(w.z); }
-
-inline float sin2Theta(glm::vec3 w) {
-	return glm::max(0.0f, 1.0f - cos2Theta(w));
-}
-
-inline float sinTheta(glm::vec3 w) {
-	return std::sqrt(sin2Theta(w));
-}
-
-inline float tanTheta(glm::vec3 w) {
-	return sinTheta(w) / cosTheta(w);
-}
-inline float tan2Theta(glm::vec3 w) {
-	return sin2Theta(w) / cos2Theta(w);
-}
-
-inline float cosPhi(glm::vec3 w) {
-	float sin = sinTheta(w);
-	return (sinTheta == 0) ? 1 : glm::clamp(w.x / sin, -1.0f, 1.0f);
-}
-
-inline float sinPhi(glm::vec3 w) {
-	float sin = sinTheta(w);
-	return (sinTheta == 0) ? 0 : glm::clamp(w.y / sin, -1.0f, 1.0f);
-}
-
-inline float cos2Phi(glm::vec3 w) {
-	return cosPhi(w) * cosPhi(w);
-}
-inline float sin2Phi(glm::vec3 w) {
-	return sinPhi(w) * sinPhi(w);
 }
 
 //beckman
@@ -420,6 +425,13 @@ inline bool sameHemisphere(glm::vec3 &w, glm::vec3 &wp) {
 
 inline void printVec3(glm::vec3 v) {
 	std::cout << "[" << v.x << ", " << v.y << ", " << v.z << "]" << std::endl;
+}
+
+inline void printMat4(glm::mat4 m) {
+	printf("[%.1f \t %.1f \t %.1f \t %.1f]\n", m[0][0], m[1][0], m[2][0], m[3][0]);
+	printf("[%.1f \t %.1f \t %.1f \t %.1f]\n", m[0][1], m[1][1], m[2][1], m[3][1]);
+	printf("[%.1f \t %.1f \t %.1f \t %.1f]\n", m[0][2], m[1][2], m[2][2], m[3][2]);
+	printf("[%.1f \t %.1f \t %.1f \t %.1f]\n", m[0][3], m[1][3], m[2][3], m[3][3]);
 }
 
 inline bool greaterThan(glm::vec3 v1, glm::vec3 v2) {
@@ -451,4 +463,8 @@ inline std::string formatWithCommas(int value){
 		insertPosition -= 3;
 	}
 	return numWithCommas;
+}
+
+static inline float powerHeuristic(float pdf0, float pdf1){
+	return (pdf0*pdf0) / (pdf0*pdf0 + pdf1 * pdf1);
 }

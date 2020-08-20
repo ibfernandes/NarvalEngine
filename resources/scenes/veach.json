@@ -15,28 +15,28 @@
 		{
 			"name": "m1",
 			"type": "microfacet",
-			"roughness": 0.01,
+			"roughness": 0.05,
 			"metallic": 1.0,
 			"albedo": [0.722, 0.451, 0.2]
 		},
 		{
 			"name": "m2",
 			"type": "microfacet",
-			"roughness": 0.05,
+			"roughness": 0.1,
 			"metallic": 1.0,
 			"albedo": [0.722, 0.451, 0.2]
 		},
 		{
 			"name": "m3",
 			"type": "microfacet",
-			"roughness": 0.1,
+			"roughness": 0.25,
 			"metallic": 1.0,
 			"albedo": [0.722, 0.451, 0.2]
 		},
 		{
 			"name": "m4",
 			"type": "microfacet",
-			"roughness": 0.25,
+			"roughness": 0.35,
 			"metallic": 1.0,
 			"albedo": [0.722, 0.451, 0.2]
 		},
@@ -173,7 +173,7 @@
 	
 	"renderer": {
 		"resolution": [400, 200],
-		"spp": 10,
+		"spp": 5,
 		"bounces": 3,
 		"mode": "offline",
 		"HDR": false,

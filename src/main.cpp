@@ -158,7 +158,8 @@ void generateCubeTestModel() {
 
 int main(){	
 	//SceneReader scene("scenes/testing.json");
-	SceneReader scene("scenes/veach.json");
+	//SceneReader scene("scenes/veach.json");
+	SceneReader scene("scenes/volume.json");
 	//SceneReader scene("scenes/offlinetesting.json");
 	Settings settings = scene.getSettings();
 	//settings.renderMode = REALTIME_RENDERING_MODE;
@@ -200,8 +201,8 @@ int main(){
 
 		ResourceManager::getSelf()->loadVDBasTexture3D("cloud", "vdb/wdas_cloud_sixteenth.vdb"); //512
 		ResourceManager::getSelf()->getTexture3D("cloud")->loadToOpenGL();
-		ResourceManager::getSelf()->loadVDBasTexture3D("dragonHavard", "vdb/dragonHavard.vdb"); //512
-		ResourceManager::getSelf()->getTexture3D("dragonHavard")->loadToOpenGL();
+		//ResourceManager::getSelf()->loadVDBasTexture3D("dragonHavard", "vdb/dragonHavard.vdb"); //512
+		//ResourceManager::getSelf()->getTexture3D("dragonHavard")->loadToOpenGL();
 		/*ResourceManager::getSelf()->loadVDBasTexture3D("fireball", "vdb/fireball.vdb"); //512
 		ResourceManager::getSelf()->getTexture3D("fireball")->loadToOpenGL();
 		ResourceManager::getSelf()->loadVDBasTexture3D("explosion", "vdb/explosion.vdb"); //512

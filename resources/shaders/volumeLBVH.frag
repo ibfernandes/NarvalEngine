@@ -475,6 +475,7 @@ vec3 volumetricShadow(in vec3 cubePos, in vec3 lightPos){
 			continue;
 		
 
+		// e ^(-ext * density[i] + -ext * density[i+1] + ...)
         transmittance *= exp(-extinction * density);
 		if(transmittance.x < transmittanceThreshold)
 			break;
