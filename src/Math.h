@@ -11,6 +11,7 @@
 #include <glm/gtx/norm.hpp>
 #include <random>
 #define EPSILON 0.0000000001
+#define EPSILON12 0.00000000001
 #define EPSILON5 0.00001
 #define EPSILON3 0.001
 #define PI 3.14159265358979323846264338327950288

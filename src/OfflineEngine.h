@@ -10,6 +10,7 @@
 #include "Math.h"
 #include "DiffuseMaterial.h"
 #include "RoughConductorBRDF.h"
+#include "TestPlayground.h"
 #include "DielectricMaterial.h"
 #include "DiffuseLight.h"
 #include "MetalMaterial.h"
@@ -607,6 +608,9 @@ public:
 	}
 
 	void mainLoop() {
+		TestPlayground *tp= new TestPlayground();
+		tp->testNDFIntegral();
+
 		Timer t;
 		std::ofstream file;
 		file.open("output.ppm", std::ios::binary);

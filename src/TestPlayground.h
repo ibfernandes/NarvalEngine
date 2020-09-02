@@ -250,7 +250,7 @@ public:
 	}
 
 	void testNDFIntegral() {
-		int samples = 10000;
+		int samples = 1000000;
 		float sum = 0;
 		glm::vec3 albedo = glm::vec3(0.1, 0.1, 0.1);
 		RoughConductorBRDF *brdf = new RoughConductorBRDF(0.01f, 1.0f, albedo);
@@ -275,7 +275,7 @@ public:
 			// GGX NDF sampling
 			glm::vec2 r = glm::vec2(random(), random());
 			float a2 = brdf->a * brdf->a;
-			float theta = std::acos(std::sqrt((1.0f - r.x) / glm::max(float(EPSILON), (r.x * (a2 - 1.0f) + 1.0f))));
+			float theta = std::acos(std::sqrt((1.0f - r.x) / glm::max(float(EPSILON12), (r.x * (a2 - 1.0f) + 1.0f))));
 			float phi = TWO_PI * r.y;
 			float cosTheta = cos(theta);
 			float sinTheta = sin(theta);
@@ -293,20 +293,19 @@ public:
 
 			if (!didHit)
 				std::cout << "didNotHit" << std::endl;
-
 			if (hemispherePoint.y < 0)
 				std::cout << "hemisphere wrong" << std::endl;
-
 			if (NdotH < 0)
 				std::cout << "dot negative" << std::endl;
 
 			float denom = cosTheta * cosTheta * (a2 - 1.0f) + 1.0f;
-			denom = glm::max(EPSILON, PI * denom * denom);
+			denom = glm::max(EPSILON12, PI * denom * denom);
 			float D_ggx = a2 / (denom);
 
 			float numerator = (D_ggx * cosTheta * sinTheta);
 			//PDF for spherical coordinates is this:
-			float pdf = glm::max(float(EPSILON), D_ggx * cosTheta * sinTheta);
+			float pdf = D_ggx * cosTheta * sinTheta;
+			pdf = glm::max(float(EPSILON12), pdf);
 
 			//Integral over spherical coordinates of D_ggx * cos(theta) * sin(theta) = 1
 			sum += numerator / pdf;

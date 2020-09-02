@@ -158,8 +158,8 @@ void generateCubeTestModel() {
 
 int main(){	
 	//SceneReader scene("scenes/testing.json");
-	//SceneReader scene("scenes/veach.json");
-	SceneReader scene("scenes/volume.json");
+	SceneReader scene("scenes/veach.json");
+	//SceneReader scene("scenes/volume.json");
 	//SceneReader scene("scenes/offlinetesting.json");
 	Settings settings = scene.getSettings();
 	//settings.renderMode = REALTIME_RENDERING_MODE;
