@@ -6,8 +6,8 @@
 out vec4 color; 
 in vec3 rayDirection;
 in vec3 vertCoord;
-in vec3 translation;
-in vec3 scale;
+flat in vec3 translation;
+flat in vec3 scale;
 
 //LBVH
 //interleaved as node, min, max for LBVH1

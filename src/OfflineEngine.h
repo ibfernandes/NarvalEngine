@@ -609,7 +609,7 @@ public:
 
 	void mainLoop() {
 		TestPlayground *tp= new TestPlayground();
-		tp->testNDFIntegral();
+		//tp->testNDFIntegral();
 
 		Timer t;
 		std::ofstream file;

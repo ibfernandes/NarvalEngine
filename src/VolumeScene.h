@@ -72,7 +72,7 @@ public:
 	bool firstPass = true;
 	int SPP = 1;
 	bool clearRayTracing = true;
-	int currentModel = 1;
+	int currentModel = 0;
 	const char* models[6] = {"cloud", "dragonHavard", "fireball", "explosion", "bunny_cloud", "explosion"};
 	std::string currentModelResolution = "";
 
