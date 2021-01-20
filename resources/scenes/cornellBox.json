@@ -1,0 +1,89 @@
+{
+	"version" : "0.0.1a",
+	
+	"materials": [
+		{
+			"name": "env",
+			"type": "microfacet",
+			"roughness": 0.95,
+			"metallic": 0.0,
+			"albedo": [0.8, 0.8, 0.8]
+		},
+		{
+			"name": "emitter1",
+			"type": "emitter",
+			"albedo": [85.5, 85.5, 85.5]
+		},
+		{
+			"name": "volumeMat",
+			"type": "volume",
+			"scattering": [0.17, 0.07, 0.07],
+			"absorption": [0.055, 0.055, 0.055],
+			"phaseFunction": "isotropic",
+			"path" : "vdb/wdas_cloud_sixteenth.vdb"
+		}
+	],
+	
+	"primitives": [
+		{
+			"name": "testObj",
+			"type": "obj",
+			"transform": {
+				"position": [2.5, 0, 1],
+				"scale": [0.15, 0.15, 0.15],
+				"rotation": [20, 40, 0]
+			},
+			"materialName": "env",
+			"path" : "models/xyzaxis/arrows.obj"
+		},
+		{
+			"name": "sphereLight1",
+			"type": "sphere",
+			"transform": {
+				"position": [0, 0, 0]
+			},
+			"radius": 0.3,
+			"materialName": "emitter1"
+		},
+		{
+			"name": "backWall",
+			"type": "rectangle",
+			"transform": {
+				"position": [0, 0, 3],
+				"scale": [12, 6, 1],
+				"rotation": [0, 0, 0]
+			},
+			"materialName": "env"
+		},
+		{
+			"name": "dragon",
+			"type": "volume",
+			"transform": {
+				"position": [-1.5, 0.0, 1.0],
+				"scale": [1, 1, 1],
+                "rotation": [0, 0, 0]
+			},
+			"materialName": "volumeMat"
+		}
+	],
+
+	"camera": {
+		"position": [0, 0, -3],
+		"lookAt": [0, 0, 0],
+		"up": [0, 1, 0],
+		"speed": 5,
+		"vfov": 70,
+		"aperture": 0.0001,
+		"autoFocus": true,
+		"focus": 1
+	},
+	
+	"renderer": {
+		"resolution": [400, 200],
+		"spp": 5,
+		"bounces": 3,
+		"mode": "offline",
+		"HDR": false,
+		"toneMapping": false
+	}
+}

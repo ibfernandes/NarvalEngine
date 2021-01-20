@@ -1,5 +1,6 @@
 build/
 resources/wdas_cloud*.vdb
 resources/vdb/
+resources/scenes/*.nvdb
 models/
 includes/

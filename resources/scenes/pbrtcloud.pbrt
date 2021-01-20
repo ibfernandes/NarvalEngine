@@ -1,0 +1,130 @@
+Integrator "volpath" "integer maxdepth" [10]
+
+Sampler "sobol" "integer pixelsamples" [5]
+
+Film "rgb" 
+  "integer xresolution" [400]
+  "integer yresolution" [400]
+  "string filename" "disney-cloud-720p.exr"
+
+Scale 1 1 1
+LookAt
+  #Eye
+  0 0 -2.9
+  #Target
+  0 0 0
+  #Up vector
+  0 1 0
+
+Camera "perspective" "float fov" [70]
+
+
+WorldBegin
+
+##Uniform illumination from all directions.
+#LightSource "infinite" "rgb L" [0.03 0.07 0.23]
+
+##Approximate the sun.
+#LightSource "distant"
+#  "point3 to" [-0.5826 -0.7660 -0.2717]
+#  "rgb L" [2.6 2.5 2.3]
+ 
+#Light Source
+AttributeBegin
+	Translate 0 1.98 1
+	Scale 0.5 1 0.25
+	Rotate -90 1 0 0
+	AreaLightSource "diffuse" "rgb L" [ 25.000000 17.000000 10.000000 ]
+	Shape "trianglemesh"  "integer indices" [0 1 2	3 0 2] 
+	"point3 P" [-1 -1 0 	-1 1 0		1 1 0	1 -1 0]
+AttributeEnd
+
+#Back wall
+AttributeBegin
+	Translate 0 0 2
+	Scale 2 2 1
+	Rotate 0 0 1 0
+	Material "diffuse" "rgb reflectance" [1 1 1]
+	Shape "trianglemesh"  
+		"integer indices" [0 1 2	3 0 2] 
+		"point3 P" [-1 -1 0 	-1 1 0		1 1 0	1 -1 0]
+AttributeEnd
+
+#Right wall
+AttributeBegin
+	Translate 2 0 2
+	Rotate 90 0 1 0
+	Scale 2 2 1
+	Material "diffuse" "rgb reflectance" [0.11 0.8 0.01]
+	Shape "trianglemesh"  
+		"integer indices" [0 1 2	0 3 2]
+		"point3 P" [-1 -1 0 	-1 1 0		1 1 0	1 -1 0]
+AttributeEnd
+
+#Left wall
+AttributeBegin
+	Translate -2 0 2
+	Rotate 90 0 1 0
+	Scale 2 2 1
+	Material "diffuse" "rgb reflectance" [0.8 0.02 0.05]
+	Shape "trianglemesh"  
+		"integer indices" [0 1 2	0 3 2]
+		"point3 P" [-1 -1 0 	-1 1 0		1 1 0	1 -1 0]
+AttributeEnd
+
+#Ceil
+AttributeBegin
+	Translate 0 2 2
+	Rotate 90 1 0 0
+	Scale 2 2 1
+	Material "diffuse" "rgb reflectance" [1 1 1]
+	Shape "trianglemesh"  
+		"integer indices" [0 1 2	0 3 2] 
+		"point3 P" [-1 -1 0 	-1 1 0		1 1 0	1 -1 0]
+		"normal N" [0 0 -1	0 0 -1	0 0 -1	0 0 -1]
+AttributeEnd
+
+#Floor
+AttributeBegin
+	Translate 0 -2 2
+	Rotate 90 1 0 0
+	Scale 2 2 2
+	Material "diffuse" "rgb reflectance" [1 1 1]
+	Shape "trianglemesh"  
+		"integer indices" [0 1 2	0 3 2] 
+		"point3 P" [-1 -1 0 	-1 1 0		1 1 0	1 -1 0]
+AttributeEnd
+
+#cloud
+AttributeBegin
+	Translate 0 -0.5 1
+	Rotate 90 0 1 0
+	Scale 0.0055 0.0055 0.0055
+  MakeNamedMedium "cloud" "string type" "nanovdb" 
+    "string filename" "wdas_cloud_quarter.nvdb"
+    "rgb sigma_a" [0.01 0.01 0.01]
+    "rgb sigma_s" [1.01 1.01 1.01]
+    "float g" [0]
+    "float scale" [0.04]
+AttributeEnd
+
+##bunny
+#AttributeBegin
+#	Translate 0 -0.5 0.5
+#	Rotate 0 0 1 0
+#	Scale 0.025 0.025 0.025
+#  MakeNamedMedium "bunny" "string type" "nanovdb" 
+#    "string filename" "bunny_cloud.nvdb"
+#    "rgb sigma_a" [0.01 0.01 0.01]
+#    "rgb sigma_s" [100.01 100.01 100.01]
+#    "float g" [0]
+#    "float scale" [0.01]
+#AttributeEnd
+
+
+AttributeBegin
+	Material ""
+	MediumInterface "cloud" ""
+	  #Bounding sphere of a unit cube (of diameter equal to the cubic root of 3).
+	   Shape "sphere" "float radius" [2]
+AttributeEnd

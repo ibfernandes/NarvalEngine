@@ -13,6 +13,7 @@ in VERTOUT{
 
 struct Material{
     sampler2D diffuse;
+    sampler2D metallic;
     sampler2D specular;
     sampler2D normal;
 };
@@ -99,6 +100,7 @@ vec3 calculateLightPoint(LightPoint light, vec3 fragPos, vec3 viewDir){
 }
 
 void main(){
+	
 
     switch(viewMode){
         case 0:

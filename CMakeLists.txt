@@ -16,7 +16,7 @@ set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 
 # rapidjson paths
-add_subdirectory(includes/rapidjson)
+#add_subdirectory(includes/rapidjson)
 include_directories(includes/rapidjson)
 include_directories(includes/rapidjson/include)
 find_package(RapidJSON)
@@ -41,9 +41,12 @@ include_directories(includes/stb)
 
 # ASSIMP
 # Set ASSIMP options and add directory
-option(ASSIMP_BUILD_ASSIMP_TOOLS OFF)
-option(ASSIMP_BUILD_SAMPLES OFF)
-option(ASSIMP_BUILD_TESTS OFF)
+set(ASSIMP_BUILD_ASSIMP_TOOLS OFF)
+set(ASSIMP_BUILD_SAMPLES OFF)
+set(ASSIMP_BUILD_TESTS OFF)
+set(ASSIMP_NO_EXPORT ON)
+set(ASSIMP_BUILD_ALL_IMPORTERS_BY_DEFAULT FALSE)
+set(ASSIMP_BUILD_OBJ_IMPORTER TRUE)
 add_subdirectory(includes/assimp)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/includes/assimp/include)
 
@@ -59,6 +62,14 @@ include_directories(includes/glm)
 # GLM fastnoise
 include_directories(includes/fastnoise)
 
+# tinyfiledialogs
+include_directories(includes/tinyfiledialogs)
+
+set(TINYFILEDIALOGS_SOURCES
+    "includes/tinyfiledialogs/tinyfiledialogs.h"
+    "includes/tinyfiledialogs/tinyfiledialogs.c"
+)
+
 # Imgui paths
 include_directories(includes/imgui)
 include_directories(includes/imgui/examples)
@@ -71,6 +82,8 @@ set(IMGUI_SOURCES
     "includes/imgui/imgui_draw.cpp"
     "includes/imgui/imgui_demo.cpp"
     "includes/imgui/imgui_widgets.cpp"
+    "includes/imgui/addons/ImGuizmo/ImGuizmo.h"
+    "includes/imgui/addons/ImGuizmo/ImGuizmo.cpp"
     "includes/imgui/examples/imgui_impl_glfw.cpp"
     "includes/imgui/examples/imgui_impl_opengl3.cpp"
 )
@@ -204,19 +217,31 @@ else()
     endif()
 endif()
 
-file(COPY "C:/vcpkg/installed/x86-windows/bin/Half-2_3.dll" DESTINATION ${CMAKE_BINARY_DIR}/Debug)
-file(COPY "C:/vcpkg/installed/x86-windows/bin/tbb.dll" DESTINATION ${CMAKE_BINARY_DIR}/Debug)
-file(COPY "C:/vcpkg/installed/x64-windows/bin/Half-2_3.dll" DESTINATION ${CMAKE_BINARY_DIR}/Debug)
+#file(COPY "C:/vcpkg/installed/x86-windows/bin/Half-2_3.dll" DESTINATION ${CMAKE_BINARY_DIR}/Debug)
+#file(COPY "C:/vcpkg/installed/x86-windows/bin/tbb.dll" DESTINATION ${CMAKE_BINARY_DIR}/Debug)
+file(COPY "C:/vcpkg/installed/x64-windows/bin/Half-2_5.dll" DESTINATION ${CMAKE_BINARY_DIR}/Debug)
 file(COPY "C:/vcpkg/installed/x64-windows/bin/tbb.dll" DESTINATION ${CMAKE_BINARY_DIR}/Debug)
 #set(TBB_BUILD_TYPE DEBUG)
 #https://github.com/xtensor-stack/xtensor/blob/master/cmake/FindTBB.cmake
 
 # Sources files
-file(GLOB SOURCE_FILES
-    "src/*.h"
-    "src/*.cpp"
+set(_src_root_path "${NarvalEngine_SOURCE_DIR}/src/")
+file(
+    GLOB_RECURSE SOURCE_FILES 
+    LIST_DIRECTORIES false
+    "${_src_root_path}/*.c*"
+    "${_src_root_path}/*.h*"
 )
 
-add_executable(NarvalEngine ${SOURCE_FILES} ${GLAD} ${IMGUI_SOURCES} ${FASTNOISE_SOURCES} ${STB_SOURCES} )
+foreach(_source IN ITEMS ${SOURCE_FILES})
+    get_filename_component(_source_path "${_source}" PATH)
+    file(RELATIVE_PATH _source_path_rel "${_src_root_path}" "${_source_path}")
+    string(REPLACE "/" "\\" _group_path "${_source_path_rel}")
+    source_group("${_group_path}" FILES "${_source}")
+endforeach()
+
+include_directories( "${CMAKE_SOURCE_DIR}/src" )
+
+add_executable(NarvalEngine ${SOURCE_FILES} ${GLAD} ${IMGUI_SOURCES} ${TINYFILEDIALOGS_SOURCES} ${FASTNOISE_SOURCES} ${STB_SOURCES} )
 target_link_libraries(NarvalEngine ${core_libs} glfw ${GLFW_LIBRARIES} assimp)
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT NarvalEngine)

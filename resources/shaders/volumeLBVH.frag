@@ -27,14 +27,11 @@ layout(std140, binding = 3) readonly buffer mortonCodesBlock
     ivec4 mortonCodes[];
 };
 
-uniform int nodesSize;
 uniform int numberOfNodes;
 uniform int levels;
 uniform ivec3 lbvhSize;
 uniform isampler2D nodeTex;
 uniform ivec2 nodeTexSize;
-uniform isampler2D offsetsTex;
-uniform isampler2D mortonCodesTex;
 //0 = binary, 1 = quad, 2 = oct
 uniform int treeMode = 0;
 
@@ -47,7 +44,6 @@ uniform float time;
 uniform vec2 screenRes;
 uniform int renderingMode;
 
-uniform vec3 resolution;
 uniform vec3 scattering;
 uniform vec3 absorption;
 #define extinction (absorption + scattering)
@@ -84,8 +80,10 @@ struct Ray{
 float seedSum = 0;
 vec2 uv = gl_FragCoord.xy/screenRes.xy;
 int maxBounces = 4;
-vec3 boxMin = (model * vec4(0,0,0,1)).xyz;
-vec3 boxMax = (model * vec4(1,1,1,1)).xyz;
+//vec3 boxMin = (model * vec4(0,0,0,1)).xyz;
+vec3 boxMin = (model * vec4(-0.5f, -0.5f, -0.5f,1)).xyz;
+//vec3 boxMax = (model * vec4(1,1,1,1)).xyz;
+vec3 boxMax = (model * vec4(0.5, 0.5, 0.5, 1)).xyz;
 float transmittanceThreshold = 0.001f;
 
 /*
@@ -164,7 +162,7 @@ vec3 decodeSimple3D(int value) {
 vec3 convertToWorldCoordinates(vec3 vec){
 	return (vec / lbvhSize) * scale + translation;
 }
-
+/*
 vec3 getWCS(vec3 v){
 	return convertToWorldCoordinates(v);	
 }
@@ -278,9 +276,9 @@ int getParent(int node) {
 }
 
 int getNode(int index){
-	/*int arrIndex = index/4;
+	int arrIndex = index/4;
 	int coord = index % 4;
-	return node[arrIndex][coord];*/
+	return node[arrIndex][coord];
 
 	int y = index/nodeTexSize.x;
 	int x = index % nodeTexSize.x;
@@ -412,14 +410,14 @@ vec3 traverseTree(Ray r) {
 
  float remap(float originalValue, float originalMin, float originalMax, float newMin, float newMax){
 	return newMin + (((originalValue - originalMin) / (originalMax - originalMin)) * (newMax - newMin));
-}
+}*/
 
 float saturate(float value){
 	return clamp(value, 0.0, 1.0);
 }
 
 float sampleVolume(vec3 pos){
-	vec3 tex = ( invmodel * vec4(pos,1)).xyz;
+	vec3 tex = ( invmodel * vec4(pos,1)).xyz + 0.5; //added 0.5
 
 	return densityCoef * texture(volume, tex).r;
 }
@@ -612,7 +610,7 @@ vec4 pathTracing(vec4 background, vec3 origin, vec3 rayDirection, float depth){
 
 	return vec4(thisColor, 1);
 }
-
+/*
 vec3 calculateLBVHColor(vec3 origin, vec3 rayDirection, vec3 background){
 	vec3 res = traverseTree(Ray(origin, rayDirection)); 
 
@@ -621,8 +619,8 @@ vec3 calculateLBVHColor(vec3 origin, vec3 rayDirection, vec3 background){
 		return vec3(tr.x, tr.y, tr.z);
 	}else
 		return background.xyz;
-}
-
+}*/
+/*
 vec4 lbvhPathTracing(vec4 background, vec3 origin, vec3 rayDirection, float depth){
 	vec3 thisColor = vec3(0);
 	float e1 = randomUniform(uv) - 0.5f;
@@ -656,12 +654,13 @@ vec4 lbvhPathTracing(vec4 background, vec3 origin, vec3 rayDirection, float dept
 
 	return vec4(thisColor, 1);
 }
-
+*/
 void main(){
 	vec4 thisColor;
 	vec3 transmittance;
 	vec3 inScattering;
 	vec4 bg = texture(background, uv);
+	//vec4 bg = vec4(0, 0, 0, 1);
 	float depth = texture(backgroundDepth, uv).r;
 	Ray incomingRay = {cameraPosition, normalize(rayDirection)};
 	vec2 tHit = intersectBox(incomingRay.origin, incomingRay.direction); 
@@ -679,9 +678,10 @@ void main(){
 			break;
 		//LBVH Monte carlo
 		case 2:
-			thisColor = lbvhPathTracing(bg, incomingRay.origin, incomingRay.direction, depth); 
+			//thisColor = lbvhPathTracing(bg, incomingRay.origin, incomingRay.direction, depth); 
 			break;
 	}
 	
 	color = thisColor;
+	//color = vec4(1,0,0,1);
 }
