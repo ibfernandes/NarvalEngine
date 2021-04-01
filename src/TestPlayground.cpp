@@ -1,12 +1,8 @@
 #include "TestPlayground.h"
 
+namespace narvalengine {
 
 
-TestPlayground::TestPlayground()
-{
-}
-
-
-TestPlayground::~TestPlayground()
-{
+	TestPlayground::~TestPlayground() {
+	}
 }

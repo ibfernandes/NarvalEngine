@@ -1,8 +1,9 @@
-#version 330 core
+#version 430 core
 
-in vec4 fragColor;
 out vec4 color;
 
+uniform vec4 rgbColor;
+
 void main(){
-	color = vec4(fragColor.xyzw);
+	color = rgbColor;
 }

@@ -1,8 +1,8 @@
 #version 430 core
 layout (location = 0) in vec3 vertex;
 layout (location = 1) in vec3 normal;
-layout (location = 2) in vec2 tex;
-layout (location = 3) in vec3 tangent;
+layout (location = 2) in vec3 tangent;
+layout (location = 3) in vec2 tex;
 
 out VERTOUT{
     vec2 texCoord;
@@ -15,7 +15,6 @@ out VERTOUT{
 uniform mat4 model;
 uniform mat4 cam;
 uniform mat4 proj;
-uniform vec3 cameraPosition;
 
 uniform mat4 lightProj;
 uniform mat4 lightCam;

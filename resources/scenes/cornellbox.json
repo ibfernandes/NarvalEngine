@@ -1,0 +1,199 @@
+{
+	"version" : "0.0.1a",
+	
+	"materials": [
+		{
+			"name": "env",
+			"type": "microfacet",
+			"roughness": 0.95,
+			"metallic": 0.0,
+			"albedo": [0.498, 0.549, 0.549]
+		},
+		{
+			"name": "checkboard",
+			"type": "microfacet",
+			"roughness": 0.95,
+			"metallic": 0.0,
+			"albedo": "imgs/checkboard.png"
+		},
+		{
+			"name": "wood",
+			"type": "microfacet",
+			"roughness": 0.95,
+			"metallic": 0.0,
+			"albedo": "imgs/wood.png"
+		},
+		{
+			"name": "blueMat",
+			"type": "microfacet",
+			"roughness": 0.95,
+			"metallic": 0.0,
+			"albedo": [0.0, 0.0, 1.0]
+		},
+		{
+			"name": "whiteMat",
+			"type": "microfacet",
+			"roughness": 0.95,
+			"metallic": 0.0,
+			"albedo": [0.8, 0.8, 0.8]
+		},
+		{
+			"name": "redMat",
+			"type": "microfacet",
+			"roughness": 0.95,
+			"metallic": 0.0,
+			"albedo": [0.8, 0.02, 0.05]
+		},
+		{
+			"name": "greenMat",
+			"type": "microfacet",
+			"roughness": 0.95,
+			"metallic": 0.0,
+			"albedo": [0.11, 0.8, 0.01]
+		},
+		{
+			"name": "lampMat",
+			"type": "microfacet",
+			"roughness": 0.95,
+			"metallic": 0.0,
+			"albedo": [0.1, 0.1, 0.1]
+		},
+		{
+			"name": "emitter1",
+			"type": "emitter",
+			"albedo": [930, 600, 90]
+		},
+		{
+			"name": "emitter2",
+			"type": "emitter",
+			"albedo": [400, 400, 400]
+		},
+		{
+			"name": "sun",
+			"type": "directionalLight",
+			"albedo": [5.2, 5.2, 5.2],
+			"position": [0, 1, 1]
+		},
+		{
+			"name": "homogeneousMedia",
+			"type": "volume",
+			"scattering": [1.1, 1.1, 1.1],
+			"absorption": [0.01, 0.01, 0.01],
+			"phaseFunction": "isotropic",
+			"density": 3
+		},
+		{
+			"name": "testCubeMat",
+			"type": "volume",
+			"scattering": [1.1, 1.1, 1.1],
+			"absorption": [0.01, 0.01, 0.01],
+			"phaseFunction": "hg",
+			"g": -0.7,
+			"path" : "vdb/testCube.vol",
+			"density": 5
+		},
+		{
+			"name": "volumeMat",
+			"type": "volume",
+			"scattering": [1.1, 1.1, 1.1],
+			"absorption": [0.01, 0.01, 0.01],
+			"phaseFunction": "hg",
+			"g": 0.7,
+			"path" : "vdb/wdas_cloud_sixteenth.vdb",
+			"density": 5
+		}
+	],
+	
+	"primitives": [
+		{
+			"name": "rectLight",
+			"type": "rectangle",
+			"transform": {
+				"position": [0, 3.9, 0],
+				"scale": [1, 1, 1],
+				"rotation": [-89, 0, 0]
+			},
+			"materialName": "emitter2"
+		},
+		{
+			"name": "volume",
+			"type": "volume",
+			"transform": {
+				"position": [0, 1.5, 1.0],
+				"scale": [1.5, 1.5, 1.5],
+				"rotation": [0, 0, 0]
+			},
+			"materialName": "testCubeMat"
+		},
+		{
+			"name": "cubeBack",
+			"type": "rectangle",
+			"transform": {
+				"position": [0, 2, 2],
+				"scale": [4, 4, 1],
+				"rotation": [0, 0, 0]
+			},
+			"materialName": "checkboard"
+		},
+		{
+			"name": "cubeFloor",
+			"type": "rectangle",
+			"transform": {
+				"position": [0, 0, 0],
+				"scale": [4, 4, 1],
+				"rotation": [90, 0, 0]
+			},
+			"materialName": "wood"
+		},
+		{
+			"name": "cubeCeil",
+			"type": "rectangle",
+			"transform": {
+				"position": [0, 4, 0],
+				"scale": [4, 4, 1],
+				"rotation": [-90, 0, 0]
+			},
+			"materialName": "wood"
+		},
+		{
+			"name": "cubeLeft",
+			"type": "rectangle",
+			"transform": {
+				"position": [-2, 2, 0],
+				"scale": [4, 4, 1],
+				"rotation": [0, -90, 0]
+			},
+			"materialName": "redMat"
+		},
+		{
+			"name": "cubeRight",
+			"type": "rectangle",
+			"transform": {
+				"position": [2, 2, 0],
+				"scale": [4, 4, 1],
+				"rotation": [0, 90, 0]
+			},
+			"materialName": "greenMat"
+		}
+	],
+
+	"camera": {
+		"position": [0, 2, -5],
+		"lookAt": [0, 2, 0],
+		"up": [0, 1, 0],
+		"speed": 5,
+		"vfov": 45,
+		"aperture": 0.0001,
+		"autoFocus": true,
+		"focus": 1
+	},
+	
+	"renderer": {
+		"resolution": [1200, 600],
+		"spp": 1,
+		"bounces": 6,
+		"mode": "realtime",
+		"HDR": false,
+		"toneMapping": false
+	}
+}

@@ -1,0 +1,137 @@
+{
+	"version" : "0.0.1a",
+	
+	"materials": [
+		{
+			"name": "whiteMat",
+			"type": "microfacet",
+			"roughness": 0.95,
+			"metallic": 0.0,
+			"albedo": [0.8, 0.8, 0.8]
+		},
+		{
+			"name": "redMat",
+			"type": "microfacet",
+			"roughness": 0.95,
+			"metallic": 0.0,
+			"albedo": [0.8, 0.02, 0.05]
+		},
+		{
+			"name": "greenMat",
+			"type": "microfacet",
+			"roughness": 0.95,
+			"metallic": 0.0,
+			"albedo": [0.11, 0.8, 0.01]
+		},
+		{
+			"name": "emitter",
+			"type": "emitter",
+			"albedo": [50, 50, 50]
+		},
+		{
+			"name": "volumeMat",
+			"type": "volume",
+			"scattering": [1.1, 1.1, 1.1],
+			"absorption": [0.01, 0.01, 0.01],
+			"phaseFunction": "hg",
+			"g": 0,
+			"path" : "vdb/wdas_cloud_sixteenth.vdb",
+			"density": 100,
+			"comment": "Original resolution 450x317x530",
+			"comment2": "pbrt resolution x 0.003 = 1.35x0.951x1.59"
+		}
+	],
+	
+	"primitives": [
+		{
+			"name": "rectLight",
+			"type": "rectangle",
+			"transform": {
+				"position": [0, 3.9, 0],
+				"scale": [1, 1, 1],
+				"rotation": [-89, 0, 0]
+			},
+			"materialName": "emitter"
+		},
+		{
+			"name": "volume",
+			"type": "volume",
+			"transform": {
+				"position": [0, 0.6, 0.5],
+				"scale": [1.35, 0.951, 1.59],
+				"rotation": [0, 0, 0]
+			},
+			"materialName": "volumeMat"
+		},
+		{
+			"name": "cubeBack",
+			"type": "rectangle",
+			"transform": {
+				"position": [0, 2, 2],
+				"scale": [4, 4, 1],
+				"rotation": [0, 0, 0]
+			},
+			"materialName": "whiteMat"
+		},
+		{
+			"name": "cubeFloor",
+			"type": "rectangle",
+			"transform": {
+				"position": [0, 0, 0],
+				"scale": [4, 4, 1],
+				"rotation": [90, 0, 0]
+			},
+			"materialName": "whiteMat"
+		},
+		{
+			"name": "cubeCeil",
+			"type": "rectangle",
+			"transform": {
+				"position": [0, 4, 0],
+				"scale": [4, 4, 1],
+				"rotation": [90, 0, 0]
+			},
+			"materialName": "whiteMat"
+		},
+		{
+			"name": "cubeLeft",
+			"type": "rectangle",
+			"transform": {
+				"position": [-2, 2, 0],
+				"scale": [4, 4, 1],
+				"rotation": [0, -90, 0]
+			},
+			"materialName": "redMat"
+		},
+		{
+			"name": "cubeRight",
+			"type": "rectangle",
+			"transform": {
+				"position": [2, 2, 0],
+				"scale": [4, 4, 1],
+				"rotation": [0, 90, 0]
+			},
+			"materialName": "greenMat"
+		}
+	],
+
+	"camera": {
+		"position": [0, 2, -5],
+		"lookAt": [0, 2, 0],
+		"up": [0, 1, 0],
+		"speed": 5,
+		"vfov": 45,
+		"aperture": 0.0001,
+		"autoFocus": true,
+		"focus": 1
+	},
+	
+	"renderer": {
+		"resolution": [1200, 600],
+		"spp": 1,
+		"bounces": 6,
+		"mode": "realtime",
+		"HDR": false,
+		"toneMapping": false
+	}
+}

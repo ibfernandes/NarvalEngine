@@ -1,324 +1,361 @@
 #pragma once
 #include <glm/glm.hpp>
-#include "RoughConductorBRDF.h"
-#include "Math.h"
-#include "MaterialBRDF.h"
-#include "OBB.h"
-#include "GridMaterial.h"
+#include "core/Scene.h"
+#include "core/Microfacet.h"
+#include "io/SceneReader.h"
+#include <sstream>
 
-class TestPlayground
-{
-public:
+namespace narvalengine {
+	class TestPlayground {
+	public:
+		//consider z-up
+		void generateOrthonormalCS2(glm::vec3 normal, glm::vec3& v, glm::vec3& u) {
+			//ns, ss, ts
+			if (std::abs(normal.x) > std::abs(normal.y))
+				v = glm::vec3(-normal.z, 0, normal.x) / std::sqrt(normal.x * normal.x + normal.z * normal.z);
+			else
+				v = glm::vec3(0, normal.z, -normal.y) / std::sqrt(normal.y * normal.y + normal.z * normal.z);
 
-	void test() {
-		glm::vec3 albedo = glm::vec3(0.722, 0.451, 0.2);
-		RoughConductorBRDF *brdf = new RoughConductorBRDF(0.01f, 1.0f, albedo);
-		glm::vec3 incomingDir = glm::normalize(glm::vec3(1, -1, 0));
-		Ray incoming{ glm::vec3(-100,100,0), incomingDir };
-		Ray scattered;
-		Hit hit;
-		hit.normal = glm::vec3(0, 1, 0);
-		hit.p = glm::vec3(-10, 10, 0);
-		float pdf = 0;
-
-		brdf->sample(incoming, scattered, hit);
-		//scattered.d = glm::reflect(glm::normalize(incoming.d), glm::normalize(hit.normal));
-		//scattered.d = glm::normalize(glm::vec3(1, 0.01, 0));
-		glm::vec3 scatteredDir = scattered.direction;
-		glm::vec3 norm = glm::normalize(scatteredDir);
-		glm::vec3 res = brdf->eval(incoming, scattered, hit, pdf);
-		glm::vec3 resWithPdf = res * 1.0f / pdf;
-		std::cout << "incoming: \t";
-		printVec3(-incoming.direction);
-		std::cout << "scattered: \t";
-		printVec3(scattered.direction);
-		std::cout << "albedo: \t";
-		printVec3(albedo);
-		std::cout << "BRDF: \t\t";
-		printVec3(res);
-		std::cout << "PDF: \t\t";
-		std::cout << pdf << std::endl;
-		std::cout << "BRDF * PDF: \t";
-		printVec3(res*pdf);
-		std::cout << "BRDF * 1/PDF: \t";
-		printVec3(res * 1.0f / pdf);
-		float angle = glm::dot(-incoming.direction, scatteredDir);
-		int stop = 0;
-
-		while (true)
-			continue;
-	}
-
-	void testCS() {
-		float theta, phi, r = 1;
-		glm::vec3 w = glm::normalize(glm::vec3(1, 0, 0));
-		glm::vec3 v, u;
-		generateOrthonormalCS(w, v, u);
-
-		theta = glm::radians(45.0f);
-		phi = glm::radians(0.0f);
-		glm::vec3 dir = sphericalToCartesian(r, theta, phi);
-		glm::vec3 finalDir = toWorld(dir, w, u, v);
-		glm::vec3 fromRHtoLH;
-		fromRHtoLH.x = dir.y;
-		fromRHtoLH.y = dir.z;
-		fromRHtoLH.z = -dir.x;
-
-		std::cout << "w: ";
-		printVec3(w);
-		std::cout << "u: ";
-		printVec3(u);
-		std::cout << "v: ";
-		printVec3(v);
-		std::cout << "dirCart: ";
-		printVec3(dir);
-		std::cout << "dirFinal: ";
-		printVec3(finalDir);
-		std::cout << "fromRHtoLH: ";
-		printVec3(fromRHtoLH);
-
-		std::cout << "--------------------------------" << std::endl;
-		//RH
-		w = glm::vec3(0, 1, 0);
-		u = glm::vec3(1, 0, 0);
-		v = glm::vec3(0, 0, -1);
-		dir = glm::vec3(1, 1, 1);
-		finalDir = toWorld(dir, w, u, v); //converts to LH
-		std::cout << "w: ";
-		printVec3(w);
-		std::cout << "u: ";
-		printVec3(u);
-		std::cout << "v: ";
-		printVec3(v);
-		std::cout << "dir: ";
-		printVec3(dir);
-		std::cout << "finalDir: ";
-		printVec3(finalDir);
-
-		float len = glm::length2(glm::vec2(-4, 1));
-		float len2 = glm::length2(glm::vec2(-1, 2));
-		std::cout << len << std::endl;
-		std::cout << len2;
-
-		while (true)
-			continue;
-	}
-
-
-	//TUDO OK pros 4 quadrantes
-	void testLightDirSample() {
-		glm::vec3 spherePos[8];
-		spherePos[1] = glm::vec3(-3, 3, 1);
-		spherePos[0] = glm::vec3(3, 3, 1);
-		spherePos[2] = glm::vec3(-3, -3, 1);
-		spherePos[3] = glm::vec3(3, -3, 1);
-		spherePos[4] = glm::vec3(-3, 3, -1);
-		spherePos[5] = glm::vec3(3, 3, -1);
-		spherePos[6] = glm::vec3(-3, -3, -1);
-		spherePos[7] = glm::vec3(3, -3, -1);
-
-		glm::vec3 surfaceP = glm::vec3(0, 0, 0);
-		float r = 1.0f;
-
-		for (int i = 0; i < 8; i++) {
-			//spherePos[i].x *= 101;
-			//spherePos[i].y *= 101;
-			//spherePos[i].z *= 303;
-			glm::vec4 sphereDir = sampleSphere(surfaceP, spherePos[i], r);
-
-			std::cout << "sphr - surf: ";
-			printVec3(glm::normalize(spherePos[i] - surfaceP));
-			std::cout << "sample:   ";
-			printVec3(sphereDir);
-			std::cout << "PDF: " << sphereDir.w << std::endl;
-			std::cout << "----------------------------" << std::endl;
+			u = glm::normalize(glm::cross(v, normal));
 		}
 
-		while (true)
-			continue;
-	}
-
-	void testBRDFPDF() {
-		glm::vec3 albedo = glm::vec3(0.722, 0.451, 0.2);
-		RoughConductorBRDF *brdf = new RoughConductorBRDF(0.01f, 1.0f, albedo);
-		Hit hit;
-		glm::vec3 hitpoint = glm::vec3(1, 0, 0);
-		glm::vec3 incomingPoint[6];
-		incomingPoint[0] = glm::vec3(0, 0, 0);
-		incomingPoint[1] = glm::vec3(0, 1, 0);
-		incomingPoint[2] = glm::vec3(0, 0.5, 0);
-		incomingPoint[3] = glm::vec3(0.5, 0.5, 0);
-		incomingPoint[4] = glm::vec3(0.5, 1.0, 0);
-		incomingPoint[5] = glm::vec3(0.75, 1.0, 0);
-
-		for (int i = 0; i < 6; i++) {
-			Ray incoming;
-			incoming.o = incomingPoint[i];
-			incoming.d = glm::normalize(hitpoint - incomingPoint[i]);
-			hit.p = hitpoint;
-			hit.normal = glm::vec3(0, 1, 0);
-			Ray scattered;
-			scattered.o = hitpoint;
-			scattered.d = glm::normalize(glm::vec3(1, 1, 0));
-			float pdf;
-			glm::vec3 res = brdf->eval(incoming, scattered, hit, pdf);
-
-			std::cout << "in.d: ";
-			printVec3(incoming.d);
-			std::cout << "sc.d: ";
-			printVec3(scattered.d);
-			std::cout << "pdf: " << pdf << std::endl;
-			std::cout << "---------------" << std::endl;
+		glm::vec3 toLCS2(glm::vec3 v, glm::vec3 ns, glm::vec3 ss, glm::vec3 ts) {
+			return glm::vec3(glm::dot(v, ss), glm::dot(v, ts), glm::dot(v, ns));
 		}
 
-		while (true)
-			continue;
-	}
-
-	void testPlate1() {
-		glm::vec3 albedo = glm::vec3(0.722, 0.451, 0.2);
-		RoughConductorBRDF *brdf = new RoughConductorBRDF(0.01f, 1.0f, albedo);
-		MaterialBRDF *m = new MaterialBRDF(brdf, albedo);
-		glm::vec3 lightPos(0, 7.5, 8.1);
-
-		glm::vec3 platePos(0, 4.5, 10.5);
-		glm::vec3 scale(12, 0.3, 2);
-		glm::vec3 rotate(65, 0, 0);
-		OBB *obb = new OBB(platePos, scale, rotate, m);
-
-		Ray incoming{ glm::vec3(0.1f, 4.5, 0.1), glm::vec3(0, 0, 1) };
-		Ray scattered;
-		Hit hit;
-		bool didHit = obb->hit(incoming, 0.0f, 99999.0f, hit);
-
-		float pdf;
-		brdf->sample(incoming, scattered, hit);
-		glm::vec3 brdfRes = brdf->eval(incoming, scattered, hit, pdf);
-
-		//printMat4(obb->model);
-		glm::vec3 H = glm::normalize(-incoming.d + scattered.d);
-		float NdotH = glm::dot(hit.normal, H);
-		float D = brdf->ggxD(NdotH);
-
-		std::cout << didHit << std::endl;
-		std::cout << "in.d: ";
-		printVec3(incoming.d);
-		std::cout << "sct.d: ";
-		printVec3(scattered.d);
-		std::cout << "N: ";
-		printVec3(hit.normal);
-		std::cout << "NdotH: " << NdotH << std::endl;
-		std::cout << "D: " << D << std::endl;
-		std::cout << "H: ";
-		printVec3(H);
-		std::cout << "brdf: ";
-		printVec3(brdfRes);
-		while (true)
-			continue;
-	}
-
-	void testVolume() {
-		glm::vec3 platePos(0, 4.5, 10.5);
-		glm::vec3 scale(3, 3, 3);
-		glm::vec3 rotate(0, 0, 0);
-		GridMaterial *gm = dynamic_cast<GridMaterial*>(ResourceManager::getSelf()->getMaterial("volumeMat"));
-		OBB *obb = new OBB(platePos, scale, rotate, gm);
-
-		Ray incoming{ glm::vec3(0.75f, 4.5, -10), glm::normalize(glm::vec3(0.0001f, 0.0001f, 1)) };
-		Ray scattered;
-		Hit hit;
-		bool didHit = obb->hit(incoming, 0.0f, 99999.0f, hit);
-
-		//	float t = 0.6f;
-		float t = -std::log(1 - random()) / gm->extinctionAvg;
-		incoming.o = incoming.o + t * incoming.d;
-		glm::vec3 thit = gm->lbvh->traverseTreeUntil(incoming, t);
-		bool didHitLBVH = false;
-		if (thit.x > thit.y)
-			didHitLBVH = false;
-		else
-			didHitLBVH = true;
-
-		incoming.o = glm::vec3(0.75f, 4.5, -10);
-		incoming.o = incoming.o + (hit.tFar - 0.1f) * incoming.d;
-		//incoming.o = platePos + 100.1f;
-		didHit = obb->hit(incoming, -0.001f, 99999.0f, hit);
-
-		float k = 0;
-		while (true)
-			continue;
-	}
-
-	void testNDFIntegral() {
-		int samples = 1000000;
-		float sum = 0;
-		glm::vec3 albedo = glm::vec3(0.1, 0.1, 0.1);
-		RoughConductorBRDF *brdf = new RoughConductorBRDF(0.01f, 1.0f, albedo);
-		MaterialBRDF *m = new MaterialBRDF(brdf, albedo);
-		glm::vec3 platePos(0, 0, 0);
-		glm::vec3 scale(1, 0.1, 1);
-		glm::vec3 rotate(0, 0, 0);
-		OBB *obb = new OBB(platePos, scale, rotate, m);
-
-		for (int i = 0; i < samples; i++) {
-			glm::vec3 hemispherePoint = sampleUnitHemisphere();
-			glm::vec3 v, u;
-			glm::vec3 yup = glm::vec3(0, 1, 0);
-			glm::mat3 orthonormalCS = generateOrthonormalCS(yup, v, u);
-			hemispherePoint = glm::normalize(toWorld(hemispherePoint, yup, v, u));
-
-			Ray incoming{ hemispherePoint, -hemispherePoint };
-			Ray scattered;
-			Hit hit;
-			bool didHit = obb->hit(incoming, 0.0f, 99999.0f, hit);
-
-			// GGX NDF sampling
-			glm::vec2 r = glm::vec2(random(), random());
-			float a2 = brdf->a * brdf->a;
-			float theta = std::acos(std::sqrt((1.0f - r.x) / glm::max(float(EPSILON12), (r.x * (a2 - 1.0f) + 1.0f))));
-			float phi = TWO_PI * r.y;
-			float cosTheta = cos(theta);
-			float sinTheta = sin(theta);
-			glm::vec3 microfacet = glm::vec3(sin(theta) * cos(phi), sin(theta) * sin(phi), cos(theta));
-			orthonormalCS = generateOrthonormalCS(hit.normal, v, u);
-			microfacet = glm::normalize(toWorld(microfacet, hit.normal, v, u));
-
-			glm::vec3 scatteredDir = glm::reflect(glm::normalize(incoming.d), glm::normalize(microfacet));
-			scattered.o = hit.p;
-			scattered.d = scatteredDir;
-
-			glm::vec3 halfway = glm::normalize(-incoming.d + scattered.d);
-			float NdotH = glm::max(0.0f, glm::dot(hit.normal, halfway));
-			float sinThetaInv = std::sin(std::acos(NdotH));
-
-			if (!didHit)
-				std::cout << "didNotHit" << std::endl;
-			if (hemispherePoint.y < 0)
-				std::cout << "hemisphere wrong" << std::endl;
-			if (NdotH < 0)
-				std::cout << "dot negative" << std::endl;
-
-			float denom = cosTheta * cosTheta * (a2 - 1.0f) + 1.0f;
-			denom = glm::max(EPSILON12, PI * denom * denom);
-			float D_ggx = a2 / (denom);
-
-			float numerator = (D_ggx * cosTheta * sinTheta);
-			//PDF for spherical coordinates is this:
-			float pdf = D_ggx * cosTheta * sinTheta;
-			pdf = glm::max(float(EPSILON12), pdf);
-
-			//Integral over spherical coordinates of D_ggx * cos(theta) * sin(theta) = 1
-			sum += numerator / pdf;
+		glm::vec3 toWorld2(glm::vec3 v, glm::vec3 ns, glm::vec3 ss, glm::vec3 ts) {
+			return glm::vec3(
+				ss.x * v.x + ts.x * v.y + ns.x * v.z,
+				ss.y * v.x + ts.y * v.y + ns.y * v.z,
+				ss.z * v.x + ts.z * v.y + ns.z * v.z);
 		}
 
-		float result = sum / samples;
+		//make Basis considering the left handed one with Y-up as the standart
+		glm::mat4 makeBasis(glm::vec3 up, glm::vec3 forward, glm::vec3 right) {
+			glm::mat4 res = glm::mat4(0);
+			res[0] = glm::vec4(right, 0); // first column
+			res[1] = glm::vec4(up, 0); // second column, Up/Normal
+			res[2] = glm::vec4(forward, 0); // third column
+			res[3] = glm::vec4(0, 0, 0, 1); // fourth column
+			
+			return res;
+		}
 
-		std::cout << "D(h)x(HoN) = " << result;
-		while (true)
-			continue;
+		glm::vec3 changeBasis(glm::vec3 v, glm::mat4 basisChangeMat) {
+			return glm::vec4(v, 0) * basisChangeMat;
+		}
 
-	}
-	TestPlayground();
-	~TestPlayground();
-};
+		glm::vec3 backFromBasis(glm::vec3 v, glm::vec3 up, glm::vec3 forward, glm::vec3 right) {
+			return glm::vec3(glm::dot(v, right), glm::dot(v, up), glm::dot(v, right));
+		}
+
+		void testBasisChange() {
+			glm::vec3 up = glm::vec3(0, 0, 1);
+			glm::vec3 forward = glm::vec3(0, 1, 0);
+			glm::vec3 right = glm::vec3(1, 0, 0);
+
+			glm::mat4 basis = makeBasis(up, forward, right);
+
+			//from left handed Y-up to Z-up
+			glm::vec3 v(0, 1, 0);
+			glm::vec3 toZUp = changeBasis(v, basis);
+			glm::vec3 backToYUp = backFromBasis(toZUp, up, forward, right);
+
+			float d;
+		}
+
+		void testMicrofacetBSDF() {
+			int runs = 10000;
+			int microfacetNotOnSameHemisphereAsNormal = 0;
+			int scatteredDirNotOnSameHemisphereAsNormal = 0;
+			bool printLog = false;
+
+			for (int i = 0; i < runs; i++) {
+				glm::vec3 cameraPos = glm::vec3(0, 2, -5);
+				glm::vec3 pointTo = glm::vec3(0, 1, 0);
+
+				//Both incoming and normal in WCS
+				glm::vec3 incoming = glm::normalize(pointTo - cameraPos);
+				glm::vec3 normal = glm::vec3(0, 0, 1);
+
+				GGXDistribution* ggx = new GGXDistribution();
+				ggx->alpha = 0.95;
+				//Microfacet in SCS, tested and validated on a SCILAB plot
+				//SCS has the z axis pointing up
+				glm::vec3 microfacet = ggx->sampleMicrofacet();
+
+				glm::vec3 up = glm::vec3(0, 0, 1);
+				glm::vec3 forward = glm::vec3(0, 1, 0);
+				glm::vec3 right = glm::vec3(1, 0, 0);
+				glm::mat4 basis = makeBasis(up, forward, right);
+				//now it has Z-up
+				incoming = changeBasis(incoming, basis);
+
+				glm::vec3 ss, ts;
+				generateOrthonormalCS2(normal, ss, ts);
+
+				//convert incoming and microfacet to the same LCS space
+				microfacet = toLCS2(microfacet, normal, ss, ts);
+				incoming = toLCS2(incoming, normal, ss, ts);
+
+				//scatteredDir in LCS
+				glm::vec3 scatteredDir = glm::reflect(glm::normalize(incoming), microfacet);
+
+				//convert scatteredDir from LCS to WCS
+				scatteredDir = toWorld2(scatteredDir, normal, ss, ts);
+				//if (!sameHemisphere(scatteredDir, normal))
+				//	scatteredDir = -scatteredDir;
+
+				if (printLog) {
+					printVec3(normal, "normal: ");
+					printVec3(microfacet, "microfacet: ");
+					printVec3(incoming, "incoming: ");
+					printVec3(scatteredDir, "scattered Dir: ");
+				}
+
+				if (!sameHemisphere(microfacet, normal))
+					microfacetNotOnSameHemisphereAsNormal++;
+
+				if (!sameHemisphere(scatteredDir, normal)) {
+					scatteredDirNotOnSameHemisphereAsNormal++;
+					if (printLog)
+						std::cout << "ERROR: scattered direction not in the same hemisphere as normal";
+				}
+				//if (!sameHemisphere(-incoming, normal))
+				//	if (printLog)
+				//		std::cout << "ERROR: -incoming direction not in the same hemisphere as normal";
+			}
+
+			std::cout << "microfacet missed " << microfacetNotOnSameHemisphereAsNormal << " out of " << runs << std::endl;
+			//always half
+			std::cout << "scatteredDir missed " << scatteredDirNotOnSameHemisphereAsNormal << " out of " << runs << std::endl;
+			float d;
+		}
+
+		void unitTest() {
+			glm::vec3 normal = glm::vec3(0, 0, -1);
+			glm::vec3 v = glm::normalize(glm::vec3(0,1,0)); //in WCS
+			glm::vec3 ss, ts;
+			generateOrthonormalCS(normal, ss, ts);
+
+			glm::vec3 vectorInLCS = toLCS2(v, normal, ss, ts);
+			glm::vec3 vectorInWCS = toWorld2(vectorInLCS, normal, ss, ts);
+
+			float d;
+		}
+
+		void testRandomGenRange() {
+			for (int i = 0; i < 1000000000; i++) {
+				float r = random();
+				int k = 1 * r;
+
+				if (k == 1) {
+					std::stringstream ss;
+					ss.precision(10);
+					ss << std::fixed << "ERROR: k = " << k << ",  r = " << r << std::endl;
+					std::cout << ss.str();
+				}
+			}
+
+			std::cout << "done";
+		}
+
+		void genMaterial() {
+			bool isFileTex = true;
+			std::string name = "checkboard";
+			std::string albedoPath = "";
+			glm::vec3 albedo = glm::vec3(1, 0, 1);
+			if (isFileTex)
+				albedoPath = "imgs/checkboard.png";
+			else
+				albedo = glm::vec3(1,0,0);
+
+			float roughness = 0.95;
+			float metallic = 0;
+			int flags = NE_TEX_SAMPLER_UVW_CLAMP | NE_TEX_SAMPLER_MIN_MAG_LINEAR;
+
+			Texture* metallicTex;
+			metallicTex = new Texture(1, 1, R32F, flags, { (uint8_t*)&metallic, sizeof(float) });
+			metallicTex->textureName = TextureName::METALLIC;
+			//metallicTex = new Texture(TextureName::METALLIC, TextureChannelFormat::R_METALLIC, glm::ivec2(1, 1), R32F, &metallic);
+			ResourceManager::getSelf()->setTexture(name + ".metallic", metallicTex);
+
+			Texture* albedoTex = nullptr;
+			//If it should load a texture file
+			if (isFileTex) {
+				ResourceManager::getSelf()->loadTexture(name + ".albedo", albedoPath);
+				albedoTex = ResourceManager::getSelf()->getTexture(name + ".albedo");
+				albedoTex->textureName = TextureName::ALBEDO;
+			}
+			else { //If it is a simple 3 float color
+				albedoTex = new Texture(1, 1, RGB32F, flags, { (uint8_t*)&albedo[0], sizeof(float) * 3 });
+				albedoTex->textureName = TextureName::ALBEDO;
+				//albedoTex = new Texture2D(TextureName::ALBEDO, TextureChannelFormat::RGB_ALBEDO, glm::ivec2(1, 1), RGB32F, &albedo[0]);
+				ResourceManager::getSelf()->setTexture(name + ".albedo", albedoTex);
+			}
+
+			Material* mat = new Material();
+			mat->addTexture(TextureName::ALBEDO, albedoTex);
+			mat->addTexture(TextureName::METALLIC, metallicTex);
+
+			GGXDistribution* ggxD = new GGXDistribution();
+			ggxD->alpha = roughnessToAlpha(0.65f); //TODO double check
+			FresnelSchilck* fresnel = new FresnelSchilck();
+			GlossyBSDF* glossybsdf = new GlossyBSDF(ggxD, fresnel);
+
+			mat->bsdf = new BSDF();
+			mat->bsdf->addBxdf(glossybsdf);
+
+			ResourceManager::getSelf()->replaceMaterial(name, mat);
+		}
+
+		void genRectangle(Scene *scene) {
+			std::string materialName = "checkboard";
+			std::string name = "texTest";
+			std::string type = "rectangle";
+			glm::vec3 pos = glm::vec3(0,0,0);
+			glm::vec3 scale = glm::vec3(1);
+			glm::vec3 rotate = glm::vec3(0);
+
+			Model* model = new Model();
+			model->vertexDataLength = 4 * 3 + 4 * 2;
+			model->vertexData = new float[model->vertexDataLength];
+			glm::vec3 point1(-0.5f, -0.5f, 0); //0: bottom left
+			glm::vec3 point2(0.5f, -0.5f, 0); //1: bottom right
+			glm::vec3 point3(0.5f, 0.5f, 0);  //2: top right
+			glm::vec3 point4(-0.5f, 0.5f, 0); //3: top left
+			glm::vec2 uv1(0, 0);
+			glm::vec2 uv2(1, 0);
+			glm::vec2 uv3(1, 1);
+			glm::vec2 uv4(0, 1);
+			model->vertexData[0] = point1[0];
+			model->vertexData[1] = point1[1];
+			model->vertexData[2] = point1[2];
+			model->vertexData[3] = uv1[0];
+			model->vertexData[4] = uv1[1];
+			model->vertexData[5] = point2[0];
+			model->vertexData[6] = point2[1];
+			model->vertexData[7] = point2[2];
+			model->vertexData[8] = uv2[0];
+			model->vertexData[9] = uv2[1];
+			model->vertexData[10] = point3[0];
+			model->vertexData[11] = point3[1];
+			model->vertexData[12] = point3[2];
+			model->vertexData[13] = uv3[0];
+			model->vertexData[14] = uv3[1];
+			model->vertexData[15] = point4[0];
+			model->vertexData[16] = point4[1];
+			model->vertexData[17] = point4[2];
+			model->vertexData[18] = uv4[0];
+			model->vertexData[19] = uv4[1];
+			//model->centralize();
+
+			int numOfIndices = 1 * 2 * 3; // 1 face comprised of 2 triangles, each triangle needs 3 indices
+			model->faceVertexIndices = new int[numOfIndices];
+			model->faceVertexIndicesLength = numOfIndices;
+			model->faceVertexIndices[0] = 0;
+			model->faceVertexIndices[1] = 1;
+			model->faceVertexIndices[2] = 2;
+			model->faceVertexIndices[3] = 0;
+			model->faceVertexIndices[4] = 2;
+			model->faceVertexIndices[5] = 3;
+
+			Mesh m;
+			m.strideLength = 5;
+			m.vertexDataPointer = &model->vertexData[0];
+			m.vertexDataPointerLength = model->vertexDataLength;
+			m.vertexIndicesPointer = &model->faceVertexIndices[0];
+			m.vertexIndicesPointerLength = model->faceVertexIndicesLength;
+
+			m.vertexLayout.init();
+			m.vertexLayout.add(VertexAttrib::Position, VertexAttribType::Float, 3);
+			m.vertexLayout.add(VertexAttrib::TexCoord0, VertexAttribType::Float, 2);
+			m.vertexLayout.end();
+
+			for (Texture* t : ResourceManager::getSelf()->getMaterial(materialName)->textures) {
+				if (t->textureName == TextureName::METALLIC) {
+					m.textures.push_back({ genStringID(materialName + ".metallic"), "material.metallic" });
+				}
+				else if (t->textureName == TextureName::ALBEDO) {
+					m.textures.push_back({ genStringID(materialName + ".albedo"), "material.diffuse" });
+				}
+			}
+
+			model->meshes.push_back(m);
+
+			Rectangle* rectangle = new Rectangle();
+			rectangle->vertexLayout = &model->meshes.at(0).vertexLayout;
+			rectangle->vertexData[0] = &model->vertexData[0];
+			rectangle->vertexData[1] = &model->vertexData[m.strideLength * 2];
+			rectangle->normal = glm::vec3(0, 0, -1);
+			Material* material = ResourceManager::getSelf()->getMaterial(materialName);
+			if (material->light != nullptr) {
+				model->lights.push_back(rectangle);
+				material->light->primitive = rectangle;
+			}
+			else
+				model->primitives.push_back(rectangle);
+
+			model->materials.push_back(material);
+			rectangle->material = material;
+
+			StringID modelID = ResourceManager::getSelf()->replaceModel(name, model);
+			InstancedModel* instancedModel = new InstancedModel(model, modelID, getTransform(pos, rotate, scale));
+			if (material->light != nullptr)
+				scene->lights.push_back(instancedModel);
+			else
+				scene->instancedModels.push_back(instancedModel);
+		}
+
+		void testUVSampling() {
+			Scene* scene = new Scene();
+			genMaterial();
+			genRectangle(scene);
+
+			Ray r = { glm::vec3(0,0,-.1f), glm::vec3(0, 0, 1)};
+			Ray scattered = { glm::vec3(0), glm::normalize(glm::vec3(0,1,-1)) };
+			for(float x = -0.5; x < 0.5; x = x + 0.1f)
+				for (float y = -0.5; y < 0.5; y = y + 0.1f) {
+					r.o.x = x;
+					r.o.y = y;
+
+					RayIntersection ri;
+					bool didhit = scene->intersectScene(r, ri, 0, 999);
+
+					if (didhit) {
+						std::cout << "----------------" << std::endl;
+						std::cout << toString(ri.uv, "uv: ") << std::endl; // OK
+						std::cout << toString(ri.hitPoint, "hitPoint: ") << std::endl; //OK
+						glm::vec3 albedo = ri.primitive->material->sampleMaterial(ALBEDO, ri.uv.x, ri.uv.y);
+						std::cout << toString(albedo, "albedo: ") << std::endl; //OK
+
+						//here is the godamn problem.
+						glm::vec3 fr = ri.primitive->material->bsdf->eval(r.d, scattered.d, ri);
+						std::cout << toString(fr, "fr: ") << std::endl;
+					}
+				}
+					
+			float a = 0;
+		}
+
+		void testDot() {
+			glm::vec3 v1 = glm::vec3(1,1,0);
+			glm::vec3 v2 = glm::vec3(1,1,0);
+			float dot = glm::dot(v1, v2);
+
+		}
+
+		TestPlayground() {
+			//testRandomGenRange();
+			//testBasisChange();
+			//unitTest();
+			//testMicrofacetBSDF();
+			//testUVSampling();
+			testDot();
+			float t;
+		}
+
+		~TestPlayground();
+	};
+}
 
