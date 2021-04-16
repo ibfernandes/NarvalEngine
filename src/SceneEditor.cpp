@@ -31,6 +31,8 @@ namespace narvalengine {
 		glm::vec3 side = glm::cross(front, up);
 		staticCam = glm::lookAt(position, position + front, up);
 
+		//selectedFilePath = "scenes/sponza.json";
+		//selectedFilePath = "scenes/testing.json";
 		selectedFilePath = "scenes/cornellbox-pbrt.json";
 		//sceneReader.loadScene("scenes/defaultCube.json", false);
 		sceneReader.loadScene(selectedFilePath, false);
@@ -47,10 +49,6 @@ namespace narvalengine {
 		cam = glm::lookAt(*camera.getPosition(), *camera.getPosition() + front, up);
 		cameraPosition = *camera.getPosition();
 		cameraPositionCache = cameraPosition;
-
-		lightProjection = glm::ortho(-(float)width / 2.0f, (float)width / 2.0f, -(float)height / 2.0f, (float)height / 2.0f, 0.f, 1000.f);
-		glm::vec3 lightLookAt = glm::vec3(0, 0, 0);
-		lightView = glm::lookAt(lightPosition, lightLookAt + front, glm::vec3(0.0f, 1.0f, 0.0f));
 
 		startTime = glfwGetTime();
 		for (int i = MAX_GRAPH_POINTS - 1; i > 0; i--)
@@ -109,7 +107,7 @@ namespace narvalengine {
 		MemoryBuffer mb2 = { (uint8_t*)(&proj[0][0]), sizeof(model) };
 		MemoryBuffer mb3 = { (uint8_t*)(&cam[0][0]), sizeof(model) };
 		MemoryBuffer mb4 = { (uint8_t*)(&lightProjection[0][0]), sizeof(model) };
-		MemoryBuffer mb5 = { (uint8_t*)(&lightView[0][0]), sizeof(model) };
+		MemoryBuffer mb5 = { (uint8_t*)(&lightView[0][0][0]), sizeof(model) };
 
 		phongUniforms[0] = renderCtx.createUniform("model", mb1, UniformType::Mat4, 0);
 		phongUniforms[1] = renderCtx.createUniform("proj", mb2, UniformType::Mat4, 0);
@@ -120,17 +118,72 @@ namespace narvalengine {
 		phongUniforms[6] = renderCtx.createUniform("material.diffuse", { (uint8_t*)&phongDiffTex, sizeof(phongDiffTex)}, UniformType::Sampler, 0);
 		phongUniforms[7] = renderCtx.createUniform("material.specular", { (uint8_t*)&phongSpecTex, sizeof(phongSpecTex) }, UniformType::Sampler, 0);
 		phongUniforms[8] = renderCtx.createUniform("material.normal", { (uint8_t*)&phongNormTex, sizeof(phongNormTex) }, UniformType::Sampler, 0);
-		phongUniforms[9] = renderCtx.createUniform("lightPoints[0].position", { (uint8_t*)&lightPosition, sizeof(lightPosition) }, UniformType::Vec3, 0);
-		phongUniforms[10] = renderCtx.createUniform("lightPoints[0].constant", { (uint8_t*)&Kc, sizeof(Kc) }, UniformType::Float, 0);
-		phongUniforms[11] = renderCtx.createUniform("lightPoints[0].linear", { (uint8_t*)&Kl, sizeof(Kl) }, UniformType::Float, 0);
-		phongUniforms[12] = renderCtx.createUniform("lightPoints[0].quadratic", { (uint8_t*)&Kq, sizeof(Kq) }, UniformType::Float, 0);
-		phongUniforms[13] = renderCtx.createUniform("lightPoints[0].ambient", { (uint8_t*)&lightColor, sizeof(lightColor) }, UniformType::Vec3, 0);
-		phongUniforms[14] = renderCtx.createUniform("lightPoints[0].diffuse", { (uint8_t*)&lightColor, sizeof(lightColor) }, UniformType::Vec3, 0);
-		phongUniforms[15] = renderCtx.createUniform("lightPoints[0].specular", { (uint8_t*)&lightColor, sizeof(lightColor) }, UniformType::Vec3, 0);
-		phongUniforms[16] = renderCtx.createUniform("numberOfLights", { (uint8_t*)&numberOfActiveLights, sizeof(numberOfActiveLights) }, UniformType::Int, 0);
-		phongUniforms[17] = renderCtx.createUniform("viewMode", { (uint8_t*)&phongRenderingMode, sizeof(phongRenderingMode) }, UniformType::Int, 0);
-		phongUniforms[18] = renderCtx.createUniform("shadowMap", { (uint8_t*)&phongShadowMapTex, sizeof(phongShadowMapTex) }, UniformType::Sampler, 0);
-		phongUniforms[19] = renderCtx.createUniform("normalMapping", { (uint8_t*)&normalMapping, sizeof(normalMapping) }, UniformType::Int, 0);
+		phongUniforms[9] = renderCtx.createUniform("viewMode", { (uint8_t*)&phongRenderingMode, sizeof(phongRenderingMode) }, UniformType::Int, 0);
+		phongUniforms[10] = renderCtx.createUniform("shadowMap", { (uint8_t*)&phongShadowMapTex, sizeof(phongShadowMapTex) }, UniformType::Sampler, 0);
+		phongUniforms[11] = renderCtx.createUniform("normalMapping", { (uint8_t*)&normalMapping, sizeof(normalMapping) }, UniformType::Int, 0);
+		
+		numberOfActiveLights = scene.lights.size();
+		int index = 0;
+		for (int i = 0; i < scene.lights.size(); i++) {
+			std::string shaderIndex = std::to_string(index / phongLightsOffset);
+			std::string s = "lightPoints[" + shaderIndex + "].position";
+			
+			lightUniforms[index]   = renderCtx.createUniform(std::string("lightPoints["+shaderIndex +"].position").c_str(), { (uint8_t*)&lightPosition, sizeof(lightPosition) }, UniformType::Vec3, 0);
+			lightUniforms[index+1] = renderCtx.createUniform(std::string("lightPoints["+shaderIndex+"].constant").c_str(), { (uint8_t*)&Kc, sizeof(Kc) }, UniformType::Float, 0);
+			lightUniforms[index+2] = renderCtx.createUniform(std::string("lightPoints["+shaderIndex+"].linear").c_str(), { (uint8_t*)&Kl, sizeof(Kl) }, UniformType::Float, 0);
+			lightUniforms[index+3] = renderCtx.createUniform(std::string("lightPoints["+shaderIndex+"].quadratic").c_str(), { (uint8_t*)&Kq, sizeof(Kq) }, UniformType::Float, 0);
+			lightUniforms[index+4] = renderCtx.createUniform(std::string("lightPoints["+shaderIndex+"].ambient").c_str(), { (uint8_t*)&lightColor, sizeof(lightColor) }, UniformType::Vec3, 0);
+			lightUniforms[index+5] = renderCtx.createUniform(std::string("lightPoints["+shaderIndex+"].diffuse").c_str(), { (uint8_t*)&lightColor, sizeof(lightColor) }, UniformType::Vec3, 0);
+			lightUniforms[index+6] = renderCtx.createUniform(std::string("lightPoints["+shaderIndex+"].specular").c_str(), { (uint8_t*)&lightColor, sizeof(lightColor) }, UniformType::Vec3, 0);
+			index += phongLightsOffset;
+		}
+
+		phongUniforms[12] = renderCtx.createUniform("numberOfLights", { (uint8_t*)&numberOfActiveLights, sizeof(numberOfActiveLights) }, UniformType::Int, 0);
+	}
+
+	void SceneEditor::initPBR() {
+		Shader* shader = ResourceManager::getSelf()->getShader("pbr");
+
+		ShaderHandler shvertex = renderCtx.createShader(shader->vertexShader, NE_SHADER_TYPE_VERTEX);
+		ShaderHandler shfragment = renderCtx.createShader(shader->fragmentShader, NE_SHADER_TYPE_FRAGMENT);
+		pbrProgramHandler = renderCtx.createProgram(shvertex, shfragment);
+
+		MemoryBuffer mb1 = { (uint8_t*)(&model[0][0]), sizeof(model) };
+		MemoryBuffer mb2 = { (uint8_t*)(&cam[0][0]), sizeof(model) };
+		MemoryBuffer mb3 = { (uint8_t*)(&proj[0][0]), sizeof(model) };
+		MemoryBuffer mb4 = { (uint8_t*)(&lightView[0][0][0]), sizeof(model) };
+		MemoryBuffer mb5 = { (uint8_t*)(&lightProjection[0][0]), sizeof(model) };
+
+		//VS uniforms
+		pbrUniforms[0] = renderCtx.createUniform("model", mb1, UniformType::Mat4, 0);
+		pbrUniforms[1] = renderCtx.createUniform("cam", mb2, UniformType::Mat4, 0);
+		pbrUniforms[2] = renderCtx.createUniform("proj", mb3, UniformType::Mat4, 0);
+		pbrUniforms[3] = renderCtx.createUniform("lightCam", mb4, UniformType::Mat4, 0);
+		pbrUniforms[4] = renderCtx.createUniform("lightProj", mb5, UniformType::Mat4, 0);
+
+		//FS uniforms
+		numberOfActiveLights = scene.lights.size();
+		pbrUniforms[5] = renderCtx.createUniform("numberOfLights", { (uint8_t*)&numberOfActiveLights, sizeof(numberOfActiveLights) }, UniformType::Int, 0);
+		int index = 0;
+		for (int i = 0; i < scene.lights.size(); i++) {
+			std::string shaderIndex = std::to_string(index / pbrLightsOffset);
+			std::string s = "lightPoints[" + shaderIndex + "].position";
+
+			pbrLightUniforms[index] = renderCtx.createUniform(std::string("lightPoints[" + shaderIndex + "].position").c_str(), { (uint8_t*)&lightPosition, sizeof(lightPosition) }, UniformType::Vec3, 0);
+			pbrLightUniforms[index + 1] = renderCtx.createUniform(std::string("lightPoints[" + shaderIndex + "].color").c_str(), { (uint8_t*)&lightColor, sizeof(glm::vec3) }, UniformType::Vec3, 0);
+			index += pbrLightsOffset;
+		}
+
+		
+		pbrUniforms[6] = renderCtx.createUniform("material.diffuse", { (uint8_t*)&texIds[0], sizeof(int) }, UniformType::Sampler, 0);
+		pbrUniforms[7] = renderCtx.createUniform("material.metallic", { (uint8_t*)&texIds[1], sizeof(int) }, UniformType::Sampler, 0);
+		pbrUniforms[8] = renderCtx.createUniform("material.specular", { (uint8_t*)&texIds[2], sizeof(int) }, UniformType::Sampler, 0);
+		pbrUniforms[9] = renderCtx.createUniform("material.normal", { (uint8_t*)&texIds[3], sizeof(int) }, UniformType::Sampler, 0);
+		pbrUniforms[10] = renderCtx.createUniform("material.roughness", { (uint8_t*)&texIds[4], sizeof(int) }, UniformType::Sampler, 0);
+		pbrUniforms[11] = renderCtx.createUniform("material.ao", { (uint8_t*)&texIds[5], sizeof(int) }, UniformType::Sampler, 0);
+		pbrUniforms[12] = renderCtx.createUniform("cameraPosition", { (uint8_t*)&cameraPosition[0], sizeof(cameraPosition) }, UniformType::Vec3, 0);
+		pbrUniforms[13] = renderCtx.createUniform("shadowMap", { (uint8_t*)&texIds[6], sizeof(int) }, UniformType::Sampler, 0);
+
 	}
 	
 	void SceneEditor::initComposeShader() {
@@ -158,6 +211,8 @@ namespace narvalengine {
 	void SceneEditor::initRenderAPI() {
 		initVolumetricShader();
 		initPhongShader();
+		initShadowShader();
+		initPBR();
 
 		//Init rayShoot debugger
 		rayVertexLayout.init();
@@ -189,6 +244,47 @@ namespace narvalengine {
 				rmToRenderAPI.insert({ im->modelID, mh });
 			}
 		}
+
+		for (int i = 0; i < scene.lights.size(); i++) {
+			InstancedModel* im = scene.lights.at(i);
+			if (rmToRenderAPI.find(im->modelID) != rmToRenderAPI.end())
+				continue;
+
+			Model* model = ResourceManager::getSelf()->getModel(im->modelID);
+			ModelHandler mh = renderCtx.createModel(model);
+			rmToRenderAPI.insert({ im->modelID, mh });
+		}
+
+		lightTexColorH = renderCtx.createTexture(1, 1, 0, TextureLayout::RGBA32F, { (uint8_t*)&lightTexColor[0], sizeof(glm::vec4) }, NE_TEX_SAMPLER_MIN_MAG_NEAREST | NE_TEX_SAMPLER_UVW_MIRROR);
+	}
+
+	void SceneEditor::initShadowShader() {
+		Shader* shader = ResourceManager::getSelf()->getShader("simpleLightDepth");
+
+		ShaderHandler shvertex = renderCtx.createShader(shader->vertexShader, NE_SHADER_TYPE_VERTEX);
+		ShaderHandler shfragment = renderCtx.createShader(shader->fragmentShader, NE_SHADER_TYPE_FRAGMENT);
+		shadowProgramHandler = renderCtx.createProgram(shvertex, shfragment);
+		glm::ivec2 res = settings.resolution;
+
+		//lightProjection = glm::ortho(-(float)1.0f/ 2.0f, (float)1.0f / 2.0f, -(float)1.0f / 2.0f, (float)1.0f / 2.0f, 0.0f, 1.f);
+		lightProjection = glm::ortho(4.5f, -4.5f, 4.5f, -4.5f, 0.0f, 10.f);
+		//lightProjection = glm::ortho(0.f, -(float)res.x, 0.f, (float)res.y, -1.f, 1.f);
+		//lightProjection = glm::ortho(-(float)res.x / 2.0f, (float)res.x / 2.0f, -(float)res.y / 2.0f, (float)res.y / 2.0f, 0.f, 10.f);
+
+		MemoryBuffer mb1 = { (uint8_t*)(&model[0][0]), sizeof(model) };
+		MemoryBuffer mb2 = { (uint8_t*)(&lightProjection[0][0]), sizeof(model) };
+		MemoryBuffer mb3 = { (uint8_t*)(&cam[0][0]), sizeof(model) };
+
+		shadowUniforms[0] = renderCtx.createUniform("model", mb1, UniformType::Mat4, 0);
+		shadowUniforms[1] = renderCtx.createUniform("proj", mb2, UniformType::Mat4, 0);
+		shadowUniforms[2] = renderCtx.createUniform("view", mb3, UniformType::Mat4, 0);
+
+		uint32_t sizeBytes = res.x * res.y * 4;
+		shadowDepthTex = renderCtx.createTexture(res.x, res.y, 0, TextureLayout::D24S8, { new uint8_t[sizeBytes], sizeBytes }, NE_TEX_SAMPLER_MIN_MAG_LINEAR | NE_TEX_SAMPLER_UVW_CLAMP);
+
+		Attachment a[1];
+		a[0] = { shadowDepthTex };
+		shadowfboh = renderCtx.createFrameBuffer(1, &a[0]);
 	}
 
 	void SceneEditor::initMonoColorShader() {
@@ -1053,6 +1149,13 @@ namespace narvalengine {
 		}
 	}
 
+	void SceneEditor::shadowMappingImGUI() {
+		ImGui::SetNextItemOpen(true, ImGuiCond_Once);
+		if (ImGuiExt::CollapsingHeader("Shadow Mapping", gUIPalette.iceGrey[4])) {
+			ImGui::Checkbox("Render Shadow Mapping", &renderShadowMapping);
+		}
+	}
+
 	void SceneEditor::renderImGUI() {
 		const char* title = "Open file";
 		const char* startingFolder = "./";
@@ -1146,6 +1249,7 @@ namespace narvalengine {
 		ImGui::SetNextWindowSize(ImVec2(rightColumnMenuSize.x / 1.5f, 800), ImGuiCond_Once);
 		ImGui::Begin("Debug", p_open, ImGuiWindowFlags_None);
 		shootRayImGUI();
+		shadowMappingImGUI();
 		ImGui::End();
 
 		//Log window
@@ -1278,38 +1382,191 @@ namespace narvalengine {
 		renderCtx.render(simpleTexProgramH);
 	}
 
-	void SceneEditor::renderRealTime() {
+	void SceneEditor::renderShadowMappingDebug() {
+		model = glm::mat4(1);
+		model = glm::translate(model, { (settings.resolution.x * 0.2f)/2, (settings.resolution.y * 0.2f) + 15, 0 });
+		model = glm::scale(model, { (settings.resolution.x * 0.2f) / 2, -(settings.resolution.y * 0.2f) / 2, 1 });
+
+		renderCtx.setUniform(uniforms[0]);
+		renderCtx.setUniform(uniforms[1]);
+		renderCtx.setUniform(uniforms[2]);
+		renderCtx.setUniform(uniforms[4]);
+
+		renderCtx.updateUniform(uniforms[0], { (uint8_t*)(&model[0]), sizeof(model) });
+		renderCtx.updateUniform(uniforms[1], { (uint8_t*)(&orthoProj[0]), sizeof(model) });
+		renderCtx.updateUniform(uniforms[2], { (uint8_t*)(&staticCam[0]), sizeof(model) });
+
+		//renderCtx.setTexture(renderFrameDepthTex[0], uniforms[4]);
+		renderCtx.setTexture(shadowDepthTex, uniforms[4]);
+		renderCtx.setModel(quadModelHandler);
+
+		renderCtx.render(simpleTexProgramH);
+	}
+
+	void SceneEditor::renderRealTimeShadows() {
+		renderCtx.setFrameBufferClear(shadowfboh, 1.1, 0, 0, 1);
+
+		//for each light render each object's scene from its light point of view.
+		int index = 0;
+		int indexpbr = 0;
+		for (int i = 0; i < scene.lights.size(); i++) {
+			InstancedModel* imLight = scene.lights.at(i);
+			lightPos[i] = getTranslation(imLight->transformToWCS);
+			glm::vec3 lightLookAt = lightPos[i];
+			lightLookAt.y = lightLookAt.y - lightLookAt.y;
+			glm::vec3 front = glm::vec3(0.0f, 0.0f, 0.0f);
+			lightView[i] = glm::lookAt(lightPos[i], lightLookAt + front, glm::vec3(0.0f, 0.0f, 1.0f));
+
+			renderCtx.updateUniform(shadowUniforms[1], { (uint8_t*)(&lightProjection[0][0]), sizeof(glm::mat4) });
+			renderCtx.updateUniform(shadowUniforms[2], { (uint8_t*)(&lightView[i][0][0]), sizeof(glm::mat4) });
+			renderCtx.updateUniform(lightUniforms[index], { (uint8_t*)&lightPos[i], sizeof(glm::vec3) });
+
+			renderCtx.updateUniform(pbrLightUniforms[indexpbr], { (uint8_t*)&lightPos[i], sizeof(glm::vec3) });
+			renderCtx.updateUniform(pbrLightUniforms[indexpbr + 1], { (uint8_t*)&imLight->model->materials.at(0)->light->li, sizeof(glm::vec3) });
+
+			//renderCtx.updateUniform(shadowUniforms[1], { (uint8_t*)&proj[0][0], sizeof(glm::mat4) });
+			//renderCtx.updateUniform(shadowUniforms[2], { (uint8_t*)camera.getCam(), sizeof(glm::mat4) });
+
+			for (InstancedModel* im : scene.instancedModels) {
+
+				ModelHandler mh = rmToRenderAPI.at(im->modelID);
+				//For each mesh that this model is made of
+				for (int i = 0; i < im->model->meshes.size(); i++) {
+
+					//TODO not correct, either move a pointer inside mesh or... 
+					if (im->model->materials.at(0)->bsdf->bsdfType & BxDF_DIFFUSE) {
+						renderCtx.updateUniform(shadowUniforms[0], { (uint8_t*)(&im->transformToWCS[0][0]), sizeof(im->transformToWCS) });
+
+						renderCtx.setUniform(shadowUniforms[0]);
+						renderCtx.setUniform(shadowUniforms[1]);
+						renderCtx.setUniform(shadowUniforms[2]);
+						renderCtx.setMesh(mh.meshes.at(i));
+
+						renderCtx.setFrameBuffer(shadowfboh);
+
+						renderCtx.render(shadowProgramHandler);
+					}
+				}
+
+				if (im->model->materials.at(0)->bsdf->bsdfType & BxDF_TRANSMISSION) {
+					ModelHandler mh = rmToRenderAPI.at(im->modelID);
+					renderCtx.updateUniform(shadowUniforms[0], { (uint8_t*)(&im->transformToWCS[0][0]), sizeof(im->transformToWCS) });
+					
+					renderCtx.setUniform(shadowUniforms[0]);
+					renderCtx.setUniform(shadowUniforms[1]);
+					renderCtx.setUniform(shadowUniforms[2]);
+					renderCtx.setModel(rmToRenderAPI.at(im->modelID));
+
+					renderCtx.setFrameBuffer(shadowfboh);
+
+					renderCtx.render(shadowProgramHandler);
+				}
+			}
+
+			index += phongLightsOffset;
+			indexpbr += pbrLightsOffset;
+		}
+	}
+
+	void SceneEditor::renderRealTimePBR() {
 		renderCtx.setFrameBufferClear(fbRenderFrame[0], 0, 0, 0, 1);
 		renderCtx.setFrameBufferClear(fbRenderFrame[1], 0, 0, 0, 1);
 		renderCtx.setFrameBufferClear(fbRenderFrame[2], 0, 0, 0, 1);
-		for (InstancedModel *im : scene.instancedModels) {
 
-			if (im == currentSelectedIM){
+		for (InstancedModel* im : scene.lights) {
+			if (im == currentSelectedIM) {
 				renderCtx.setStencil(
-					NE_STENCIL_OP_FAIL_S_KEEP | NE_STENCIL_OP_FAIL_Z_KEEP | NE_STENCIL_OP_PASS_Z_REPLACE | 
-					NE_STENCIL_TEST_ALWAYS | 
+					NE_STENCIL_OP_FAIL_S_KEEP | NE_STENCIL_OP_FAIL_Z_KEEP | NE_STENCIL_OP_PASS_Z_REPLACE |
+					NE_STENCIL_TEST_ALWAYS |
 					NE_STENCIL_FUNC_MASK(0xff));
 			}
 
-			if (im->model->materials.at(0)->bsdf->bsdfType & BxDF_DIFFUSE) {
-				for (int i = 0; i < 20; i++) {
-					renderCtx.setUniform(phongUniforms[i]);
+
+			for (int i = 0; i < 14; i++) {
+				renderCtx.setUniform(pbrUniforms[i]);
+			}
+
+			for (int i = 0; i < scene.lights.size() * pbrLightsOffset; i++) {
+				renderCtx.setUniform(pbrLightUniforms[i]);
+			}
+
+			//texHandler e uniformHandler
+			ModelHandler mh = rmToRenderAPI.at(im->modelID);
+			renderCtx.setTexture(lightTexColorH, pbrUniforms[6]); //material.diffuse
+			renderCtx.setTexture(lightTexColorH, pbrUniforms[7]); //material.metallic
+			renderCtx.setTexture(lightTexColorH, pbrUniforms[8]); //material.specular
+			renderCtx.setTexture(lightTexColorH, pbrUniforms[9]); //material.normal
+			renderCtx.setTexture(lightTexColorH, pbrUniforms[10]); //material.roughness
+			renderCtx.setTexture(lightTexColorH, pbrUniforms[11]); //material.ao
+
+			renderCtx.updateUniform(pbrUniforms[0], { (uint8_t*)(&im->transformToWCS[0][0]), sizeof(glm::mat4) });
+			renderCtx.updateUniform(pbrUniforms[1], { (uint8_t*)camera.getCam(), sizeof(glm::mat4) });
+			renderCtx.updateUniform(pbrUniforms[12], { (uint8_t*)(camera.getPosition()), sizeof(glm::vec3) });
+			renderCtx.setModel(rmToRenderAPI.at(im->modelID));
+
+			renderCtx.setFrameBuffer(fbRenderFrame[0]);
+
+			renderCtx.render(pbrProgramHandler);
+
+		}
+
+		for (InstancedModel* im : scene.instancedModels) {
+
+			if (im == currentSelectedIM) {
+				renderCtx.setStencil(
+					NE_STENCIL_OP_FAIL_S_KEEP | NE_STENCIL_OP_FAIL_Z_KEEP | NE_STENCIL_OP_PASS_Z_REPLACE |
+					NE_STENCIL_TEST_ALWAYS |
+					NE_STENCIL_FUNC_MASK(0xff));
+			}
+
+			//For each mesh that this model is made of
+			for (int i = 0; i < im->model->meshes.size(); i++) {
+
+				//TODO not correct, either move a pointer inside mesh or... 
+				if (im->model->materials.at(0)->bsdf->bsdfType & BxDF_DIFFUSE) {
+					ModelHandler mh = rmToRenderAPI.at(im->modelID);
+					if (mh.meshes.at(i).material.id == INVALID_HANDLE)
+						continue;
+
+					for (int i = 0; i < 14; i++) {
+						renderCtx.setUniform(pbrUniforms[i]);
+					}
+
+					for (int i = 0; i < scene.lights.size() * pbrLightsOffset; i++) {
+						renderCtx.setUniform(pbrLightUniforms[i]);
+					}
+
+					//texHandler e uniformHandler
+					if(isHandleValid(mh.meshes.at(i).material.textures[ctz(TextureName::ALBEDO)].id))
+						renderCtx.setTexture(mh.meshes.at(i).material.textures[ctz(TextureName::ALBEDO)], pbrUniforms[6]); //material.diffuse
+					if (isHandleValid(mh.meshes.at(i).material.textures[ctz(TextureName::METALLIC)].id))
+						renderCtx.setTexture(mh.meshes.at(i).material.textures[ctz(TextureName::METALLIC)], pbrUniforms[7]); //material.metallic
+					//renderCtx.setTexture(mh.meshes.at(i).textures.at(0), pbrUniforms[8]); //material.specular
+					if (isHandleValid(mh.meshes.at(i).material.textures[ctz(TextureName::NORMAL_MAP)].id))
+						renderCtx.setTexture(mh.meshes.at(i).material.textures[ctz(TextureName::NORMAL_MAP)], pbrUniforms[9]); //material.normal
+					if (isHandleValid(mh.meshes.at(i).material.textures[ctz(TextureName::ROUGHNESS)].id))
+						renderCtx.setTexture(mh.meshes.at(i).material.textures[ctz(TextureName::ROUGHNESS)], pbrUniforms[10]); //material.roughness
+					//renderCtx.setTexture(mh.meshes.at(i).material.textures[TextureName::AO], pbrUniforms[11]); //material.ao
+					
+					/*renderCtx.setTexture(mh.meshes.at(i).textures.at(0), pbrUniforms[6]); //material.diffuse
+					renderCtx.setTexture(mh.meshes.at(i).textures.at(0), pbrUniforms[7]); //material.metallic
+					//renderCtx.setTexture(mh.meshes.at(i).textures.at(0), pbrUniforms[8]); //material.specular
+					renderCtx.setTexture(mh.meshes.at(i).textures.at(0), pbrUniforms[9]); //material.normal
+					renderCtx.setTexture(mh.meshes.at(i).textures.at(0), pbrUniforms[10]); //material.roughness
+					renderCtx.setTexture(mh.meshes.at(i).textures.at(0), pbrUniforms[11]); //material.ao*/
+					
+					renderCtx.setTexture(shadowDepthTex, pbrUniforms[13]); //shadowTex
+
+					renderCtx.updateUniform(pbrUniforms[0], { (uint8_t*)(&im->transformToWCS[0][0]), sizeof(im->transformToWCS) });
+					renderCtx.updateUniform(pbrUniforms[1], { (uint8_t*)camera.getCam(), sizeof(glm::mat4) });
+					renderCtx.updateUniform(pbrUniforms[12], { (uint8_t*)(camera.getPosition()), sizeof(glm::vec3) });
+
+					renderCtx.setMesh(mh.meshes.at(i));
+
+					renderCtx.setFrameBuffer(fbRenderFrame[0]);
+
+					renderCtx.render(pbrProgramHandler);
 				}
-
-				//texHandler e uniformHandler
-				ModelHandler mh = rmToRenderAPI.at(im->modelID);
-				renderCtx.setTexture(mh.meshes.at(0).textures.at(0), phongUniforms[6]); //material.diffuse
-
-				//glm::mat4 test = glm::scale(im->transformToWCS, glm::vec3(0.5f));
-				//renderCtx.updateUniform(phongUniforms[0], { (uint8_t*)(&test), sizeof(im->transformToWCS) });
-				renderCtx.updateUniform(phongUniforms[0], { (uint8_t*)(&im->transformToWCS[0][0]), sizeof(im->transformToWCS) });
-				renderCtx.updateUniform(phongUniforms[2], { (uint8_t*)camera.getCam(), sizeof(glm::mat4) });
-				renderCtx.updateUniform(phongUniforms[5], { (uint8_t*)(camera.getPosition()), sizeof(glm::vec3) });
-				renderCtx.setModel(rmToRenderAPI.at(im->modelID));
-
-				renderCtx.setFrameBuffer(fbRenderFrame[0]);
-
-				renderCtx.render(phongProgramHandler);
 			}
 
 			if (im->model->materials.at(0)->bsdf->bsdfType & BxDF_TRANSMISSION) {
@@ -1318,10 +1575,12 @@ namespace narvalengine {
 
 				//texHandler e uniformHandler
 				ModelHandler mh = rmToRenderAPI.at(im->modelID);
-				if(mh.meshes.at(0).textures.size() > 0)
-					renderCtx.setTexture(mh.meshes.at(0).textures.at(0), volUniforms[4]); //volume
+				//TODO volume disabled
+				//if (mh.meshes.at(0).textures.size() > 0)
+				//	renderCtx.setTexture(mh.meshes.at(0).textures.at(0), volUniforms[4]); //volume
 				renderCtx.setTexture(renderFrameTex[0], volUniforms[5]);
 				renderCtx.setTexture(renderFrameDepthTex[0], volUniforms[6]);
+				renderCtx.setTexture(shadowDepthTex, phongUniforms[10]); //shadowTex
 
 				renderCtx.updateUniform(volUniforms[0], { (uint8_t*)(&im->transformToWCS[0][0]), sizeof(im->transformToWCS) });
 				renderCtx.updateUniform(volUniforms[2], { (uint8_t*)camera.getCam(), sizeof(glm::mat4) });
@@ -1334,6 +1593,182 @@ namespace narvalengine {
 				renderCtx.render(volProgramHandler);
 			}
 		}
+
+		if (currentSelectedIM != nullptr && currentSelectedIM->model->primitives.size() > 0) {
+			glDisable(GL_DEPTH_TEST); //TODO NOT EXPOSE GL HERE. TEMPORARY
+			renderCtx.setStencil(
+				NE_STENCIL_OP_FAIL_S_KEEP | NE_STENCIL_OP_FAIL_Z_KEEP | NE_STENCIL_OP_PASS_Z_REPLACE |
+				NE_STENCIL_TEST_NOTEQUAL |
+				NE_STENCIL_FUNC_MASK(0x00));
+
+			//Render outline
+			for (int i = 0; i < 4; i++)
+				renderCtx.setUniform(monoColorUniforms[i]);
+
+			glm::mat4 scaled = glm::scale(currentSelectedIM->transformToWCS, glm::vec3(1.1));
+
+			renderCtx.updateUniform(monoColorUniforms[0], { (uint8_t*)(&scaled), sizeof(glm::mat4) });
+			renderCtx.updateUniform(monoColorUniforms[2], { (uint8_t*)camera.getCam(), sizeof(glm::mat4) });
+
+			renderCtx.setModel(rmToRenderAPI.at(currentSelectedIM->modelID));
+			renderCtx.setFrameBuffer(fbRenderFrame[0]);
+			renderCtx.render(monoColorProgramH);
+			glEnable(GL_DEPTH_TEST);
+		}
+
+		//Render shooting Ray
+		if (!intersectionPoints[0].empty()) {
+			glDisable(GL_DEPTH_TEST); //TODO NOT EXPOSE GL HERE. TEMPORARY
+			for (int k = 0; k < numberOfShootedRays; k++) {
+				for (int i = 0; i < 13; i++) {
+					renderCtx.setUniform(phongUniforms[i]);
+				}
+				for (int i = 0; i < scene.lights.size() * phongLightsOffset; i++) {
+					renderCtx.setUniform(lightUniforms[i]);
+				}
+				renderCtx.setTexture(rayTextureColorH, phongUniforms[6]); //material.diffuse
+
+				glm::mat4 identity = glm::mat4(1);
+				renderCtx.updateUniform(phongUniforms[0], { (uint8_t*)(&identity), sizeof(glm::mat4) });
+				renderCtx.updateUniform(phongUniforms[2], { (uint8_t*)camera.getCam(), sizeof(glm::mat4) });
+				renderCtx.updateUniform(phongUniforms[5], { (uint8_t*)(camera.getPosition()), sizeof(glm::vec3) });
+				renderCtx.setVertexBuffer(rayVertexBufferH[k]);
+				renderCtx.setIndexBuffer(rayIndexBufferH[k]);
+				renderCtx.setState(NE_STATE_PRIMITIVE_TYPE_LINES);
+				//set texture
+				renderCtx.setFrameBuffer(fbRenderFrame[0]);
+
+				renderCtx.render(phongProgramHandler);
+			}
+			glEnable(GL_DEPTH_TEST);
+		}
+
+		//Display final result
+		model = glm::mat4(1);
+		model = glm::translate(model, { (WIDTH - rightColumnMenuSize.x) / 2, (HEIGHT - menuBarSize.y) / 2, 0 });
+		model = glm::scale(model, { sceneFrameSize.x / 2, -sceneFrameSize.y / 2, 1 });
+
+		renderCtx.setUniform(uniforms[0]);
+		renderCtx.setUniform(uniforms[1]);
+		renderCtx.setUniform(uniforms[2]);
+		renderCtx.setUniform(uniforms[4]);
+
+		renderCtx.updateUniform(uniforms[0], { (uint8_t*)(&model[0]), sizeof(model) });
+		renderCtx.updateUniform(uniforms[1], { (uint8_t*)(&orthoProj[0]), sizeof(model) });
+		renderCtx.updateUniform(uniforms[2], { (uint8_t*)(&staticCam[0]), sizeof(model) });
+
+		renderCtx.setTexture(renderFrameTex[0], uniforms[4]);
+		renderCtx.setModel(quadModelHandler);
+
+		renderCtx.render(simpleTexProgramH);
+
+		if (renderShadowMapping)
+			renderShadowMappingDebug();
+	}
+
+	void SceneEditor::renderRealTime() {
+		renderCtx.setFrameBufferClear(fbRenderFrame[0], 0, 0, 0, 1);
+		renderCtx.setFrameBufferClear(fbRenderFrame[1], 0, 0, 0, 1);
+		renderCtx.setFrameBufferClear(fbRenderFrame[2], 0, 0, 0, 1);
+		for (InstancedModel* im : scene.lights) {
+			if (im == currentSelectedIM) {
+				renderCtx.setStencil(
+					NE_STENCIL_OP_FAIL_S_KEEP | NE_STENCIL_OP_FAIL_Z_KEEP | NE_STENCIL_OP_PASS_Z_REPLACE |
+					NE_STENCIL_TEST_ALWAYS |
+					NE_STENCIL_FUNC_MASK(0xff));
+			}
+
+
+			for (int i = 0; i < 13; i++) {
+				renderCtx.setUniform(phongUniforms[i]);
+			}
+
+			for (int i = 0; i < scene.lights.size() * phongLightsOffset; i++) {
+				renderCtx.setUniform(lightUniforms[i]);
+			}
+
+			//texHandler e uniformHandler
+			ModelHandler mh = rmToRenderAPI.at(im->modelID);
+			renderCtx.setTexture(lightTexColorH, phongUniforms[6]); //material.diffuse
+
+			//glm::mat4 test = glm::scale(im->transformToWCS, glm::vec3(0.5f));
+			//renderCtx.updateUniform(phongUniforms[0], { (uint8_t*)(&test), sizeof(im->transformToWCS) });
+			renderCtx.updateUniform(phongUniforms[0], { (uint8_t*)(&im->transformToWCS[0][0]), sizeof(im->transformToWCS) });
+			renderCtx.updateUniform(phongUniforms[2], { (uint8_t*)camera.getCam(), sizeof(glm::mat4) });
+			renderCtx.updateUniform(phongUniforms[5], { (uint8_t*)(camera.getPosition()), sizeof(glm::vec3) });
+			renderCtx.setModel(rmToRenderAPI.at(im->modelID));
+
+			renderCtx.setFrameBuffer(fbRenderFrame[0]);
+
+			renderCtx.render(phongProgramHandler);
+			
+		}
+		/*
+		for (InstancedModel *im : scene.instancedModels) {
+
+			if (im == currentSelectedIM){
+				renderCtx.setStencil(
+					NE_STENCIL_OP_FAIL_S_KEEP | NE_STENCIL_OP_FAIL_Z_KEEP | NE_STENCIL_OP_PASS_Z_REPLACE | 
+					NE_STENCIL_TEST_ALWAYS | 
+					NE_STENCIL_FUNC_MASK(0xff));
+			}
+
+			//For each mesh that this model is made of
+			for (int i = 0; i < im->model->meshes.size(); i++) {
+
+				//TODO not correct, either move a pointer inside mesh or... 
+				if (im->model->materials.at(0)->bsdf->bsdfType & BxDF_DIFFUSE) {
+					ModelHandler mh = rmToRenderAPI.at(im->modelID);
+					if (mh.meshes.at(i).textures.size() == 0)
+						continue;
+
+					for (int i = 0; i < 13; i++) {
+						renderCtx.setUniform(phongUniforms[i]);
+					}
+
+					for (int i = 0; i < scene.lights.size() * phongLightsOffset; i++) {
+						renderCtx.setUniform(lightUniforms[i]);
+					}
+
+					renderCtx.setTexture(mh.meshes.at(i).textures.at(0), phongUniforms[6]); //material.diffuse
+					renderCtx.setTexture(shadowDepthTex, phongUniforms[10]); //shadowTex
+
+					//glm::mat4 test = glm::scale(im->transformToWCS, glm::vec3(0.5f));
+					//renderCtx.updateUniform(phongUniforms[0], { (uint8_t*)(&test), sizeof(im->transformToWCS) });
+					renderCtx.updateUniform(phongUniforms[0], { (uint8_t*)(&im->transformToWCS[0][0]), sizeof(im->transformToWCS) });
+					renderCtx.updateUniform(phongUniforms[2], { (uint8_t*)camera.getCam(), sizeof(glm::mat4) });
+					renderCtx.updateUniform(phongUniforms[5], { (uint8_t*)(camera.getPosition()), sizeof(glm::vec3) });
+					renderCtx.setMesh(mh.meshes.at(i));
+
+					renderCtx.setFrameBuffer(fbRenderFrame[0]);
+
+					renderCtx.render(phongProgramHandler);
+				}
+			}
+
+			if (im->model->materials.at(0)->bsdf->bsdfType & BxDF_TRANSMISSION) {
+				for (int i = 0; i < 28; i++)
+					renderCtx.setUniform(volUniforms[i]);
+
+				//texHandler e uniformHandler
+				ModelHandler mh = rmToRenderAPI.at(im->modelID);
+				if(mh.meshes.at(0).textures.size() > 0)
+					renderCtx.setTexture(mh.meshes.at(0).textures.at(0), volUniforms[4]); //volume
+				renderCtx.setTexture(renderFrameTex[0], volUniforms[5]);
+				renderCtx.setTexture(renderFrameDepthTex[0], volUniforms[6]);
+				renderCtx.setTexture(shadowDepthTex, phongUniforms[10]); //shadowTex
+
+				renderCtx.updateUniform(volUniforms[0], { (uint8_t*)(&im->transformToWCS[0][0]), sizeof(im->transformToWCS) });
+				renderCtx.updateUniform(volUniforms[2], { (uint8_t*)camera.getCam(), sizeof(glm::mat4) });
+				renderCtx.updateUniform(volUniforms[3], { (uint8_t*)(camera.getPosition()), sizeof(glm::vec3) });
+				renderCtx.updateUniform(volUniforms[27], { (uint8_t*)&im->invTransformToWCS[0][0], sizeof(glm::mat4) });
+				renderCtx.setModel(rmToRenderAPI.at(im->modelID));
+
+				renderCtx.setFrameBuffer(fbRenderFrame[0]);
+
+				renderCtx.render(volProgramHandler);
+			}
+		}*/
 
 		if (currentSelectedIM != nullptr && currentSelectedIM->model->primitives.size() > 0) {
 			glDisable(GL_DEPTH_TEST); //TODO NOT EXPOSE GL HERE. TEMPORARY
@@ -1361,8 +1796,11 @@ namespace narvalengine {
 		if (!intersectionPoints[0].empty()) {
 			glDisable(GL_DEPTH_TEST); //TODO NOT EXPOSE GL HERE. TEMPORARY
 			for (int k = 0; k < numberOfShootedRays; k++) {
-				for (int i = 0; i < 20; i++) {
+				for (int i = 0; i < 13; i++) {
 					renderCtx.setUniform(phongUniforms[i]);
+				}
+				for (int i = 0; i < scene.lights.size() * phongLightsOffset; i++) {
+					renderCtx.setUniform(lightUniforms[i]);
 				}
 				renderCtx.setTexture(rayTextureColorH, phongUniforms[6]); //material.diffuse
 
@@ -1424,6 +1862,9 @@ namespace narvalengine {
 		renderCtx.setModel(quadModelHandler);
 
 		renderCtx.render(simpleTexProgramH);
+
+		if (renderShadowMapping)
+			renderShadowMappingDebug();
 	}
 
 	void SceneEditor::renderCompare() {
@@ -1502,7 +1943,9 @@ namespace narvalengine {
 			renderOffline();
 		}
 		else if (currentRenderingMode == REALTIME_RENDERING_MODE) {
-			renderRealTime();
+			renderRealTimeShadows();
+			//renderRealTime();
+			renderRealTimePBR();
 		}
 		else if (currentRenderingMode == COMPARE_RENDERING_MODE) {
 			renderCompare();

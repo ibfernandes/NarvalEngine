@@ -67,6 +67,7 @@ namespace narvalengine {
 	};
 
 	static const GLenum GLrenderMode[] = {
+		GL_TRIANGLES,
 		GL_TRIANGLE_STRIP,
 		GL_LINES,        
 		GL_LINE_STRIP,   
@@ -114,7 +115,7 @@ namespace narvalengine {
 	struct UniformGL {
 		MemoryBuffer mem;
 		UniformType::Enum type;
-		const char* name;
+		std::string name;
 	};
 
 	struct ProgramGL {
@@ -476,7 +477,7 @@ namespace narvalengine {
 
 		void updateAllUniforms(GLint programID) {
 			for (UniformGL u : uniforms) {
-				GLint uniformLoc = glGetUniformLocation(programID, u.name);
+				GLint uniformLoc = glGetUniformLocation(programID, u.name.c_str());
 				setUniformGL(uniformLoc, u.type, u.mem);
 			}
 		}
@@ -532,7 +533,12 @@ namespace narvalengine {
 				UniformHandler uh = renderState->uniforms.front();
 				renderState->uniforms.pop();
 
-				GLint uniformLoc = glGetUniformLocation(currentProgram.id, uniforms[uh.id].name);
+				std::string uniformName = uniforms[uh.id].name;
+				GLint uniformLoc = glGetUniformLocation(currentProgram.id, uniformName.c_str());
+
+				//TODO
+				if (uniformLoc == -1)
+					float error = 0;
 				setUniformGL(uniformLoc, uniforms[uh.id].type, uniforms[uh.id].mem);
 			}
 
@@ -591,6 +597,26 @@ namespace narvalengine {
 					glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 					//glBindVertexArray(0);
 				}
+			}
+
+			//TODO should either support only model or enforce mesh (the latter is better)
+			while (!renderState->meshes.empty()) {
+				MeshHandler mesh = renderState->meshes.front();
+				renderState->meshes.pop();
+
+				VertexBufferGL vb = vertexBuffers[mesh.vertexBuffer.id];
+				IndexBufferGL ib = indexBuffers[mesh.indexBuffer.id];
+				glBindBuffer(GL_ARRAY_BUFFER, vb.id);
+				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ib.id);
+
+				vb.bindAttributesBegin();
+				vb.bindAttributes();
+				vb.bindAttributesEnd();
+
+				glDrawElements(renderMode, ib.size / 4, GL_UNSIGNED_INT, 0);
+
+				glBindBuffer(GL_ARRAY_BUFFER, 0);
+				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 			}
 
 			while (!renderState->toUnbinding.empty()) {

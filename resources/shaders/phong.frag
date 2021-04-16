@@ -34,9 +34,9 @@ uniform Material material;
 uniform LightPoint lightPoints[MAX_LIGHTS];
 uniform int numberOfLights = 0;
 uniform vec3 cameraPosition;
-uniform int viewMode;
+uniform int viewMode = 0;
 uniform sampler2D shadowMap;
-uniform int normalMapping;
+uniform int normalMapping = 0;
 
 float calculateShadow(vec3 normal, vec3 lightDir){
     //divide by w to get NDC [-1,1]
@@ -53,6 +53,7 @@ float calculateShadow(vec3 normal, vec3 lightDir){
     float currentDepth = projCoords.z;  
     float shadow = 0;
     vec2 texelSize = 1.0 / textureSize(shadowMap, 0);
+	
     //Pecentage-closer filtering PCF 
     for(int x = -1; x <= 1; x++)
         for(int y = -1; y <= 1; y++){

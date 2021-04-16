@@ -1,0 +1,73 @@
+{
+	"version" : "0.0.1a",
+	
+	"materials": [
+		{
+			"name": "emitter",
+			"type": "emitter",
+			"albedo": [900, 900, 900]
+		},
+		{
+			"name": "whiteMat",
+			"type": "microfacet",
+			"roughness": 0.95,
+			"metallic": 0.0,
+			"albedo": [0.8, 0.8, 0.8],
+			"normalMap": [0.5, 0.5, 0.0]
+		}
+	],
+	
+	"primitives": [
+		{
+			"name": "cubeFloor",
+			"type": "obj",
+			"transform": {
+				"position": [0, 0, 0],
+				"scale": [8, 8, 1],
+				"rotation": [90, 0, 0]
+			},
+			"materialName": "whiteMat",
+			"path" : "models/quad.obj"
+		},
+		{
+			"name": "rectLight",
+			"type": "rectangle",
+			"transform": {
+				"position": [0, 6, 0],
+				"scale": [1, 1, 1],
+				"rotation": [-89, 0, 0]
+			},
+			"materialName": "emitter"
+		},
+		{
+			"name": "spider",
+			"type": "obj",
+			"transform": {
+				"position": [0, 1, 0],
+				"scale": [0.02, 0.02, 0.02],
+				"rotation": [0, 0, 0]
+			},
+			"path" : "models/spider/spider.obj"
+		}
+	],
+
+	"camera": {
+		"position": [0, 2, -5],
+		"lookAt": [0, 2, 0],
+		"up": [0, 1, 0],
+		"speed": 5,
+		"vfov": 45,
+		"aperture": 0.0001,
+		"autoFocus": true,
+		"focus": 1
+	},
+	
+	"renderer": {
+		"resolution": [1200, 600],
+		"spp": 1,
+		"bounces": 6,
+		"mode": "realtime",
+		"HDR": false,
+		"toneMapping": false
+	}
+}

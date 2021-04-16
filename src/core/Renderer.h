@@ -35,15 +35,23 @@ namespace narvalengine {
 		uint16_t id;
 	};
 
+	struct MaterialHandler {
+		uint16_t id;
+		TextureHandler textures[TextureName::TextureNameCount] = {
+			INVALID_HANDLE, INVALID_HANDLE, INVALID_HANDLE, INVALID_HANDLE, INVALID_HANDLE , INVALID_HANDLE, INVALID_HANDLE, INVALID_HANDLE, INVALID_HANDLE };
+	};
+
 	struct MeshHandler {
 		uint16_t id;
 		VertexBufferHandler vertexBuffer;
 		IndexBufferHandler indexBuffer;
-		std::vector<TextureHandler> textures;
+		MaterialHandler material;
+		//std::vector<TextureHandler> textures;
 	};
 
 	struct ModelHandler {
 		uint16_t id;
+		std::vector<MaterialHandler> materials;
 		std::vector<MeshHandler> meshes;
 	};
 
@@ -76,6 +84,7 @@ namespace narvalengine {
 		std::queue<Binding> bindings;
 		std::queue<Binding> toUnbinding;
 		std::queue<ModelHandler> models;
+		std::queue<MeshHandler> meshes;
 		std::queue<VertexBufferHandler> vertexBuffers;
 		std::queue<IndexBufferHandler> indexBuffers;
 		FrameBufferHandler fbh = { INVALID_HANDLE };
@@ -106,6 +115,10 @@ namespace narvalengine {
 			models.push(mh);
 		}
 
+		void setMesh(MeshHandler mh) {
+			 meshes.push(mh);
+		}
+
 		void setFrameBuffer(FrameBufferHandler fbh) {
 			this->fbh = fbh;
 		}
@@ -133,6 +146,7 @@ namespace narvalengine {
 			bindings.swap(std::queue<Binding>());
 			toUnbinding.swap(std::queue<Binding>());
 			models.swap(std::queue<ModelHandler>());
+			meshes.swap(std::queue<MeshHandler>());
 			vertexBuffers.swap(std::queue<VertexBufferHandler>());
 			indexBuffers.swap(std::queue<IndexBufferHandler>());
 			fbh = { INVALID_HANDLE };
@@ -161,6 +175,7 @@ namespace narvalengine {
 			HandleAllocator *vertexBufferHandleAllocator;
 			HandleAllocator *indexBufferHandleAllocator;
 			HandleAllocator *textureHandleAllocator;
+			HandleAllocator *materialHandleAllocator;
 			HandleAllocator *frameBufferHandleAllocator;
 			HandleAllocator *shaderHandleAllocator;
 			HandleAllocator *programHandleAllocator;
@@ -184,6 +199,7 @@ namespace narvalengine {
 				uint8_t *uniformAlloc = memAlloc(sizeof(HandleAllocator) + 2 * NE_MAX_UNIFORMS * sizeof(uint16_t));
 				uint8_t *meshAlloc = memAlloc(sizeof(HandleAllocator) + 2 * NE_MAX_MESHS * sizeof(uint16_t));
 				uint8_t *modelAlloc = memAlloc(sizeof(HandleAllocator) + 2 * NE_MAX_MODELS * sizeof(uint16_t));
+				uint8_t *materialAlloc = memAlloc(sizeof(HandleAllocator) + 2 * NE_MAX_MATERIALS * sizeof(uint16_t));
 
 				vertexBufferHandleAllocator = createHandleAllocator(vbAlloc, NE_MAX_VERTEX_BUFFERS);
 				indexBufferHandleAllocator = createHandleAllocator(ibAlloc, NE_MAX_INDEX_BUFFERS);
@@ -194,6 +210,7 @@ namespace narvalengine {
 				uniformHandleAllocator = createHandleAllocator(uniformAlloc, NE_MAX_UNIFORMS);
 				meshHandleAllocator = createHandleAllocator(meshAlloc, NE_MAX_MESHS);
 				modelHandleAllocator = createHandleAllocator(modelAlloc, NE_MAX_MODELS);
+				materialHandleAllocator = createHandleAllocator(materialAlloc, NE_MAX_MATERIALS);
 			}
 
 			IndexBufferHandler createIndexBuffer(MemoryBuffer mem, VertexLayout vertexLayout) {
@@ -270,7 +287,7 @@ namespace narvalengine {
 				return ph;
 			}
 
-			MeshHandler createMesh(Mesh* mesh) {
+			MeshHandler createMesh(Mesh* mesh, MaterialHandler mh = { INVALID_HANDLE }) {
 				MeshHandler meshHandler = { meshHandleAllocator->alloc() };
 				VertexBufferHandler vbh;
 				IndexBufferHandler ibh;
@@ -286,21 +303,43 @@ namespace narvalengine {
 				meshHandler.vertexBuffer = createVertexBuffer(memvb, mesh->vertexLayout);
 				meshHandler.indexBuffer = createIndexBuffer(memib, mesh->vertexLayout);
 
-				for (TextureInfo ti : mesh->textures) {
+				if (mh.id != INVALID_HANDLE)
+					meshHandler.material = mh;
+				else {
+					//no material associated with this mesh.
+				}
+
+				/*for (TextureInfo ti : mesh->textures) {
 					Texture* t = ResourceManager::getSelf()->getTexture(ti.texID);
 					if (t == nullptr)
 						continue;
 					meshHandler.textures.push_back(createTexture(t));
-				}
+				}*/
 
 				return meshHandler;
+			}
+
+			MaterialHandler createMaterial(Material* material) {
+				MaterialHandler matHandler = { materialHandleAllocator->alloc() };
+
+				for (Texture* t : material->textures)
+					if(t!=nullptr)
+						matHandler.textures[ctz(t->textureName)] = createTexture(t);
+
+				return matHandler;
 			}
 
 			ModelHandler createModel(Model *model) {
 				ModelHandler modelhandler = { modelHandleAllocator->alloc() };
 
+				for (Material *m : model->materials)
+					modelhandler.materials.push_back(createMaterial(m));
+
 				for (Mesh m : model->meshes)
-					modelhandler.meshes.push_back(createMesh(&m));
+					if(m.modelMaterialIndex < 0)
+						modelhandler.meshes.push_back(createMesh(&m));
+					else
+						modelhandler.meshes.push_back(createMesh(&m, modelhandler.materials.at(m.modelMaterialIndex)));
 
 				return modelhandler;
 			}
@@ -323,6 +362,10 @@ namespace narvalengine {
 
 			void setModel(ModelHandler modelh) {
 				renderState.setModel(modelh);
+			}
+
+			void setMesh(MeshHandler meshH) {
+				renderState.setMesh(meshH);
 			}
 
 			void setVertexBuffer(VertexBufferHandler vh) {

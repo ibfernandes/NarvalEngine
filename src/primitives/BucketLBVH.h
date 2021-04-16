@@ -563,6 +563,7 @@ namespace narvalengine {
 
 		std::string getStatus() {
 			std::stringstream ss;
+			ss << "Size: [" << size.x << ", " << size.y << ", " << size.z << "]" << std::endl;
 			ss << "Depth: " << levels << std::endl;
 			ss << "Number of nodes: " << numberOfNodes << std::endl;
 			ss << "Number of empty nodes: " << numberOfEmptyNodes << std::endl;

@@ -114,10 +114,15 @@ namespace narvalengine {
 		if (type.compare("microfacet") == 0) {
 			std::string albedoPath = "";
 			glm::vec3 albedo = glm::vec3(1, 0, 1);
+			glm::vec3 normalMap = glm::vec3(0, 0, 1.0);
+
 			if (material["albedo"].IsString())
 				albedoPath = material["albedo"].GetString();
 			else
 				albedo = getVec3(material["albedo"]);
+			
+			if(material.HasMember("normalMap"))
+				normalMap = getVec3(material["normalMap"]); //Must be already converted on range from [-1, 1] to [0, 1]
 
 			float roughness = material["roughness"].GetFloat();
 			float metallic = material["metallic"].GetFloat();
@@ -143,9 +148,22 @@ namespace narvalengine {
 				ResourceManager::getSelf()->setTexture(name + ".albedo", albedoTex);
 			}
 
+			Texture* roughnessTex;
+			roughnessTex = new Texture(1, 1, R32F, flags, { (uint8_t*)&roughness, sizeof(float) });
+			roughnessTex->textureName = TextureName::ROUGHNESS;
+			ResourceManager::getSelf()->setTexture(name + ".roughness", roughnessTex);
+
+			Texture* normalMapTex;
+			normalMapTex = new Texture(1, 1, RGB32F, flags, { (uint8_t*)&normalMap[0], sizeof(float) * 3 });
+			normalMapTex->textureName = TextureName::NORMAL_MAP;
+			ResourceManager::getSelf()->setTexture(name + ".normal", normalMapTex);
+
+
 			Material *mat = new Material();
 			mat->addTexture(TextureName::ALBEDO, albedoTex);
 			mat->addTexture(TextureName::METALLIC, metallicTex);
+			mat->addTexture(TextureName::ROUGHNESS, roughnessTex);
+			mat->addTexture(TextureName::NORMAL_MAP, normalMapTex);
 
 			GGXDistribution *ggxD = new GGXDistribution();
 			ggxD->alpha = roughnessToAlpha(0.65f); //TODO double check
@@ -228,15 +246,22 @@ namespace narvalengine {
 		if (type.compare("obj") == 0) {
 			glm::vec3 scale = getVec3(primitive["transform"]["scale"]);
 			glm::vec3 rotate = getVec3(primitive["transform"]["rotation"]);
-			std::string materialName = primitive["materialName"].GetString();
+			std::string materialName;
+			if (primitive.HasMember("materialName"))
+				materialName = primitive["materialName"].GetString();
 			std::string path = primitive["path"].GetString();
 
 			int count = path.find_last_of("/") + 1;
 			std::string fileName = path.substr(count);
 			std::string folder = path.substr(0, count);
 
-			Material *material = ResourceManager::getSelf()->getMaterial(materialName);
-			StringID modelID = ResourceManager::getSelf()->loadModel(name, folder, fileName, materialName);
+			StringID modelID;
+			if (primitive.HasMember("materialName")){
+				Material* material = ResourceManager::getSelf()->getMaterial(materialName);
+				modelID = ResourceManager::getSelf()->loadModel(name, folder, fileName, materialName);
+			}else {
+				modelID = ResourceManager::getSelf()->loadModel(name, folder, fileName);
+			}
 			
 			InstancedModel *instancedModel = new InstancedModel(ResourceManager::getSelf()->getModel(modelID), modelID, getTransform(pos, rotate, scale));
 			scene->instancedModels.push_back(instancedModel);
@@ -264,19 +289,20 @@ namespace narvalengine {
 			m.vertexDataPointerLength = model->vertexDataLength;
 			m.vertexIndicesPointer = &model->faceVertexIndices[0];
 			m.vertexIndicesPointerLength = model->faceVertexIndicesLength;
+			m.modelMaterialIndex = 0;
 
 			m.vertexLayout.init();
 			m.vertexLayout.add(VertexAttrib::Position, VertexAttribType::Float, 3);
 			m.vertexLayout.end();
 
-			for (Texture* t : ResourceManager::getSelf()->getMaterial(materialName)->textures) {
+			/*for (Texture* t : ResourceManager::getSelf()->getMaterial(materialName)->textures) {
 				if (t->textureName == TextureName::METALLIC) {
 					m.textures.push_back({ genStringID(materialName + ".metallic"), "material.metallic" });
 				}
 				else if (t->textureName == TextureName::ALBEDO) {
 					m.textures.push_back({ genStringID(materialName + ".albedo"), "material.diffuse" });
 				}
-			}
+			}*/
 
 			model->meshes.push_back(m);
 
@@ -313,6 +339,7 @@ namespace narvalengine {
 			model->vertexData[2] = point1[2];
 			model->centralize();
 
+			//TODO: missing mesh?
 			Sphere *sphere = new Sphere();
 			sphere->vertexData[0] = &model->vertexData[0];
 			sphere->radius = radius;
@@ -339,7 +366,7 @@ namespace narvalengine {
 			glm::vec3 rotate = getVec3(primitive["transform"]["rotation"]);
 
 			Model *model = new Model();
-			model->vertexDataLength = 4 * 3 + 4 * 2;
+			model->vertexDataLength = 4 * 3 + 4 * 3 + 4 * 3 + 4 * 2; //vert, norm, tan and UV
 			model->vertexData = new float[model->vertexDataLength];
 			glm::vec3 point1(-0.5f, -0.5f, 0); //0: bottom left
 			glm::vec3 point2(0.5f, -0.5f, 0); //1: bottom right
@@ -349,26 +376,52 @@ namespace narvalengine {
 			glm::vec2 uv2(1, 0);
 			glm::vec2 uv3(1, 1);
 			glm::vec2 uv4(0, 1);
+			glm::vec3 normal(0, 0, -1.0f);
+			glm::vec3 tan(1.0f, 0, 0);
 			model->vertexData[0] = point1[0];
 			model->vertexData[1] = point1[1];
 			model->vertexData[2] = point1[2];
-			model->vertexData[3] = uv1[0];
-			model->vertexData[4] = uv1[1];
-			model->vertexData[5] = point2[0];
-			model->vertexData[6] = point2[1];
-			model->vertexData[7] = point2[2];
-			model->vertexData[8] = uv2[0];
-			model->vertexData[9] = uv2[1];
-			model->vertexData[10] = point3[0];
-			model->vertexData[11] = point3[1];
-			model->vertexData[12] = point3[2];
-			model->vertexData[13] = uv3[0];
-			model->vertexData[14] = uv3[1];
-			model->vertexData[15] = point4[0];
-			model->vertexData[16] = point4[1];
-			model->vertexData[17] = point4[2];
-			model->vertexData[18] = uv4[0];
-			model->vertexData[19] = uv4[1];
+			model->vertexData[3] = normal[0];
+			model->vertexData[4] = normal[1];
+			model->vertexData[5] = normal[2];
+			model->vertexData[6] = tan[0];
+			model->vertexData[7] = tan[1];
+			model->vertexData[8] = tan[2];
+			model->vertexData[9] = uv1[0];
+			model->vertexData[10] = uv1[1];
+			model->vertexData[11] = point2[0];
+			model->vertexData[12] = point2[1];
+			model->vertexData[13] = point2[2];
+			model->vertexData[14] = normal[0];
+			model->vertexData[15] = normal[1];
+			model->vertexData[16] = normal[2];
+			model->vertexData[17] = tan[0];
+			model->vertexData[18] = tan[1];
+			model->vertexData[19] = tan[2];
+			model->vertexData[20] = uv2[0];
+			model->vertexData[21] = uv2[1];
+			model->vertexData[22] = point3[0];
+			model->vertexData[23] = point3[1];
+			model->vertexData[24] = point3[2];
+			model->vertexData[25] = normal[0];
+			model->vertexData[26] = normal[1];
+			model->vertexData[27] = normal[2];
+			model->vertexData[28] = tan[0];
+			model->vertexData[29] = tan[1];
+			model->vertexData[30] = tan[2];
+			model->vertexData[31] = uv3[0];
+			model->vertexData[32] = uv3[1];
+			model->vertexData[33] = point4[0];
+			model->vertexData[34] = point4[1];
+			model->vertexData[35] = point4[2];
+			model->vertexData[36] = normal[0];
+			model->vertexData[37] = normal[1];
+			model->vertexData[38] = normal[2];
+			model->vertexData[39] = tan[0];
+			model->vertexData[40] = tan[1];
+			model->vertexData[41] = tan[2];
+			model->vertexData[42] = uv4[0];
+			model->vertexData[43] = uv4[1];
 			//model->centralize();
 
 			int numOfIndices = 1 * 2 * 3; // 1 face comprised of 2 triangles, each triangle needs 3 indices
@@ -382,24 +435,28 @@ namespace narvalengine {
 			model->faceVertexIndices[5] = 3;
 
 			Mesh m;
-			m.strideLength = 5;
+			m.strideLength = 11;
 			m.vertexDataPointer = &model->vertexData[0];
 			m.vertexDataPointerLength = model->vertexDataLength;
 			m.vertexIndicesPointer = &model->faceVertexIndices[0];
 			m.vertexIndicesPointerLength = model->faceVertexIndicesLength;
+			m.modelMaterialIndex = 0;
 
 			m.vertexLayout.init();
 			m.vertexLayout.add(VertexAttrib::Position, VertexAttribType::Float, 3);
+			m.vertexLayout.add(VertexAttrib::Normal, VertexAttribType::Float, 3);
+			m.vertexLayout.add(VertexAttrib::Tangent, VertexAttribType::Float, 3);
 			m.vertexLayout.add(VertexAttrib::TexCoord0, VertexAttribType::Float, 2);
 			m.vertexLayout.end();
 
-			for (Texture *t : ResourceManager::getSelf()->getMaterial(materialName)->textures) {
+			m.material = ResourceManager::getSelf()->getMaterial(materialName);
+			/*for (Texture *t : ResourceManager::getSelf()->getMaterial(materialName)->textures) {
 				if (t->textureName == TextureName::METALLIC) {
 					m.textures.push_back({ genStringID(materialName + ".metallic"), "material.metallic" });
 				}else if (t->textureName == TextureName::ALBEDO) {
 					m.textures.push_back({ genStringID(materialName + ".albedo"), "material.diffuse"});
 				}
-			}
+			}*/
 
 			model->meshes.push_back(m);
 
@@ -407,7 +464,7 @@ namespace narvalengine {
 			rectangle->vertexLayout = &model->meshes.at(0).vertexLayout;
 			rectangle->vertexData[0] = &model->vertexData[0];
 			rectangle->vertexData[1] = &model->vertexData[m.strideLength * 2];
-			rectangle->normal = glm::vec3(0, 0, -1);
+			rectangle->normal = normal;
 			Material *material = ResourceManager::getSelf()->getMaterial(materialName);
 			if (material->light != nullptr) {
 				model->lights.push_back(rectangle);
@@ -419,7 +476,9 @@ namespace narvalengine {
 			rectangle->material = material;
 
 			StringID modelID = ResourceManager::getSelf()->replaceModel(name, model);
+
 			InstancedModel *instancedModel = new InstancedModel(model, modelID, getTransform(pos, rotate, scale));
+			
 			if (material->light != nullptr)
 				scene->lights.push_back(instancedModel);
 			else
@@ -528,11 +587,13 @@ namespace narvalengine {
 			m.vertexDataPointerLength = model->vertexDataLength;
 			m.vertexIndicesPointer = &model->faceVertexIndices[0];
 			m.vertexIndicesPointerLength = model->faceVertexIndicesLength;
+			m.modelMaterialIndex = 0;
 
 			m.vertexLayout.init();
 			m.vertexLayout.add(VertexAttrib::Position, VertexAttribType::Float, 3);
 			m.vertexLayout.end();
-			m.textures.push_back({genStringID(materialName), "volume"});
+			m.material = material;
+			//m.textures.push_back({genStringID(materialName), "volume"});
 
 			model->meshes.push_back(m);
 			

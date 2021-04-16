@@ -7,7 +7,7 @@
 namespace narvalengine {
 	class InstancedModel {
 	public:
-		StringID modelID;
+		StringID modelID = NE_INVALID_STRING_ID;
 		Model *model;
 		glm::mat4 transformToWCS;
 		glm::mat4 invTransformToWCS;

@@ -1,9 +1,14 @@
 #pragma once
+#define NOMINMAX //necessary for nanovdb
 #include <glm/glm.hpp>
 #include "core/Scene.h"
 #include "core/Microfacet.h"
 #include "io/SceneReader.h"
 #include <sstream>
+//#include <openvdb/openvdb.h>
+//#include <openvdb/tools/Dense.h>
+#include <nanovdb/util/OpenToNanoVDB.h> // converter from OpenVDB to NanoVDB (includes NanoVDB.h and GridManager.h)
+#include <nanovdb/util/IO.h>
 
 namespace narvalengine {
 	class TestPlayground {
@@ -272,12 +277,13 @@ namespace narvalengine {
 			m.vertexLayout.add(VertexAttrib::TexCoord0, VertexAttribType::Float, 2);
 			m.vertexLayout.end();
 
+			//TODO updated to TextureName channels
 			for (Texture* t : ResourceManager::getSelf()->getMaterial(materialName)->textures) {
 				if (t->textureName == TextureName::METALLIC) {
-					m.textures.push_back({ genStringID(materialName + ".metallic"), "material.metallic" });
+					//m.textures.push_back({ genStringID(materialName + ".metallic"), "material.metallic" });
 				}
 				else if (t->textureName == TextureName::ALBEDO) {
-					m.textures.push_back({ genStringID(materialName + ".albedo"), "material.diffuse" });
+					//m.textures.push_back({ genStringID(materialName + ".albedo"), "material.diffuse" });
 				}
 			}
 
@@ -342,8 +348,78 @@ namespace narvalengine {
 			glm::vec3 v1 = glm::vec3(1,1,0);
 			glm::vec3 v2 = glm::vec3(1,1,0);
 			float dot = glm::dot(v1, v2);
-
 		}
+
+		void convertToNanoVDB() {
+			try {
+				openvdb::io::File file(RESOURCES_DIR + std::string("vdb/cube.vdb"));
+				openvdb::GridBase::Ptr baseGrid;
+				file.open();
+				for (openvdb::io::File::NameIterator nameIter = file.beginName(); nameIter != file.endName(); ++nameIter) {
+					if (nameIter.gridName() == "density") {
+						baseGrid = file.readGrid(nameIter.gridName());
+						break;
+					}
+				}
+				file.close();
+
+				openvdb::FloatGrid::Ptr srcGrid = openvdb::gridPtrCast<openvdb::FloatGrid>(baseGrid);
+				nanovdb::GridHandle handle = nanovdb::openToNanoVDB(srcGrid);
+
+				auto* dstGrid = handle.grid<float>();
+
+				if (!dstGrid)
+					throw std::runtime_error("GridHandle does not contain a grid with value type float");
+
+				// Get accessors for the two grids. Note that accessors only accelerate repeated access!
+				auto dstAcc = dstGrid->getAccessor();
+				auto srcAcc = srcGrid->getAccessor();
+
+				nanovdb::io::writeGrid(RESOURCES_DIR + std::string("scenes/pbrt/cube.nvdb"), handle); // Write the NanoVDB grid to file and throw if writing fails
+			}catch (const std::exception& e) {
+				std::cerr << "An exception occurred: \"" << e.what() << "\"" << std::endl;
+			}
+		}
+
+		void generateCubeVDB() {
+			glm::ivec3 res = glm::vec3(5,5,5);
+			float *fgrid = new float[res.x * res.y * res.z];
+			for (int i = 0; i < res.x * res.y * res.z; i++)
+				fgrid[i] = 1;
+
+			openvdb::FloatGrid::Ptr grid = openvdb::FloatGrid::create();
+			openvdb::FloatGrid::Accessor accessor = grid->getAccessor();
+
+			/*
+			for(int x = 0; x < res.x; x++)
+				for(int y = 0; y < res.y; y++)
+					for (int z = 0; z < res.z; z++) {
+						openvdb::Coord xyz(x, y, z);
+						accessor.setValue(xyz, 1.0); // Should be fgrid[i] value
+					}
+			*/
+
+			//centered
+			for (int x = -res.x/2; x < glm::ceil(res.x/2.0f); x++)
+				for (int y = -res.y/2; y < glm::ceil(res.y/2.0f); y++)
+					for (int z = -res.z/2; z < glm::ceil(res.z/2.0f); z++) {
+						openvdb::Coord xyz(x, y, z);
+						accessor.setValue(xyz, 1.0); // Should be fgrid[i] value
+					}
+			
+			//grid->insertMeta("radius", openvdb::FloatMetadata(50.0));
+			//grid->setTransform(openvdb::math::Transform::createLinearTransform(/*voxel size=*/0.5));
+			//grid->setGridClass(openvdb::GRID_LEVEL_SET);
+			grid->setName("density");
+
+			// Create a VDB file object.
+			openvdb::io::File file(RESOURCES_DIR + std::string("vdb/cube.vdb"));
+			openvdb::GridPtrVec grids;
+			grids.push_back(grid);
+			file.write(grids);
+			file.close();
+		}
+
 
 		TestPlayground() {
 			//testRandomGenRange();
@@ -351,7 +427,9 @@ namespace narvalengine {
 			//unitTest();
 			//testMicrofacetBSDF();
 			//testUVSampling();
-			testDot();
+			//testDot();
+			generateCubeVDB();
+			convertToNanoVDB();
 			float t;
 		}
 

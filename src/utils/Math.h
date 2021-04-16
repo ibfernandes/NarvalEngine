@@ -303,6 +303,7 @@ namespace narvalengine {
 		return x >= 0 ? 1 : -1;
 	}
 
+	//count leading zeroes
 	inline int clz(unsigned int x) {
 		// Keep shifting x by one until leftmost bit does not become 1. 
 		int totalBits = sizeof(x) * 8;
@@ -313,6 +314,19 @@ namespace narvalengine {
 		}
 
 		return res;
+	}
+
+	//count trailing zeroes
+	inline int ctz(unsigned int x) {
+		// Keep shifting x by one until leftmost bit does not become 1. 
+		int totalBits = sizeof(x) * 8;
+		int res = 0;
+		while (!(x & (1 << (totalBits - 1)))) {
+			x = (x << 1);
+			res++;
+		}
+
+		return 32 - res - 1;
 	}
 
 	inline void generateOrthonormalCS(glm::vec3 normal, glm::vec3 &v, glm::vec3 &u) {

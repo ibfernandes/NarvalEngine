@@ -116,14 +116,15 @@
 /*
 	Primitive type
 */
-#define NE_STATE_PRIMITIVE_TYPE_TRISTRIP      0x0001000000000000 //Triangle Strip
-#define NE_STATE_PRIMITIVE_TYPE_LINES         0x0002000000000000
-#define NE_STATE_PRIMITIVE_TYPE_LINESTRIP     0x0003000000000000
-#define NE_STATE_PRIMITIVE_TYPE_POINTS        0x0004000000000000
+#define NE_STATE_PRIMITIVE_TYPE_TRI		      0x0001000000000000 //Triangle Strip
+#define NE_STATE_PRIMITIVE_TYPE_TRISTRIP      0x0002000000000000 //Triangle Strip
+#define NE_STATE_PRIMITIVE_TYPE_LINES         0x0003000000000000
+#define NE_STATE_PRIMITIVE_TYPE_LINESTRIP     0x0004000000000000
+#define NE_STATE_PRIMITIVE_TYPE_POINTS        0x0005000000000000
 #define NE_STATE_PRIMITIVE_TYPE_SHIFT         48                 
 #define NE_STATE_PRIMITIVE_TYPE_MASK          0x0007000000000000 
 
-#define NE_STATE_DEFAULT NE_STATE_PRIMITIVE_TYPE_TRISTRIP
+#define NE_STATE_DEFAULT NE_STATE_PRIMITIVE_TYPE_TRI
 
 #define INVALID_HANDLE 2048
 #define NE_MAX_TEXTURES 2048
@@ -135,6 +136,7 @@
 #define NE_MAX_SHADERS 16
 #define NE_MAX_PROGRAMS 16
 #define NE_MAX_MESHS 1024
+#define NE_MAX_MATERIALS 1024
 #define NE_MAX_MODELS 1024
 #define NE_MAX_STAGES	8
 
@@ -191,6 +193,13 @@ namespace narvalengine {
 		Count
 	};	
 
+	static bool isHandleValid(int handleId) {
+		if (handleId < 0 || handleId >= INVALID_HANDLE)
+			return false;
+		else
+			return true;
+	}
+
 	static bool isDepth(TextureLayout tl) {
 		if (tl == TextureLayout::D24 || tl == TextureLayout::D24S8)
 			return true;
@@ -199,11 +208,16 @@ namespace narvalengine {
 	}
 
 	enum TextureName {
-		ALBEDO = 1 << 4,
-		ROUGHNESS = 1 << 5,
-		METALLIC = 1 << 6,
-		EMISSION = 1 << 7,
-		NORMAL_MAP = 1 << 8
+		ALBEDO = 1 << 1,
+		ROUGHNESS = 1 << 2,
+		METALLIC = 1 << 3,
+		EMISSION = 1 << 4,
+		NORMAL_MAP = 1 << 5,
+		AO = 1 << 6,
+		TEX_1 = 1 << 7,
+		TEX_2 = 1 << 8,
+		TEX_3 = 1 << 9,
+		TextureNameCount = 9 //TODO name workaround, enum class doesn't have an implicit casting, which is ridiculous
 	};
 
 	enum TextureChannelFormat {

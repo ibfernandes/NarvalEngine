@@ -7,29 +7,42 @@
 			"type": "microfacet",
 			"roughness": 0.95,
 			"metallic": 0.0,
-			"albedo": [0.8, 0.8, 0.8]
+			"albedo": [0.8, 0.8, 0.8],
+			"normalMap": [0.5, 0.5, 1.0]
 		},
 		{
 			"name": "redMat",
 			"type": "microfacet",
 			"roughness": 0.95,
 			"metallic": 0.0,
-			"albedo": [0.8, 0.02, 0.05]
+			"albedo": [0.8, 0.02, 0.05],
+			"normalMap": [0.5, 0.5, 1.0]
 		},
 		{
 			"name": "greenMat",
 			"type": "microfacet",
 			"roughness": 0.95,
 			"metallic": 0.0,
-			"albedo": [0.11, 0.8, 0.01]
+			"albedo": [0.11, 0.8, 0.01],
+			"normalMap": [0.5, 0.5, 1.0]
 		},
 		{
 			"name": "emitter",
 			"type": "emitter",
-			"albedo": [50, 50, 50]
+			"albedo": [100, 100, 100]
 		},
 		{
-			"name": "volumeMat",
+			"name": "cubeVolMat",
+			"type": "volume",
+			"scattering": [1.1, 1.1, 1.1],
+			"absorption": [0.01, 0.01, 0.01],
+			"phaseFunction": "hg",
+			"g": 0,
+			"path" : "vdb/cube.vdb",
+			"density": 1
+		},
+		{
+			"name": "cloudVolMat",
 			"type": "volume",
 			"scattering": [1.1, 1.1, 1.1],
 			"absorption": [0.01, 0.01, 0.01],
@@ -37,8 +50,9 @@
 			"g": 0,
 			"path" : "vdb/wdas_cloud_sixteenth.vdb",
 			"density": 100,
-			"comment": "Original resolution 450x317x530",
-			"comment2": "pbrt resolution x 0.003 = 1.35x0.951x1.59"
+			"comment": "Original resolution sixteenth is 570x317x450 or 153x85x125",
+			"comment2": "Original resolution quarter is 612x337x497",
+			"comment3": "pbrt resolution x 0.003 = 1.59, 0.951, 1.35 or 0.459, 0.255, 0.375"
 		}
 	],
 	
@@ -57,11 +71,12 @@
 			"name": "volume",
 			"type": "volume",
 			"transform": {
-				"position": [0, 0.6, 0.5],
-				"scale": [1.35, 0.951, 1.59],
+				"position": [0.1, 0.9, 0.6],
+				"scale1": [3.18, 1.902, 2.7],
+				"scale": [1, 1, 1],
 				"rotation": [0, 0, 0]
 			},
-			"materialName": "volumeMat"
+			"materialName": "cubeVolMat"
 		},
 		{
 			"name": "cubeBack",
@@ -89,7 +104,7 @@
 			"transform": {
 				"position": [0, 4, 0],
 				"scale": [4, 4, 1],
-				"rotation": [90, 0, 0]
+				"rotation": [-90, 0, 0]
 			},
 			"materialName": "whiteMat"
 		},
@@ -116,8 +131,8 @@
 	],
 
 	"camera": {
-		"position": [0, 2, -5],
-		"lookAt": [0, 2, 0],
+		"position": [0, 1, -6.5],
+		"lookAt": [0, 1, 0],
 		"up": [0, 1, 0],
 		"speed": 5,
 		"vfov": 45,

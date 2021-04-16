@@ -9,14 +9,16 @@ namespace narvalengine {
 	class Material {
 	public:
 		TextureName textureTypes;
-		std::vector<Texture*> textures;
+		//std::vector<Texture*> textures;
+		Texture *textures[TextureName::TextureNameCount];
 		Medium *medium;
 		Light *light;
 		BSDF *bsdf;
 
 		void addTexture(TextureName textureType, Texture *tex2D) {
-			textureTypes = TextureName(textureTypes | textureType);
-			textures.push_back(tex2D);
+			textureTypes = TextureName(textureType | textureType);
+			textures[ctz(textureType)] = tex2D;
+			//textures.push_back(tex2D);
 		}
 
 		bool containsMaterialName(TextureName type) {
@@ -28,11 +30,17 @@ namespace narvalengine {
 		*/
 		glm::vec4 sampleMaterial(TextureName textureType, float x, float y) {
 			//assert(containsMaterialName(textureType));
+			int idx = ctz(textureType);
 
-			for (Texture *tex : textures) {
+			if (textures[idx] != nullptr)
+				return textures[idx]->sample(x, y);
+			else
+				return glm::vec4(0, 0, 0, 1);
+
+			/*for (Texture *tex : textures) {
 				if (tex->textureName & textureType)
 					return tex->sample(x, y);
-			}
+			}*/
 		}
 	};
 }

@@ -169,9 +169,19 @@ namespace narvalengine {
 		openvdb::FloatGrid::Ptr grid = openvdb::gridPtrCast<openvdb::FloatGrid>(baseGrid);
 
 		openvdb::CoordBBox bb = grid->evalActiveVoxelBoundingBox();
-		float resX = abs(bb.min().x()) + abs(bb.max().x());
-		float resY = abs(bb.min().y()) + abs(bb.max().y());
-		float resZ = abs(bb.min().z()) + abs(bb.max().z());
+		openvdb::Coord minbb = bb.min();
+		openvdb::Coord maxbb = bb.max();
+		float resX = abs(minbb.x()) + abs(maxbb.x());
+		float resY = abs(minbb.y()) + abs(maxbb.y());
+		float resZ = abs(minbb.z()) + abs(maxbb.z());
+
+		//centered at origin
+		if (minbb.x() < 0 && maxbb.x() >= 0)
+			resX += 1;
+		if (minbb.y() < 0 && maxbb.y() >= 0)
+			resY += 1;
+		if (minbb.z() < 0 && maxbb.z() >= 0)
+			resZ += 1;
 
 		openvdb::Coord dim(resX, resY, resZ);
 		openvdb::Coord originvdb(-abs(bb.min().x()), -abs(bb.min().y()), -abs(bb.min().z()));

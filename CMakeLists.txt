@@ -39,6 +39,13 @@ set(GLAD "includes/glad/include/glad/glad.h"
 # STB loaders
 include_directories(includes/stb)
 
+# NanoVDB paths
+message(STATUS ">>>>>>>>>>>>>> NanoVDB inclusion start.")
+include_directories(includes/nanovdb)
+include_directories(includes)
+set(NANOVDB "includes/nanovdb/NanoVDB.h")
+message(STATUS ">>>>>>>>>>>>>> NanoVDB inclusion finished.")
+
 # ASSIMP
 # Set ASSIMP options and add directory
 set(ASSIMP_BUILD_ASSIMP_TOOLS OFF)
@@ -242,6 +249,6 @@ endforeach()
 
 include_directories( "${CMAKE_SOURCE_DIR}/src" )
 
-add_executable(NarvalEngine ${SOURCE_FILES} ${GLAD} ${IMGUI_SOURCES} ${TINYFILEDIALOGS_SOURCES} ${FASTNOISE_SOURCES} ${STB_SOURCES} )
+add_executable(NarvalEngine ${SOURCE_FILES} ${GLAD} ${NANOVDB} ${IMGUI_SOURCES} ${TINYFILEDIALOGS_SOURCES} ${FASTNOISE_SOURCES} ${STB_SOURCES} )
 target_link_libraries(NarvalEngine ${core_libs} glfw ${GLFW_LIBRARIES} assimp)
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT NarvalEngine)

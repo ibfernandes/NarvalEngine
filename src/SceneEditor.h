@@ -80,17 +80,36 @@ namespace narvalengine {
 		FrameBufferHandler fbRenderFrame[3];
 		int numberOfActiveLights = 1;
 
+		//REAL TIME - SHADOWS
+		ProgramHandler shadowProgramHandler;
+		UniformHandler shadowUniforms[10];
+		//TextureHandler shadowfboTex;
+		TextureHandler shadowDepthTex;
+		FrameBufferHandler shadowfboh;
+		glm::mat4 lightView[10] = { glm::mat4(1) , glm::mat4(1) }; //one for each light source
+		glm::mat4 lightProjection = glm::mat4(1);
+
 		//REAL TIME - Phong
 		ProgramHandler phongProgramHandler;
 		UniformHandler phongUniforms[100];
+		UniformHandler lightUniforms[100];
+		glm::vec3 lightPos[10];
+		int phongLightsOffset = 7;
 		int phongDiffTex = 0;
 		int phongSpecTex = 1;
 		int phongNormTex = 2;
 		int phongShadowMapTex = 3;
 		int phongRenderingMode = 0;
 		int normalMapping = 1;
-		glm::mat4 lightProjection = glm::mat4(1);
-		glm::mat4 lightView = glm::mat4(1);
+		glm::vec4 lightTexColor = glm::vec4(252/255.0f, 186/255.0f, 3/255.0f, 1);
+		TextureHandler lightTexColorH;
+
+		//REAL TIME - PBR
+		ProgramHandler pbrProgramHandler;
+		UniformHandler pbrUniforms[100];
+		UniformHandler pbrLightUniforms[100];
+		int texIds[7] = { 0, 1, 2, 3, 4, 5, 7 };
+		int pbrLightsOffset = 2;
 
 		//REAL TIME - Volume
 		ProgramHandler volProgramHandler;
@@ -113,7 +132,7 @@ namespace narvalengine {
 		float shadowSteps = 10;
 		glm::vec3 lightPosition = glm::vec3(0, 4, 0); //TODO: currently hard coded
 		glm::vec3 lightColor = glm::vec3(1.0, 1.0, 1.0);
-		float ambientStrength = 300;
+		float ambientStrength = 10;
 		float Kc = 1.0, Kl = 0.7, Kq = 1.8;
 		float frameCount = 0;
 		float enableShadow = 1;
@@ -181,6 +200,9 @@ namespace narvalengine {
 		TextureHandler rayTextureColorH;
 		int numberOfBounces = 0;
 
+		//Debug shadow mapping
+		bool renderShadowMapping = true;
+
 		//Log window
 		std::string logText = "> Log begin \n";
 		ImVec2 logWindowSize;
@@ -215,7 +237,11 @@ namespace narvalengine {
 		void shootRay(int i);
 		void shootMultipleRays(int qtt);
 		void shootRayImGUI();
+		void shadowMappingImGUI();
+		void renderShadowMappingDebug();
 		void renderOffline();
+		void renderRealTimeShadows();
+		void renderRealTimePBR();
 		void renderRealTime();
 		void renderCompare();
 		void render();
@@ -223,8 +249,10 @@ namespace narvalengine {
 		void compareScene();
 		void initVolumetricShader();
 		void initPhongShader();
+		void initPBR();
 		void initComposeShader();
 		void initMonoColorShader();
+		void initShadowShader();
 		void initImageDifferenceShader();
 		void initRenderAPI();
 		void hoverObject();

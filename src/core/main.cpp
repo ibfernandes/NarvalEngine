@@ -11,6 +11,7 @@
 using namespace narvalengine;
 
 int main() {
+	//SceneReader scene("scenes/sponza.json", false);
 	SceneReader scene("scenes/defaultCube.json", false);
 	//SceneReader scene("scenes/volumeLamp.json", false);
 	Settings *settings = scene.getSettings();

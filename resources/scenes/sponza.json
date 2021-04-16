@@ -1,0 +1,61 @@
+{
+	"version" : "0.0.1a",
+	
+	"materials": [
+		{
+			"name": "emitter",
+			"type": "emitter",
+			"albedo": [930, 600, 90]
+		},
+		{
+			"name": "whiteMat",
+			"type": "microfacet",
+			"roughness": 0.95,
+			"metallic": 0.0,
+			"albedo": [0.8, 0.8, 0.8]
+		}
+	],
+	
+	"primitives": [
+		{
+			"name": "rectLight",
+			"type": "rectangle",
+			"transform": {
+				"position": [0, 3.9, 0],
+				"scale": [1, 1, 1],
+				"rotation": [-89, 0, 0]
+			},
+			"materialName": "emitter"
+		},
+		{
+			"name": "sponza",
+			"type": "obj",
+			"transform": {
+				"position": [0, 0, 0],
+				"scale": [0.02, 0.02, 0.02],
+				"rotation": [0, 0, 0]
+			},
+			"path" : "models/sponza/sponza.obj"
+		}
+	],
+
+	"camera": {
+		"position": [0, 2, -5],
+		"lookAt": [0, 2, 0],
+		"up": [0, 1, 0],
+		"speed": 5,
+		"vfov": 45,
+		"aperture": 0.0001,
+		"autoFocus": true,
+		"focus": 1
+	},
+	
+	"renderer": {
+		"resolution": [1200, 600],
+		"spp": 1,
+		"bounces": 6,
+		"mode": "realtime",
+		"HDR": false,
+		"toneMapping": false
+	}
+}
