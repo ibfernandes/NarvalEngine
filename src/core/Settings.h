@@ -13,5 +13,6 @@ namespace narvalengine {
 		int spp;
 		int bounces;
 		RenderingMode renderMode;
+		bool hdr;
 	};
 }

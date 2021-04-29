@@ -5,7 +5,7 @@
 		{
 			"name": "emitter",
 			"type": "emitter",
-			"albedo": [900, 900, 900]
+			"albedo": [1000, 700, 700]
 		},
 		{
 			"name": "whiteMat",
@@ -13,22 +13,29 @@
 			"roughness": 0.95,
 			"metallic": 0.0,
 			"albedo": [0.8, 0.8, 0.8],
-			"normalMap": [0.5, 0.5, 0.0]
+			"normalMap": [0.5, 0.5, 1.0]
+		},
+		{
+			"name": "blueSky",
+			"type": "microfacet",
+			"roughness": 0.95,
+			"metallic": 0.0,
+			"albedo": [0.6, 0.7, 0.9],
+			"normalMap": [0.5, 0.5, 1.0]
+		},
+		{
+			"name": "cloudVolMat",
+			"type": "volume",
+			"scattering": [1.1, 1.1, 1.1],
+			"absorption": [0.01, 0.01, 0.01],
+			"phaseFunction": "hg",
+			"g": 0,
+			"path" : "vdb/wdas_cloud_sixteenth.vdb",
+			"density": 100
 		}
 	],
 	
 	"primitives": [
-		{
-			"name": "cubeFloor",
-			"type": "obj",
-			"transform": {
-				"position": [0, 0, 0],
-				"scale": [8, 8, 1],
-				"rotation": [90, 0, 0]
-			},
-			"materialName": "whiteMat",
-			"path" : "models/quad.obj"
-		},
 		{
 			"name": "rectLight",
 			"type": "rectangle",
@@ -40,14 +47,34 @@
 			"materialName": "emitter"
 		},
 		{
-			"name": "spider",
-			"type": "obj",
+			"name": "cubeFloor",
+			"type": "rectangle",
 			"transform": {
-				"position": [0, 1, 0],
-				"scale": [0.02, 0.02, 0.02],
+				"position": [0, 0, 0],
+				"scale": [0, 0, 0],
+				"rotation": [90, 0, 0]
+			},
+			"materialName": "whiteMat"
+		},
+		{
+			"name": "sky",
+			"type": "rectangle",
+			"transform": {
+				"position": [0, 0, 4],
+				"scale": [40, 40, 1],
 				"rotation": [0, 0, 0]
 			},
-			"path" : "models/spider/spider.obj"
+			"materialName": "blueSky"
+		},
+		{
+			"name": "cloud",
+			"type": "volume",
+			"transform": {
+				"position": [0.0, 2, 0],
+				"scale": [1.59, 0.951, 1.35],
+				"rotation": [0, 0, 0]
+			},
+			"materialName": "cloudVolMat"
 		}
 	],
 

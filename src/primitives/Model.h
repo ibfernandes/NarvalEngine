@@ -82,6 +82,7 @@ namespace narvalengine {
 							tempIntersec.tNear = res.x;
 							tempIntersec.tFar = res.y;
 							tempIntersec.hitPoint = ray.getPointAt(res.x);
+							tempIntersec.normal = -ray.d;
 							tMax = tempIntersec.tNear;
 							hit = tempIntersec;
 							ditIntersect = true;
@@ -208,24 +209,6 @@ namespace narvalengine {
 				}
 			}
 
-			//Since we are setting a constraint of dealing always with triangles, aiFace->mNumIndices will always be 3 (vertices)
-			//Layout v.x | v.y | v.z | n.x | n.y | n.z ...
-			int vertexIndicesCurrentIndex = 0;
-			for (unsigned int i = 0; i < mesh->mNumFaces; i++) {
-				aiFace face = mesh->mFaces[i];
-
-				float* vertexAddress[3];
-
-				for (unsigned int j = 0; j < face.mNumIndices; j++) {
-					unsigned int index = face.mIndices[j];
-					this->faceVertexIndices[indicesStartIndex + vertexIndicesCurrentIndex++] = index;
-					vertexAddress[j] = &(this->vertexData[vertexStartIndex + index * stride]);
-				}
-
-				//TODO this normal here is not correct?
-				primitives.push_back(new Triangle(vertexAddress[0], vertexAddress[1], vertexAddress[2], m, vertexAddress[0] + 3));
-			}
-
 			//TODO primitives->material all null!
 			aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
 
@@ -287,6 +270,26 @@ namespace narvalengine {
 					thismesh.modelMaterialIndex = this->materials.size();
 					this->materials.push_back(objMat);
 				}
+			}
+
+
+			//Since we are setting a constraint of dealing always with triangles, aiFace->mNumIndices will always be 3 (vertices)
+			//Layout v.x | v.y | v.z | n.x | n.y | n.z ...
+			int vertexIndicesCurrentIndex = 0;
+			for (unsigned int i = 0; i < mesh->mNumFaces; i++) {
+				aiFace face = mesh->mFaces[i];
+
+				float* vertexAddress[3];
+
+				for (unsigned int j = 0; j < face.mNumIndices; j++) {
+					unsigned int index = face.mIndices[j];
+					this->faceVertexIndices[indicesStartIndex + vertexIndicesCurrentIndex++] = index;
+					vertexAddress[j] = &(this->vertexData[vertexStartIndex + index * stride]);
+				}
+
+				//TODO this normal here is not correct?
+				primitives.push_back(new Triangle(vertexAddress[0], vertexAddress[1], vertexAddress[2], m, vertexAddress[0] + 3));
+				primitives.at(primitives.size() - 1)->material = m;
 			}
 
 			thismesh.strideLength = stride;

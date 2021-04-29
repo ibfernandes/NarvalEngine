@@ -168,13 +168,13 @@ namespace narvalengine {
 			glm::vec3 d = pSamples - glm::vec3(pi);
 
 			// Trilinearly interpolate density values to compute local density
-			float d00 = glm::lerp(d.x, density(pi), density(pi + glm::ivec3(1, 0, 0)));
-			float d10 = glm::lerp(d.x, density(pi + glm::ivec3(0, 1, 0)), density(pi + glm::ivec3(1, 1, 0)));
-			float d01 = glm::lerp(d.x, density(pi + glm::ivec3(0, 0, 1)), density(pi + glm::ivec3(1, 0, 1)));
-			float d11 = glm::lerp(d.x, density(pi + glm::ivec3(0, 1, 1)), density(pi + glm::ivec3(1, 1, 1)));
-			float d0 = glm::lerp(d.y, d00, d10);
-			float d1 = glm::lerp(d.y, d01, d11);
-			return glm::lerp(d.z, d0, d1);
+			float d00 = glm::lerp(density(pi), density(pi + glm::ivec3(1, 0, 0)), d.x);
+			float d10 = glm::lerp(density(pi + glm::ivec3(0, 1, 0)), density(pi + glm::ivec3(1, 1, 0)), d.x);
+			float d01 = glm::lerp(density(pi + glm::ivec3(0, 0, 1)), density(pi + glm::ivec3(1, 0, 1)), d.x);
+			float d11 = glm::lerp(density(pi + glm::ivec3(0, 1, 1)), density(pi + glm::ivec3(1, 1, 1)), d.x);
+			float d0 = glm::lerp(d00, d10, d.y);
+			float d1 = glm::lerp(d01, d11, d.y);
+			return glm::lerp(d0, d1, d.z);
 		}
 
 		float sampleAt(Ray& r, float depth) {

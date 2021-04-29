@@ -1,6 +1,14 @@
 #pragma once
 #define NOMINMAX //necessary for nanovdb
+#define GLM_FORCE_ALIGNED_GENTYPES true
+#define GLM_FORCE_INTRINSICS true
+#define GLM_FORCE_SIMD_AVX2 true
 #include <glm/glm.hpp>
+#include <glm/gtc/type_aligned.hpp>
+#include <glm/simd/geometric.h>
+#include <xmmintrin.h>
+#include <immintrin.h>
+
 #include "core/Scene.h"
 #include "core/Microfacet.h"
 #include "io/SceneReader.h"
@@ -9,6 +17,7 @@
 //#include <openvdb/tools/Dense.h>
 #include <nanovdb/util/OpenToNanoVDB.h> // converter from OpenVDB to NanoVDB (includes NanoVDB.h and GridManager.h)
 #include <nanovdb/util/IO.h>
+#include "utils/Timer.h"
 
 namespace narvalengine {
 	class TestPlayground {
@@ -420,6 +429,299 @@ namespace narvalengine {
 			file.close();
 		}
 
+		void floatRoundError() {
+			Efloat a = 1.34343434;
+			Efloat b = 1.32323232;
+			Efloat c = a + b;
+			c = 0;
+			double d = 0;
+
+			for (int i = 0; i < 200; i++) {
+				c = c + 1.11111111;
+				d = d + 1.11111111;
+			}
+
+			float expected = 222.222222f;
+
+			std::cout << std::setprecision(64);
+			std::cout << "Result Double: " << d << std::endl;
+			std::cout << "Result: " << (float)c << std::endl;
+			std::cout << "Result expected: " << expected << std::endl;
+			std::cout << "Diff obt and expec: " << expected - (float)c << std::endl;
+			std::cout << "Result + error: " << (float)c + c.getAbsoluteError() << std::endl;
+			std::cout << "Result - error: " << (float)c - c.getAbsoluteError() << std::endl;
+			std::cout << "Error: " << c.getAbsoluteError() << std::endl;
+			std::cout << "UpperBound: " << c.upperBound() << std::endl;
+			std::cout << "lowerBound: " << c.lowerBound() << std::endl;
+			std::cout << "Machine Epsilon: " << machineEpsilon << std::endl;
+		}
+
+		void testEXR();
+
+		void glmSIMD() {
+			Timer t;
+			int ops = 100000000;
+
+			std::cout << "glm_vec4 glm_vec4_dot" << std::endl;
+			t.startTimer();
+			for (int i = 0; i < ops; i++) {
+				glm_vec4 t1 = { 1,1,1,1 };
+				glm_vec4 t2 = { 2,2,2,2 };
+
+				glm_vec4 k = glm_vec4_dot(t1, t2);
+			}
+			t.endTimer();
+			t.printlnNanoSeconds();
+			std::cout << std::endl;
+
+			std::cout << "glm::vec4 glm::dot" << std::endl;
+			t.startTimer();
+			for (int i = 0; i < ops; i++) {
+				glm::vec4 v1 = glm::vec4(1, 1, 1, 1);
+				glm::vec4 v2 = glm::vec4(2, 2, 2, 2);
+
+				float k = glm::dot(v1, v2);
+			}
+			t.endTimer();
+			t.printlnNanoSeconds();
+			std::cout << std::endl;
+
+			std::cout << "aligned_highp_vec4 glm::dot" << std::endl;
+			t.startTimer();
+			for (int i = 0; i < ops; i++) {
+				glm::aligned_highp_vec4 v1 = glm::aligned_highp_vec4(1, 1, 1, 1);
+				glm::aligned_highp_vec4 v2 = glm::aligned_highp_vec4(2, 2, 2, 2);
+
+				float k = glm::dot(v1, v2);
+			}
+			t.endTimer();
+			t.printlnNanoSeconds();
+			std::cout << std::endl;
+
+			std::cout << "glm::vec3 glm::dot" << std::endl;
+			t.startTimer();
+			for (int i = 0; i < ops; i++) {
+				glm::vec3 v1 = glm::vec3(1, 1, 1);
+				glm::vec3 v2 = glm::vec3(2, 2, 2);
+
+				float k = glm::dot(v1, v2);
+			}
+			t.endTimer();
+			t.printlnNanoSeconds();
+			std::cout << std::endl;
+
+			std::cout << "aligned_highp_vec3 glm::dot" << std::endl;
+			t.startTimer();
+			for (int i = 0; i < ops; i++) {
+				glm::aligned_highp_vec3 v1 = glm::aligned_highp_vec3(1, 1, 1);
+				glm::aligned_highp_vec3 v2 = glm::aligned_highp_vec3(2, 2, 2);
+
+				float k = glm::dot(v1, v2);
+			}
+			t.endTimer();
+			t.printlnNanoSeconds();
+			std::cout << std::endl;
+
+			std::cout << "glm::vec2 glm::dot" << std::endl;
+			t.startTimer();
+			for (int i = 0; i < ops; i++) {
+				glm::vec2 v1 = glm::vec2(1, 1);
+				glm::vec2 v2 = glm::vec2(2, 2);
+
+				float k = glm::dot(v1, v2);
+			}
+			t.endTimer();
+			t.printlnNanoSeconds();
+			std::cout << std::endl;
+
+			std::cout << "aligned_highp_vec2 glm::dot" << std::endl;
+			t.startTimer();
+			for (int i = 0; i < ops; i++) {
+				glm::aligned_highp_vec2 v1 = glm::aligned_highp_vec2(1, 1);
+				glm::aligned_highp_vec2 v2 = glm::aligned_highp_vec2(2, 2);
+
+				float k = glm::dot(v1, v2);
+			}
+			t.endTimer();
+			t.printlnNanoSeconds();
+			std::cout << std::endl;
+
+			std::cout << "glm::vec1 glm::dot" << std::endl;
+			t.startTimer();
+			for (int i = 0; i < ops; i++) {
+				glm::vec1 v1 = glm::vec1(1);
+				glm::vec1 v2 = glm::vec1(2);
+
+				float k = glm::dot(v1, v2);
+			}
+			t.endTimer();
+			t.printlnNanoSeconds();
+			std::cout << std::endl;
+
+			std::cout << "aligned_highp_vec1 glm::dot" << std::endl;
+			t.startTimer();
+			for (int i = 0; i < ops; i++) {
+				glm::aligned_highp_vec1 v1 = glm::aligned_highp_vec1(1);
+				glm::aligned_highp_vec1 v2 = glm::aligned_highp_vec1(2);
+
+				float k = glm::dot(v1, v2);
+			}
+			t.endTimer();
+			t.printlnNanoSeconds();
+			std::cout << std::endl;
+		}
+
+		glm::vec4 intersectBoxSIMDv3(__m256 o, __m256 d, __m256 bmi, __m256 bma) {
+			__m256 t1 = _mm256_mul_ps(_mm256_sub_ps(bmi, o), d);
+			__m256 t2 = _mm256_mul_ps(_mm256_sub_ps(bma, o), d);
+			__m256 vmax4 = _mm256_max_ps(t1, t2);
+			__m256 vmin4 = _mm256_min_ps(t1, t2);
+			float* vmax = (float*)&vmax4;
+			float* vmin = (float*)&vmin4;
+			float tmax1 = glm::min(vmax[0], glm::min(vmax[1], vmax[2]));
+			float tmin1 = glm::max(vmin[0], glm::max(vmin[1], vmin[2]));
+			float tmax2 = glm::min(vmax[3], glm::min(vmax[4], vmax[5]));
+			float tmin2 = glm::max(vmin[3], glm::max(vmin[4], vmin[5]));
+
+			return glm::vec4(tmin1, tmax1, tmin2, tmax2);
+		}
+
+		glm::vec2 intersectBoxSIMDv2(__m128 o, __m128 d, __m128 bmi, __m128 bma) {
+			__m128 t1 = _mm_mul_ps(_mm_sub_ps(bmi, o), d);
+			__m128 t2 = _mm_mul_ps(_mm_sub_ps(bma, o), d);
+			__m128 vmax4 = _mm_max_ps(t1, t2);
+			__m128 vmin4 = _mm_min_ps(t1, t2);
+			float* vmax = (float*)&vmax4;
+			float* vmin = (float*)&vmin4;
+			float tmax = glm::min(vmax[0], glm::min(vmax[1], vmax[2]));
+			float tmin = glm::max(vmin[0], glm::max(vmin[1], vmin[2]));
+
+			return glm::vec2(tmin, tmax);
+		}
+
+		glm::vec2 intersectBoxSIMD(glm::vec4 orig, glm::vec4 dir, glm::vec4 bmin, glm::vec4 bmax) {
+			__m128 o = _mm_load_ps(&orig[0]);
+			__m128 d = _mm_load_ps(&dir[0]);
+			__m128 bmi = _mm_load_ps(&bmin[0]);
+			__m128 bma = _mm_load_ps(&bmax[0]);
+
+			__m128 t1 = _mm_mul_ps(_mm_sub_ps(bmi, o), d);
+			__m128 t2 = _mm_mul_ps(_mm_sub_ps(bma, o), d);
+			__m128 vmax4 = _mm_max_ps(t1, t2);
+			__m128 vmin4 = _mm_min_ps(t1, t2);
+			float* vmax = (float*)&vmax4;
+			float *vmin = (float*)&vmin4;
+			float tmax = glm::min(vmax[0], glm::min(vmax[1], vmax[2]));
+			float tmin = glm::max(vmin[0], glm::max(vmin[1], vmin[2]));
+
+			return glm::vec2(tmin, tmax);
+		}
+
+		inline glm::aligned_highp_vec2 intersectBoxhighp(glm::aligned_highp_vec3 orig, glm::aligned_highp_vec3 dir, glm::aligned_highp_vec3 bmin, glm::aligned_highp_vec3 bmax) {
+			//Line's/Ray's equation
+			// o + t*d = y
+			// t = (y - o)/d
+			//when t is negative, the box is behind the ray origin
+			glm::aligned_highp_vec3 tMinTemp = (bmin - orig) / dir; //TODO: div by 0
+			glm::aligned_highp_vec3 tmaxTemp = (bmax - orig) / dir;
+
+			tmaxTemp.x *= 1 + 2 * gamma(3);
+			tmaxTemp.y *= 1 + 2 * gamma(3);
+			tmaxTemp.z *= 1 + 2 * gamma(3);
+
+			glm::aligned_highp_vec3 tMin = glm::min(tMinTemp, tmaxTemp);
+			glm::aligned_highp_vec3 tMax = glm::max(tMinTemp, tmaxTemp);
+
+			float t0 = glm::max(tMin.x, glm::max(tMin.y, tMin.z));
+			float t1 = glm::min(tMax.x, glm::min(tMax.y, tMax.z));
+
+			//if t0 > t1: miss
+			return glm::aligned_highp_vec2(t0, t1);
+		}
+
+		void aabbSIMD() {
+			glm::vec3 origin = glm::vec3(0.5, 0.5, -0.5);
+			glm::vec3 direction = glm::vec3(0,0,1);
+			glm::vec3 min = glm::vec3(0,0,0);
+			glm::vec3 max = glm::vec3(1,1,1);
+			int ops = 100000000;
+			Timer t;
+
+			std::cout << "normal" << std::endl;
+			t.startTimer();
+			for (int i = 0; i < ops; i++) {
+				glm::vec2 res = intersectBox(origin, direction, min, max);
+			}
+			t.endTimer();
+			t.printlnNanoSeconds();
+			std::cout << std::endl;
+
+			//just doing vec4 outside the loop reduces the cost by half!!!!!
+			//TODO d should the invDir!
+			glm::vec4 o4 = glm::vec4(origin, 0);
+			glm::vec4 d4 = glm::vec4(direction, 0);
+			glm::vec4 mi4 = glm::vec4(min, 0);
+			glm::vec4 ma4 = glm::vec4(max, 0);
+			std::cout << "SIMD" << std::endl;
+			t.startTimer();
+			for (int i = 0; i < ops; i++) {
+				glm::vec2 res = intersectBoxSIMD(o4, d4, mi4, ma4);
+			}
+			t.endTimer();
+			t.printlnNanoSeconds();
+			std::cout << std::endl;
+
+			//if i do the load once per AABB and ray, it is faster
+			__m128 o = _mm_load_ps(&o4[0]);
+			__m128 d = _mm_load_ps(&d4[0]);
+			__m128 bmi = _mm_load_ps(&mi4[0]);
+			__m128 bma = _mm_load_ps(&ma4[0]);
+			std::cout << "SIMD v2" << std::endl;
+			t.startTimer();
+			for (int i = 0; i < ops; i++) {
+				glm::vec2 res = intersectBoxSIMDv2(o, d, bmi, bma);
+			}
+			t.endTimer();
+			t.printlnNanoSeconds();
+			std::cout << std::endl;
+
+			float o8[8] = { origin.x, origin.y, origin.z, 0, origin.x, origin.y, origin.z, 0};
+			float d8[8] = {direction.x, direction.y, direction.z, 0, direction.x, direction.y, direction.z, 0};
+			float mi8[8];
+			float ma8[8];
+			__m256 o256 = _mm256_load_ps(&o8[0]);
+			__m256 d256 = _mm256_load_ps(&d8[0]);
+			std::cout << "SIMD v3" << std::endl;
+			t.startTimer();
+			for (int i = 0; i < ops; i+=2) {
+				mi8[0] = min.x; mi8[1] = min.y; mi8[2] = min.z; mi8[3] = 0;
+				mi8[4] = min.x; mi8[5] = min.y; mi8[6] = min.z; mi8[7] = 0;
+
+				ma8[0] = max.x; ma8[1] = max.y; ma8[2] = max.z; ma8[3] = 0;
+				ma8[4] = max.x; ma8[5] = max.y; ma8[6] = max.z; ma8[7] = 0;
+				__m256 bmi256 = _mm256_load_ps(&mi8[0]);
+				__m256 bma256 = _mm256_load_ps(&ma8[0]);
+
+				glm::vec2 res = intersectBoxSIMDv3(o256, d256, bmi256, bma256);
+			}
+			t.endTimer();
+			t.printlnNanoSeconds();
+			std::cout << std::endl;
+
+			glm::aligned_highp_vec3 ohp = glm::aligned_highp_vec3(origin);
+			glm::aligned_highp_vec3 dhp = glm::aligned_highp_vec3(direction);
+			glm::aligned_highp_vec3 mihp = glm::aligned_highp_vec3(min);
+			glm::aligned_highp_vec3 mahp = glm::aligned_highp_vec3(max);
+			std::cout << "highp" << std::endl;
+			t.startTimer();
+			for (int i = 0; i < ops; i++) {
+				glm::vec2 res = intersectBoxhighp(ohp, dhp, mihp, mahp);
+			}
+			t.endTimer();
+			t.printlnNanoSeconds();
+			std::cout << std::endl;
+
+		}
 
 		TestPlayground() {
 			//testRandomGenRange();
@@ -428,8 +730,12 @@ namespace narvalengine {
 			//testMicrofacetBSDF();
 			//testUVSampling();
 			//testDot();
-			generateCubeVDB();
-			convertToNanoVDB();
+			//generateCubeVDB();
+			//convertToNanoVDB();
+			//floatRoundError();
+			//testEXR();
+			//glmSIMD();
+			aabbSIMD();
 			float t;
 		}
 

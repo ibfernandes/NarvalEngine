@@ -227,6 +227,7 @@ namespace narvalengine {
 			VolumeBSDF *volumebsdf = new VolumeBSDF(pf);
 			mediumMaterial->bsdf = new BSDF();
 			mediumMaterial->bsdf->addBxdf(volumebsdf);
+			mediumMaterial->addTexture(TextureName::TEX_1, ResourceManager::getSelf()->getTexture(name));
 			//TODO falta definir A BSDF
 
 			ResourceManager::getSelf()->replaceMaterial(name, mediumMaterial);
@@ -628,6 +629,7 @@ namespace narvalengine {
 		settings->resolution = resolution;
 		settings->spp = renderer["spp"].GetInt();
 		settings->bounces = renderer["bounces"].GetInt();
+		settings->hdr = renderer["HDR"].GetBool();
 		std::string mode = renderer["mode"].GetString();
 		if (mode.compare("offline") == 0)
 			settings->renderMode = OFFLINE_RENDERING_MODE;

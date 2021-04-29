@@ -45,6 +45,14 @@ namespace narvalengine {
 			bxdf[nBxdf++] = bxdfArg;
 			bsdfType = BxDFType(bsdfType | bxdfArg->bxdftype);
 		}
+
+		bool isType(BxDFType testType) {
+			if (bsdfType & testType)
+				return true;
+			else
+				return false;
+		}
+
 		/*
 			Sample scattered direction given incoming direction and normal
 		*/

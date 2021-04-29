@@ -151,7 +151,17 @@ else()
     message(STATUS "OpenEXR not available: Could not find ZLib")
 endif()
 
+#TinyEXR
+find_package(TinyEXR)
+find_path(TINYEXR_INCLUDE_DIR NAMES tinyexr.h)
+find_library(TINYEXR_LIBRARY NAMES tinyexr)
+include_directories(${TINYEXR_INCLUDE_DIR})
 
+if (TINYEXR_FOUND)
+	message(STATUS "TinyEXR found")
+else()
+    message(STATUS "TinyEXR not found")
+endif()
 
 #OPENVDB FINDER
 find_path(OPENVDB_INCLUDE_DIR NAMES openvdb/openvdb.h)
@@ -250,5 +260,5 @@ endforeach()
 include_directories( "${CMAKE_SOURCE_DIR}/src" )
 
 add_executable(NarvalEngine ${SOURCE_FILES} ${GLAD} ${NANOVDB} ${IMGUI_SOURCES} ${TINYFILEDIALOGS_SOURCES} ${FASTNOISE_SOURCES} ${STB_SOURCES} )
-target_link_libraries(NarvalEngine ${core_libs} glfw ${GLFW_LIBRARIES} assimp)
+target_link_libraries(NarvalEngine ${core_libs} glfw ${GLFW_LIBRARIES} assimp ${TINYEXR_LIBRARIES})
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT NarvalEngine)

@@ -85,6 +85,8 @@ namespace narvalengine {
 		glm::vec3 size = getSize();
 		glm::vec3 pointOnSurface = glm::vec3(v0.x + size.x * e[0], v0.y + size.y * e[1], v0.z + size.z * e[2]);
 
+		pointOnSurface = transformToWCS * glm::vec4(pointOnSurface, 1.0f);
+
 		//TODO barycentric or something more elegant than this 
 		return pointOnSurface;
 	}

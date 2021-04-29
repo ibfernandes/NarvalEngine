@@ -1,6 +1,7 @@
 #pragma once
 #include "primitives/Primitive.h"
 #include "primitives/Ray.h"
+#include "utils/Math.h"
 
 namespace narvalengine {
 	class AABB : public Primitive {

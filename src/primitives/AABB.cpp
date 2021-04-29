@@ -76,6 +76,10 @@ namespace narvalengine {
 		glm::vec3 t1 = (getCenter() - r.o + s * getSize() / 2.0f) * invD;
 		glm::vec3 t2 = (getCenter() - r.o - s * getSize() / 2.0f) * invD;
 
+		t2.x *= 1 + 2 * gamma(3);
+		t2.y *= 1 + 2 * gamma(3);
+		t2.z *= 1 + 2 * gamma(3);
+
 		glm::vec3 tmin = glm::min(t1, t2);
 		glm::vec3 tmax = glm::max(t1, t2);
 

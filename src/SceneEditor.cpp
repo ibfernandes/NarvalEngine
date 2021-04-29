@@ -2,7 +2,7 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 #include "tinyfiledialogs.h"
-
+#include "tinyexr.h"
 
 namespace narvalengine {
 
@@ -31,9 +31,10 @@ namespace narvalengine {
 		glm::vec3 side = glm::cross(front, up);
 		staticCam = glm::lookAt(position, position + front, up);
 
-		//selectedFilePath = "scenes/sponza.json";
-		//selectedFilePath = "scenes/testing.json";
-		selectedFilePath = "scenes/cornellbox-pbrt.json";
+		//selectedFilePath = "scenes/cubeMatrixSolid.json";
+		//selectedFilePath = "scenes/cubeMatrix.json";
+		selectedFilePath = "scenes/testing.json";
+		//selectedFilePath = "scenes/cornellbox-pbrt.json";
 		//sceneReader.loadScene("scenes/defaultCube.json", false);
 		sceneReader.loadScene(selectedFilePath, false);
 		scene = *sceneReader.getScene();
@@ -559,24 +560,56 @@ namespace narvalengine {
 		if (pathptr != nullptr) {
 			std::string imgPath = std::string(pathptr);
 
-			int width, height, channels;
-			unsigned char* data = stbi_load(imgPath.c_str(), &width, &height, &channels, STBI_rgb_alpha);
+			if (imgPath.find(".exr") != std::string::npos) {
+				const char* input = imgPath.c_str();
+				float* data; // width * height * RGBA
+				int width;
+				int height;
+				const char* err = NULL; // or nullptr in C++11
 
-			if (data == nullptr)
-				throw "Error loading texture";
+				int ret = LoadEXR(&data, &width, &height, input, &err);
 
-			uint32_t sizeBytes = sizeof(char) * width * height * 4;
+				if (ret != TINYEXR_SUCCESS) {
+					if (err) {
+						fprintf(stderr, "ERR : %s\n", err);
+						FreeEXRErrorMessage(err); // release memory of error message.
+					}
+				}
+				else {
+					//free(data); // release memory of image data
+				}
 
-			int flags = NE_TEX_SAMPLER_UVW_CLAMP | NE_TEX_SAMPLER_MIN_MAG_NEAREST;
+				uint32_t sizeBytes = sizeof(float) * width * height * 4;
 
-			Texture *t = new Texture(width, height, RGBA8, flags, {data, sizeBytes});
-			stbi_image_free(data);
+				int flags = NE_TEX_SAMPLER_UVW_CLAMP | NE_TEX_SAMPLER_MIN_MAG_NEAREST;
 
-			texIDToCompare = ResourceManager::getSelf()->replaceTexture(imgPath, t);
-			currentRenderingMode = COMPARE_RENDERING_MODE;
+				Texture* t = new Texture(width, height, RGBA32F, flags, { (uint8_t*)data, sizeBytes });
+				free(data);
 
-			compareTex = renderCtx.createTexture(ResourceManager::getSelf()->getTexture(texIDToCompare));
+				texIDToCompare = ResourceManager::getSelf()->replaceTexture(imgPath, t);
+				currentRenderingMode = COMPARE_RENDERING_MODE;
 
+				compareTex = renderCtx.createTexture(ResourceManager::getSelf()->getTexture(texIDToCompare));
+
+			}else {
+				int width, height, channels;
+				unsigned char* data = stbi_load(imgPath.c_str(), &width, &height, &channels, STBI_rgb_alpha);
+
+				if (data == nullptr)
+					throw "Error loading texture";
+
+				uint32_t sizeBytes = sizeof(char) * width * height * 4;
+
+				int flags = NE_TEX_SAMPLER_UVW_CLAMP | NE_TEX_SAMPLER_MIN_MAG_NEAREST;
+
+				Texture* t = new Texture(width, height, RGBA8, flags, { data, sizeBytes });
+				stbi_image_free(data);
+
+				texIDToCompare = ResourceManager::getSelf()->replaceTexture(imgPath, t);
+				currentRenderingMode = COMPARE_RENDERING_MODE;
+
+				compareTex = renderCtx.createTexture(ResourceManager::getSelf()->getTexture(texIDToCompare));
+			}
 			startOffEngine();
 		}
 	}
@@ -1575,9 +1608,12 @@ namespace narvalengine {
 
 				//texHandler e uniformHandler
 				ModelHandler mh = rmToRenderAPI.at(im->modelID);
-				//TODO volume disabled
+
+				if (isHandleValid(mh.meshes.at(0).material.textures[ctz(TextureName::TEX_1)].id))
+					renderCtx.setTexture(mh.meshes.at(0).material.textures[ctz(TextureName::TEX_1)], volUniforms[4]); //volume
 				//if (mh.meshes.at(0).textures.size() > 0)
 				//	renderCtx.setTexture(mh.meshes.at(0).textures.at(0), volUniforms[4]); //volume
+
 				renderCtx.setTexture(renderFrameTex[0], volUniforms[5]);
 				renderCtx.setTexture(renderFrameDepthTex[0], volUniforms[6]);
 				renderCtx.setTexture(shadowDepthTex, phongUniforms[10]); //shadowTex

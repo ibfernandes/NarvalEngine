@@ -57,6 +57,7 @@ namespace narvalengine {
 				//Tr = ri.primitive->material->medium->Tr(pathLength);
 				Ray scatteredToLightOCS = transformRay(scatteredToLight, ri.instancedModel->invTransformToWCS);
 				Tr = ri.primitive->material->medium->Tr(scatteredToLightOCS, ri);
+
 				return Tr;
 			}
 
@@ -73,14 +74,219 @@ namespace narvalengine {
 				return Tr * 0.0f;
 		}
 
-		glm::vec3 estimateDirectLightning(Ray incoming, RayIntersection intersec, Scene *scene, Light *light, InstancedModel *im) {
+		bool intersectTr(Ray ray, RayIntersection *ri, glm::vec3 *Tr, Scene* s) {
+			*Tr = glm::vec3(1.0f);
+
+			while (true) {
+				RayIntersection intersec;
+				bool hitSurface = s->intersectScene(ray, intersec, 0.001, 9999);
+				*ri = intersec;
+
+				/*std::cout << "---------------------" << std::endl;
+				std::cout << "intersectTr " << std::endl;
+				printVec3(ray.o, "ray.origin ");
+				printVec3(ray.d, "ray.dir ");
+				std::cout << "hitScene " << hitSurface << std::endl;
+				if (hitSurface) {
+					std::cout << "tNear " << intersec.tNear << std::endl;
+					std::cout << "tFar " << intersec.tFar << std::endl;
+					std::cout << "isVolumetric " << ((intersec.primitive->material->medium == nullptr) ? "no" : "yes") << std::endl;
+					std::cout << "isLight " << ((intersec.primitive->material->light == nullptr) ? "no" : "yes") << std::endl;
+					printVec3(intersec.hitPoint, "hitPoint ");
+				}*/
+
+				// Accumulate beam transmittance for ray segment
+				Medium* m = nullptr;
+				if(hitSurface)
+					m = ri->primitive->material->medium;
+				if (m != nullptr) {
+					Ray scatteredToLightOCS = transformRay(ray, intersec.instancedModel->invTransformToWCS);
+					*Tr *= m->Tr(scatteredToLightOCS, intersec);
+				}
+
+				// Initialize next ray segment or terminate transmittance computation
+				if (!hitSurface) return false;
+				if (ri->primitive->material->medium != nullptr) return true;
+				/*If nullptr is returned, ray intersections with the primitive should be ignored;
+				the primitive only serves to delineate a volume of space for participating media.
+				This method is also used to check if two rays have intersected the same object by comparing their Material pointers. */
+
+				ray.o = intersec.hitPoint;
+				ray.d = ray.d;
+			}
+			//std::cout << "reached end of intersectTr" << std::endl;
+		}
+
+		//p0 Intersection Point and p1 point on Light
+		glm::vec3 visibilityTr(glm::vec3 intersecPoint, glm::vec3 lightPoint, Scene *scene){
+			Ray ray;
+			ray.o = intersecPoint;
+			ray.d = lightPoint - intersecPoint;
+
+			glm::vec3 Tr(1.f);
+			while (true) {
+				RayIntersection intersec;
+				bool hitSurface = scene->intersectScene(ray, intersec, 0.001, 9999);
+
+				/*std::cout << "---------------------" << std::endl;
+				std::cout << "VisibilityTr " << std::endl;
+				std::cout << "hitScene " << hitSurface << std::endl;
+				if (hitSurface) {
+					std::cout << "tNear " << intersec.tNear << std::endl;
+					std::cout << "tFar " << intersec.tFar << std::endl;
+					std::cout << "isVolumetric " << ((intersec.primitive->material->medium == nullptr) ? "no" : "yes") << std::endl;
+					std::cout << "isLight " << ((intersec.primitive->material->light == nullptr) ? "no" : "yes") << std::endl;
+					printVec3(intersec.hitPoint, "hitPoint ");
+				}*/
+
+				if (hitSurface && intersec.primitive->material->light != nullptr)
+					return Tr;
+
+				// Handle opaque surface along ray's path
+				//if (hitSurface && isect.primitive->GetMaterial() != nullptr)
+				//	return Spectrum(0.0f);
+				if (hitSurface && intersec.primitive->material->medium == nullptr) {
+					//std::cout << "visTr returned 0" << std::endl;
+					return glm::vec3(0.0f);
+				}
+				/*If nullptr is returned, ray intersections with the primitive should be ignored;
+				the primitive only serves to delineate a volume of space for participating media.
+				This method is also used to check if two rays have intersected the same object by comparing their Material pointers. */
+
+				//moved up
+				// Generate next ray segment or return final transmittance
+				if (!hitSurface) break;
+
+				// Update transmittance for current ray segment
+				Medium* m = intersec.primitive->material->medium;
+				if (m != nullptr) {
+					Ray scatteredToLightOCS = transformRay(ray, intersec.instancedModel->invTransformToWCS);
+					Tr *= m->Tr(scatteredToLightOCS, intersec);
+				}
+
+				// Generate next ray segment or return final transmittance
+				//if (!hitSurface) break;
+
+				//ray.o = intersec.hitPoint;
+				ray.o = ray.getPointAt(intersec.tFar + 0.001);
+				ray.d = lightPoint - ray.o;
+			}
+			//std::cout << "reached end of visibilityTr" << std::endl;
+			return Tr;
+		}
+
+		glm::vec3 estimateDirect(Ray incoming, RayIntersection intersecOnASurface, Light *light, InstancedModel* lightIm, Scene *scene) {
+			glm::vec3 Ld(0.f);
+
+			// Sample light source with multiple importance sampling
+			Ray scatteredWo;
+			float lightPdf = 0, scatteringPdf = 0;
+			//VisibilityTester visibility;
+			glm::vec3 Li = light->Li();
+
+			//scatteredWo points from the surface to the light source
+			light->sampleLi(intersecOnASurface, lightIm->transformToWCS, scatteredWo, lightPdf);
+
+			bool isSurfaceInteraction = false;
+			if (intersecOnASurface.primitive->material->medium == nullptr)
+				isSurfaceInteraction = true;
+			
+			if (lightPdf > 0 && !isBlack(Li)) {
+				// Compute BSDF or phase function's value for light sample
+				glm::vec3 f;
+
+				/* //moved up outside the if
+				bool isSurfaceInteraction = false;
+				if (ri.primitive->material->medium == nullptr)
+					isSurfaceInteraction = true;*/
+
+				if (isSurfaceInteraction) {
+					// Evaluate BSDF for light sampling strategy
+					f = intersecOnASurface.primitive->material->bsdf->eval(incoming.d, scatteredWo.d, intersecOnASurface) * glm::abs(glm::dot(scatteredWo.d, intersecOnASurface.normal));
+					scatteringPdf = intersecOnASurface.primitive->material->bsdf->pdf(incoming.d, scatteredWo.d, intersecOnASurface.normal);
+				}else {
+					// Evaluate phase function for light sampling strategy
+					f = intersecOnASurface.primitive->material->bsdf->eval(incoming.d, scatteredWo.d, intersecOnASurface);
+					scatteringPdf = f.x;
+				}
+
+				if (!isBlack(f)) {
+					//handleMedia removed, we will always handle it.
+					//TODO not quite correct hm, transform should be done inside samplePointOnSurface
+					glm::vec3 pointOnLight = light->primitive->samplePointOnSurface(intersecOnASurface, lightIm->transformToWCS);
+					Li *= visibilityTr(intersecOnASurface.hitPoint, pointOnLight, scene);
+
+					// Add light's contribution to reflected radiance
+					if (!isBlack(Li)) {
+						if (false /*IsDeltaLight(light.flags)*/)
+							Ld += f * Li / lightPdf;
+						else {
+							float weight = powerHeuristic(lightPdf, scatteringPdf);
+							Ld += f * Li * weight / lightPdf;
+						}
+					}
+				}
+			}
+
+			// Sample BSDF with multiple importance sampling
+			if (true /*!IsDeltaLight(light.flags)*/) {
+				glm::vec3 f;
+				if (isSurfaceInteraction) {
+					// Sample scattered direction for surface interactions
+					scatteredWo.d = intersecOnASurface.primitive->material->bsdf->sample(incoming.d, intersecOnASurface.normal);
+					f = intersecOnASurface.primitive->material->bsdf->eval(incoming.d, scatteredWo.d, intersecOnASurface);
+					f *= glm::abs(glm::dot(scatteredWo.d, intersecOnASurface.normal));
+					scatteringPdf = intersecOnASurface.primitive->material->bsdf->pdf(incoming.d, scatteredWo.d, intersecOnASurface.normal);
+				}else {
+					// Sample scattered direction for medium interactions
+					f = intersecOnASurface.primitive->material->bsdf->eval(incoming.d, scatteredWo.d, intersecOnASurface);
+					scatteredWo.d = intersecOnASurface.primitive->material->bsdf->sample(incoming.d, intersecOnASurface.normal);
+					scatteringPdf = f.x;
+				}
+				
+				if (!isBlack(f) && scatteringPdf > 0) {
+					// Account for light contributions along sampled direction _wi_
+					float weight = 1;
+					if (true /*!sampledSpecular*/) {
+						lightPdf = light->primitive->pdf(intersecOnASurface, lightIm->transformToWCS);
+						if (lightPdf == 0) return Ld;
+						weight = powerHeuristic(scatteringPdf, lightPdf);
+					}
+
+					// Find intersection and compute transmittance
+					RayIntersection lightIntersect;
+					Ray ray;
+					ray.o = intersecOnASurface.hitPoint;
+					ray.d = scatteredWo.d;
+
+					glm::vec3 Tr(1.0f);
+					//always handle media
+					bool foundSurfaceInteraction = intersectTr(ray, &lightIntersect, &Tr, scene);
+
+					// Add light contribution from material sampling
+					glm::vec3 Li(0.f);
+					if (foundSurfaceInteraction) {
+						if (lightIntersect.primitive->material->light == light)
+							//should be      Li = lightIsect.Le(-wi);
+							Li = light->Li(); //changed from Le to Li
+					}else
+						Li = light->Li(); //changed from Le to Li
+
+					if (!isBlack(Li)) 
+						Ld += f * Li * Tr * weight / scatteringPdf;
+				}
+			}
+			return Ld;
+		}
+
+		glm::vec3 estimateDirectLightning(Ray incoming, RayIntersection intersec, Scene *scene, Light *light, InstancedModel *lightIm) {
 			glm::vec3 radianceL(0.f);
 			Ray scattered;
 			float lightPdf = 0;
 			float scatteringPdf = 0;
 
 			//Sample scattered light direction and calculate BRDF with respect to it
-			light->sampleLi(intersec, im->transformToWCS, scattered, lightPdf);
+			light->sampleLi(intersec, lightIm->transformToWCS, scattered, lightPdf);
 			//glm::vec3 vis = visibility(scattered, scene, intersec, light);
 			//printVec3(vis, "Visibility Tr:");
 			//scattered.d = glm::normalize(scattered.d);
@@ -119,7 +325,7 @@ namespace narvalengine {
 			return radianceL;
 		}
 
-		glm::vec3 uniformSampleOneLight(Ray incoming, RayIntersection intersec, Scene *s) {
+		glm::vec3 uniformSampleOneLight(Ray incoming, RayIntersection intersecOnASurface, Scene *s) {
 			float r = random();
 			int i = (s->lights.size()) * r;
 
@@ -133,7 +339,9 @@ namespace narvalengine {
 				return glm::vec3(0);
 
 			Light *light = s->lights.at(i)->model->getRandomLightPrimitive()->material->light;
-			return estimateDirectLightning(incoming, intersec, s, light, s->lights.at(i)) / lightPdf; 
+
+			return estimateDirect(incoming, intersecOnASurface, light, s->lights.at(i), s) / lightPdf;
+			//return estimateDirectLightning(incoming, intersecOnASurface, s, light, s->lights.at(i)) / lightPdf; 
 		}
 
 		void testIntersectionInsideMedia(Scene *s) {

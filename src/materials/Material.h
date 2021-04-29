@@ -15,6 +15,7 @@ namespace narvalengine {
 		Light *light;
 		BSDF *bsdf;
 
+		//TODO should verify if tex2D is seted as this textureType?
 		void addTexture(TextureName textureType, Texture *tex2D) {
 			textureTypes = TextureName(textureType | textureType);
 			textures[ctz(textureType)] = tex2D;

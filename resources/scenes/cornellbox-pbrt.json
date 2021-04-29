@@ -39,7 +39,7 @@
 			"phaseFunction": "hg",
 			"g": 0,
 			"path" : "vdb/cube.vdb",
-			"density": 1
+			"density": 100
 		},
 		{
 			"name": "cloudVolMat",
@@ -49,7 +49,7 @@
 			"phaseFunction": "hg",
 			"g": 0,
 			"path" : "vdb/wdas_cloud_sixteenth.vdb",
-			"density": 100,
+			"density": 1000,
 			"comment": "Original resolution sixteenth is 570x317x450 or 153x85x125",
 			"comment2": "Original resolution quarter is 612x337x497",
 			"comment3": "pbrt resolution x 0.003 = 1.59, 0.951, 1.35 or 0.459, 0.255, 0.375"
@@ -72,8 +72,9 @@
 			"type": "volume",
 			"transform": {
 				"position": [0.1, 0.9, 0.6],
-				"scale1": [3.18, 1.902, 2.7],
+				"position1": [-0.1, 1.0, 0.6],
 				"scale": [1, 1, 1],
+				"scale1": [1.59, 0.951, 1.35],
 				"rotation": [0, 0, 0]
 			},
 			"materialName": "cubeVolMat"
@@ -86,7 +87,7 @@
 				"scale": [4, 4, 1],
 				"rotation": [0, 0, 0]
 			},
-			"materialName": "whiteMat"
+			"materialName": "redMat"
 		},
 		{
 			"name": "cubeFloor",
@@ -131,7 +132,8 @@
 	],
 
 	"camera": {
-		"position": [0, 1, -6.5],
+		"position": [0, 2.2, -5.5],
+		"positionOriginal": [0, 1, -6.5],
 		"lookAt": [0, 1, 0],
 		"up": [0, 1, 0],
 		"speed": 5,
@@ -143,10 +145,10 @@
 	
 	"renderer": {
 		"resolution": [1200, 600],
-		"spp": 1,
+		"spp": 10,
 		"bounces": 6,
 		"mode": "realtime",
-		"HDR": false,
+		"HDR": true,
 		"toneMapping": false
 	}
 }

@@ -22,6 +22,15 @@
 #define INFINITY 9999999.0
 
 namespace narvalengine {
+	//from pbrt Managing Error chapter
+	static float maxFloat = std::numeric_limits<float>::max();
+	static float infinity = std::numeric_limits<float>::infinity();
+	static float machineEpsilon = std::numeric_limits<float>::epsilon() * 0.5;
+
+	inline constexpr float gamma(int n) {
+		return (n * machineEpsilon) / (1 - n * machineEpsilon);
+	}
+
 	inline float fraction(float f) {
 		int v = f;
 		return f - float(v);
@@ -191,6 +200,10 @@ namespace narvalengine {
 		//when t is negative, the box is behind the ray origin
 		glm::vec3 tMinTemp = (bmin - orig) / dir; //TODO: div by 0
 		glm::vec3 tmaxTemp = (bmax - orig) / dir;
+
+		tmaxTemp.x *= 1 + 2 * gamma(3);
+		tmaxTemp.y *= 1 + 2 * gamma(3);
+		tmaxTemp.z *= 1 + 2 * gamma(3);
 
 		glm::vec3 tMin = glm::min(tMinTemp, tmaxTemp);
 		glm::vec3 tMax = glm::max(tMinTemp, tmaxTemp);
@@ -659,4 +672,151 @@ namespace narvalengine {
 
 		return r;
 	}
+
+	inline uint32_t floatToBits(float f) {
+		uint32_t ui;
+		memcpy(&ui, &f, sizeof(float));
+		return ui;
+	}
+
+	inline float bitsToFloat(uint32_t ui) {
+		float f;
+		memcpy(&f, &ui, sizeof(uint32_t));
+		return f;
+	}
+
+	inline float nextFloatUp(float v) {
+		if (std::isinf(v) && v > 0.0)
+			return v;
+
+		if (v == -0.0f)
+			v = 0.0f;
+
+		uint32_t ui = floatToBits(v);
+		if (v >= 0)
+			ui++;
+		else
+			ui--;
+
+		return bitsToFloat(ui);
+	}
+
+	inline float nextFloatDown(float v) {
+		if (std::isinf(v) && v < 0.0) 
+			return v;
+
+		if (v == 0.0f)
+			v = -0.0f;
+
+		uint32_t ui = floatToBits(v);
+		if (v > 0)
+			--ui;
+		else
+			++ui;
+
+		return bitsToFloat(ui);
+	}
+
+	struct Efloat {
+		float v;
+		float low, high;
+		
+		Efloat() { }
+
+		Efloat(float v, float err = 0.0f) {
+			this->v = v;
+
+			if (err == 0.0f) {
+				this->low = v;
+				this->high = v;
+			}else {
+				low = nextFloatDown(v - err);
+				high = nextFloatUp(v + err);
+			}
+		}
+
+		Efloat operator+(Efloat f) const {
+			Efloat result;
+			result.v = v + f.v;
+			
+			// Interval arithemetic addition, with the result rounded away from
+			// the value r.v in order to be conservative.
+			result.low = nextFloatDown(lowerBound() + f.lowerBound());
+			result.high = nextFloatUp(upperBound() + f.upperBound());
+			return result;
+		}
+
+		float upperBound() const { return high; }
+		float lowerBound() const { return low; }
+
+		float getAbsoluteError() const {
+			return nextFloatUp(std::max(std::abs(high - v), std::abs(v - low)));
+		}
+
+		explicit operator float() const { return v; }
+	};
+
+	inline void rgbToCIE(float* inputrgb, float* lab) {
+		float num = 0;
+		float rgb[3] = { 0,0,0 };
+
+		for (int i = 0; i < 3; i++) {
+			inputrgb[i] = inputrgb[i] / 255.0f;
+
+
+			if (inputrgb[i] > 0.04045f)
+				inputrgb[i] = std::pow(((inputrgb[i] + 0.055f) / 1.055f), 2.4f);
+			else
+				inputrgb[i] = inputrgb[i] / 12.92f;
+
+
+			rgb[i] = inputrgb[i] * 100.0f;
+		}
+
+		float xyz[3] = { 0, 0, 0 };
+
+
+		xyz[0] = rgb[0] * 0.4124f + rgb[1] * 0.3576f + rgb[2] * 0.1805f;
+		xyz[1] = rgb[0] * 0.2126f + rgb[1] * 0.7152f + rgb[2] * 0.0722f;
+		xyz[2] = rgb[0] * 0.0193f + rgb[1] * 0.1192f + rgb[2] * 0.9505f;
+
+
+		// Observer= 2°, Illuminant= D65
+		xyz[0] = xyz[0] / 95.047f;         // ref_X =  95.047
+		xyz[1] = xyz[1] / 100.0f;          // ref_Y = 100.000
+		xyz[2] = xyz[2] / 108.883f;        // ref_Z = 108.883
+
+
+		for (int i = 0; i < 3; i++) {
+			if (xyz[i] > 0.008856f)
+				xyz[i] = std::pow(xyz[i], 0.3333333333333333);
+			else
+				xyz[i] = (7.787f * xyz[i]) + (16.0f / 116.0f);
+		}
+
+
+		lab[0] = (116.0f * xyz[1]) - 16.0f;
+		lab[1] = 500 * (xyz[0] - xyz[1]);
+		lab[2] = 200 * (xyz[1] - xyz[2]);
+	}
+
+
+	inline float deltaE(float* labA, float* labB) {
+		float deltaL = labA[0] - labB[0];
+		float deltaA = labA[1] - labB[1];
+		float deltaB = labA[2] - labB[2];
+		float c1 = std::sqrt(labA[1] * labA[1] + labA[2] * labA[2]);
+		float c2 = std::sqrt(labB[1] * labB[1] + labB[2] * labB[2]);
+		float deltaC = c1 - c2;
+		float deltaH = deltaA * deltaA + deltaB * deltaB - deltaC * deltaC;
+		deltaH = deltaH < 0 ? 0 : std::sqrt(deltaH);
+		float sc = 1.0 + 0.045 * c1;
+		float sh = 1.0 + 0.015 * c1;
+		float deltaLKlsl = deltaL / (1.0);
+		float deltaCkcsc = deltaC / (sc);
+		float deltaHkhsh = deltaH / (sh);
+		float i = deltaLKlsl * deltaLKlsl + deltaCkcsc * deltaCkcsc + deltaHkhsh * deltaHkhsh;
+		return i < 0 ? 0 : std::sqrt(i);
+	}
+
 }

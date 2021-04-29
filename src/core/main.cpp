@@ -1,4 +1,7 @@
 #define GLM_FORCE_LEFT_HANDED true
+#define GLM_FORCE_ALIGNED_GENTYPES true
+#define GLM_FORCE_INTRINSICS true
+#define GLM_FORCE_SIMD_AVX2 true
 #include "core/Engine3D.h"
 #include "core/OfflineEngine.h"
 #include "core/SceneManager.h"
@@ -7,6 +10,8 @@
 #include <vector>
 #include "io/SceneReader.h"
 #include "TestPlayground.h"
+#define TINYEXR_IMPLEMENTATION
+#include "tinyexr.h"
 
 using namespace narvalengine;
 
@@ -16,7 +21,7 @@ int main() {
 	//SceneReader scene("scenes/volumeLamp.json", false);
 	Settings *settings = scene.getSettings();
 	settings->renderMode = REALTIME_RENDERING_MODE;
-	//TestPlayground *tp = new TestPlayground();
+	TestPlayground *tp = new TestPlayground();
 
 	Engine3D *engine = new Engine3D();
 	OfflineEngine *offEngine;

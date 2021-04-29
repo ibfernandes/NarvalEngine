@@ -197,6 +197,7 @@ namespace narvalengine {
 		mem.size = sizeBytes;
 
 		Texture* tex = new Texture(resZ, resY, resX, TextureLayout::R32F, flags, mem);
+		tex->textureName = TextureName::TEX_1;
 
 		textures.insert({ id, tex });
 
@@ -259,6 +260,7 @@ namespace narvalengine {
 		mem.size = sizeBytes;
 
 		Texture* tex = new Texture(resolution.x, resolution.y, resolution.z, TextureLayout::R32F, flags, mem);
+		tex->textureName = TextureName::TEX_1;
 
 		textures.insert({ id, tex });
 

@@ -12,7 +12,7 @@ namespace narvalengine {
 			wo.o = intersec.hitPoint;
 
 			glm::vec3 pointOnLightPrimitive = primitive->samplePointOnSurface(intersec, transformToWCS); //sample point and pdf needs intersec, as its sample is "view" dependent
-			pointOnLightPrimitive = transformToWCS * glm::vec4(pointOnLightPrimitive, 1.0f);
+			//pointOnLightPrimitive = transformToWCS * glm::vec4(pointOnLightPrimitive, 1.0f);
 
 			glm::vec3 d = pointOnLightPrimitive - wo.o;
 			float distanceSquared = glm::length(d);

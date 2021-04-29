@@ -1,0 +1,290 @@
+{
+	"version" : "0.0.1a",
+	
+	"materials": [
+		{
+			"name": "emitter",
+			"type": "emitter",
+			"albedo": [900, 900, 900]
+		},
+		{
+			"name": "whiteMat",
+			"type": "microfacet",
+			"roughness": 0.95,
+			"metallic": 0.0,
+			"albedo": [0.8, 0.8, 0.8],
+			"normalMap": [0.5, 0.5, 1.0]
+		},
+		{
+			"name": "cubeVolMat",
+			"type": "microfacet",
+			"roughness": 0.95,
+			"metallic": 0.0,
+			"albedo": [0.6, 0.1, 0.1],
+			"normalMap": [0.5, 0.5, 1.0]
+		},
+		{
+			"name": "cubeVolMat2",
+			"type": "volume",
+			"scattering": [1.1, 1.1, 1.1],
+			"absorption": [0.01, 0.01, 0.01],
+			"phaseFunction": "hg",
+			"g": 0,
+			"path" : "vdb/cube.vdb",
+			"density": 100
+		},
+		{
+			"name": "cloudVolMat",
+			"type": "volume",
+			"scattering": [1.1, 1.1, 1.1],
+			"absorption": [0.01, 0.01, 0.01],
+			"phaseFunction": "hg",
+			"g": 0,
+			"path" : "vdb/wdas_cloud_sixteenth.vdb",
+			"density": 100
+		}
+	],
+	
+	"primitives": [
+		{
+			"name": "cubeFloor",
+			"type": "rectangle",
+			"transform": {
+				"position": [0, 0, 0],
+				"scale": [80, 80, 1],
+				"rotation": [90, 0, 0]
+			},
+			"materialName": "whiteMat"
+		},
+		{
+			"name": "rectLight",
+			"type": "rectangle",
+			"transform": {
+				"position": [0, 8, 0],
+				"scale": [1, 1, 1],
+				"rotation": [-89, 0, 0]
+			},
+			"materialName": "emitter"
+		},
+		{
+			"name": "volume1x1",
+			"type": "obj",
+			"transform": {
+				"position": [-3.0, 1.5, 0],
+				"scale": [0.5, 0.5, 0.5],
+				"rotation": [0, 0, 0]
+			},
+			"materialName": "cubeVolMat", "path": "models/cube.obj"
+		},
+		{
+			"name": "volume1x2",
+			"type": "obj",
+			"transform": {
+				"position": [-1.5, 1.5, 0],
+				"scale": [0.5, 0.5, 0.5],
+				"rotation": [0, 0, 0]
+			},
+			"materialName": "cubeVolMat", "path": "models/cube.obj"
+		},
+		{
+			"name": "volume1x3",
+			"type": "obj",
+			"transform": {
+				"position": [0.0, 1.5, 0],
+				"scale": [0.5, 0.5, 0.5],
+				"rotation": [0, 0, 0]
+			},
+			"materialName": "cubeVolMat", "path": "models/cube.obj"
+		},
+		{
+			"name": "volume1x4",
+			"type": "obj",
+			"transform": {
+				"position": [1.5, 1.5, 0],
+				"scale": [0.5, 0.5, 0.5],
+				"rotation": [0, 0, 0]
+			},
+			"materialName": "cubeVolMat", "path": "models/cube.obj"
+		},
+		{
+			"name": "volume1x5",
+			"type": "obj",
+			"transform": {
+				"position": [3.0, 1.5, 0],
+				"scale": [0.5, 0.5, 0.5],
+				"rotation": [0, 0, 0]
+			},
+			"materialName": "cubeVolMat", "path": "models/cube.obj"
+		},
+		{
+			"name": "volume2x1",
+			"type": "obj",
+			"transform": {
+				"position": [-3.0, 3.0, 0],
+				"scale": [0.5, 0.5, 0.5],
+				"rotation": [0, 0, 0]
+			},
+			"materialName": "cubeVolMat", "path": "models/cube.obj"
+		},
+		{
+			"name": "volume2x2",
+			"type": "obj",
+			"transform": {
+				"position": [-1.5, 3.0, 0],
+				"scale": [0.5, 0.5, 0.5],
+				"rotation": [0, 0, 0]
+			},
+			"materialName": "cubeVolMat", "path": "models/cube.obj"
+		},
+		{
+			"name": "volume2x3",
+			"type": "obj",
+			"transform": {
+				"position": [0.0, 3.0, 0],
+				"scale": [0.5, 0.5, 0.5],
+				"rotation": [0, 0, 0]
+			},
+			"materialName": "cubeVolMat", "path": "models/cube.obj"
+		},
+		{
+			"name": "volume2x4",
+			"type": "obj",
+			"transform": {
+				"position": [1.5, 3.0, 0],
+				"scale": [0.5, 0.5, 0.5],
+				"rotation": [0, 0, 0]
+			},
+			"materialName": "cubeVolMat", "path": "models/cube.obj"
+		},
+		{
+			"name": "volume2x5",
+			"type": "obj",
+			"transform": {
+				"position": [3.0, 3.0, 0],
+				"scale": [0.5, 0.5, 0.5],
+				"rotation": [0, 0, 0]
+			},
+			"materialName": "cubeVolMat", "path": "models/cube.obj"
+		},
+		{
+			"name": "volume3x1",
+			"type": "obj",
+			"transform": {
+				"position": [-3.0, 4.5, 0],
+				"scale": [0.5, 0.5, 0.5],
+				"rotation": [0, 0, 0]
+			},
+			"materialName": "cubeVolMat", "path": "models/cube.obj"
+		},
+		{
+			"name": "volume3x2",
+			"type": "obj",
+			"transform": {
+				"position": [-1.5, 4.5, 0],
+				"scale": [0.5, 0.5, 0.5],
+				"rotation": [0, 0, 0]
+			},
+			"materialName": "cubeVolMat", "path": "models/cube.obj"
+		},
+		{
+			"name": "volume3x3",
+			"type": "obj",
+			"transform": {
+				"position": [0.0, 4.5, 0],
+				"scale": [0.5, 0.5, 0.5],
+				"rotation": [0, 0, 0]
+			},
+			"materialName": "cubeVolMat", "path": "models/cube.obj"
+		},
+		{
+			"name": "volume3x4",
+			"type": "obj",
+			"transform": {
+				"position": [1.5, 4.5, 0],
+				"scale": [0.5, 0.5, 0.5],
+				"rotation": [0, 0, 0]
+			},
+			"materialName": "cubeVolMat", "path": "models/cube.obj"
+		},
+		{
+			"name": "volume3x5",
+			"type": "obj",
+			"transform": {
+				"position": [3.0, 4.5, 0],
+				"scale": [0.5, 0.5, 0.5],
+				"rotation": [0, 0, 0]
+			},
+			"materialName": "cubeVolMat", "path": "models/cube.obj"
+		},
+		{
+			"name": "volume4x1",
+			"type": "obj",
+			"transform": {
+				"position": [-3.0, 6.0, 0],
+				"scale": [0.5, 0.5, 0.5],
+				"rotation": [0, 0, 0]
+			},
+			"materialName": "cubeVolMat", "path": "models/cube.obj"
+		},
+		{
+			"name": "volume4x2",
+			"type": "obj",
+			"transform": {
+				"position": [-1.5, 6.0, 0],
+				"scale": [0.5, 0.5, 0.5],
+				"rotation": [0, 0, 0]
+			},
+			"materialName": "cubeVolMat", "path": "models/cube.obj"
+		},
+		{
+			"name": "volume4x3",
+			"type": "obj",
+			"transform": {
+				"position": [0.0, 6.0, 0],
+				"scale": [0.5, 0.5, 0.5],
+				"rotation": [0, 0, 0]
+			},
+			"materialName": "cubeVolMat", "path": "models/cube.obj"
+		},
+		{
+			"name": "volume4x4",
+			"type": "obj",
+			"transform": {
+				"position": [1.5, 6.0, 0],
+				"scale": [0.5, 0.5, 0.5],
+				"rotation": [0, 0, 0]
+			},
+			"materialName": "cubeVolMat", "path": "models/cube.obj"
+		},
+		{
+			"name": "volume4x5",
+			"type": "obj",
+			"transform": {
+				"position": [3.0, 6.0, 0],
+				"scale": [0.5, 0.5, 0.5],
+				"rotation": [0, 0, 0]
+			},
+			"materialName": "cubeVolMat", "path": "models/cube.obj"
+		}
+	],
+
+	"camera": {
+		"position": [0, 2, -5],
+		"lookAt": [0, 2, 0],
+		"up": [0, 1, 0],
+		"speed": 5,
+		"vfov": 45,
+		"aperture": 0.0001,
+		"autoFocus": true,
+		"focus": 1
+	},
+	
+	"renderer": {
+		"resolution": [1200, 600],
+		"spp": 1,
+		"bounces": 6,
+		"mode": "realtime",
+		"HDR": false,
+		"toneMapping": false
+	}
+}

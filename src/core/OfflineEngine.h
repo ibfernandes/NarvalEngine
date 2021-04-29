@@ -64,6 +64,9 @@ namespace narvalengine {
 		}
 
 		glm::vec3 postProcessing(glm::vec3 hdrColor) {
+			if(settings.hdr)
+				return hdrColor;
+
 			const float exposure = 0.5;
 
 			glm::vec3 mapped = exposureToneMapping(hdrColor, exposure);
