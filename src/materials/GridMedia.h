@@ -54,13 +54,17 @@ namespace narvalengine {
 			Incoming Ray must be in OCS.
 		*/
 		glm::vec3 Tr(Ray incoming, RayIntersection ri) {
-			glm::vec3 hit = lbvh->traverseTreeUntil(incoming, 99999);
-			if (hit.x > hit.y) {
-				return glm::vec3(1.0f);
-			}
+			//glm::vec3 hit = lbvh->traverseTreeUntil(incoming, 99999);
+			//if (hit.x > hit.y) {
+			//	return glm::vec3(1.0f);
+			//}
 
-			incoming.o = incoming.getPointAt(hit.x);
-			ri.tFar = hit.y - hit.x;
+			//incoming.o = incoming.getPointAt(hit.x);
+			//ri.tFar = hit.y - hit.x;
+			//ri.tNear = 0;
+
+			incoming.o = incoming.getPointAt(ri.tNear);
+			ri.tFar = ri.tFar - ri.tNear;
 			ri.tNear = 0;
 
 			// Perform ratio tracking to estimate the transmittance value
@@ -139,13 +143,13 @@ namespace narvalengine {
 				scattered.d = incoming.d;
 				return glm::vec3(1.0f,0,0);
 			}*/
-			float r = random();
 
 			// Run delta-tracking iterations to sample a medium interaction
 			//float t = hit.x;
 			float t = intersection.tNear;
 			//float dist = hit.y - hit.x;
 			while (true) {
+				float r = random();
 				t -= std::log(1 - r) * invMaxDensity / avg(extinction);
 				if (t >= intersection.tFar) {
 					scattered.o = incoming.getPointAt(intersection.tFar + 0.0001f);

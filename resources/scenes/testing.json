@@ -5,7 +5,7 @@
 		{
 			"name": "emitter",
 			"type": "emitter",
-			"albedo": [1000, 700, 700]
+			"albedo": [9000, 9000, 9000]
 		},
 		{
 			"name": "whiteMat",
@@ -30,8 +30,8 @@
 			"absorption": [0.01, 0.01, 0.01],
 			"phaseFunction": "hg",
 			"g": 0,
-			"path" : "vdb/wdas_cloud_sixteenth.vdb",
-			"density": 100
+			"path" : "vdb/cube.vdb",
+			"density": 10
 		}
 	],
 	

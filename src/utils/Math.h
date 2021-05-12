@@ -193,6 +193,28 @@ namespace narvalengine {
 		vec.x = (v << 22) >> 22;
 	}
 
+	inline glm::vec2 intersectBoxSIMD(__m128 origin, __m128 invDir, __m128 bbmin, __m128 bbmax) {
+		__m128 t1 = _mm_mul_ps(_mm_sub_ps(bbmin, origin), invDir);
+		__m128 t2 = _mm_mul_ps(_mm_sub_ps(bbmax, origin), invDir);
+		__m128 vmax4 = _mm_max_ps(t1, t2);
+		__m128 vmin4 = _mm_min_ps(t1, t2);
+		float* vmax = (float*)&vmax4;
+		float* vmin = (float*)&vmin4;
+		//TODO could also optimize this min and max here
+		float tmax = glm::min(vmax[0], glm::min(vmax[1], vmax[2]));
+		float tmin = glm::max(vmin[0], glm::max(vmin[1], vmin[2]));
+
+		return glm::vec2(tmin, tmax);
+	}
+
+	inline glm::vec2 intersectBoxSIMD(__m128 origin, __m128 invDir, glm::vec4 bmin, glm::vec4 bmax) {
+		__m128 bminSIMD;
+		__m128 bmaxSIMD;
+		bminSIMD = _mm_load_ps(&bmin[0]);
+		bmaxSIMD = _mm_load_ps(&bmax[0]);
+		return intersectBoxSIMD(origin, invDir, bminSIMD, bmaxSIMD);
+	}
+
 	inline glm::vec2 intersectBox(glm::vec3 orig, glm::vec3 dir, glm::vec3 bmin, glm::vec3 bmax) {
 		//Line's/Ray's equation
 		// o + t*d = y
@@ -817,6 +839,32 @@ namespace narvalengine {
 		float deltaHkhsh = deltaH / (sh);
 		float i = deltaLKlsl * deltaLKlsl + deltaCkcsc * deltaCkcsc + deltaHkhsh * deltaHkhsh;
 		return i < 0 ? 0 : std::sqrt(i);
+	}
+
+	inline glm::vec3 getRectangleSize(glm::vec3 v0, glm::vec3 v1) {
+		for (int i = 0; i < 3; i++)
+			if (v0[i] == v1[i])
+				v0[i] = v1[i] = 0;
+
+		return glm::abs(v0) + glm::abs(v1);
+	}
+
+	// Convert from area measure, as returned by the pdf() call
+	// above, to solid angle measure.
+	inline float convertAreaToSolidAngle(float pdfArea, glm::vec3 normal, glm::vec3 p1, glm::vec3 p2) {
+		glm::vec3 wi = p1 - p2;
+
+		if (glm::length2(wi) == 0)
+			return 0;
+		else {
+			wi = glm::normalize(wi);
+			// Convert from area measure, as returned by the Sample() call
+			// above, to solid angle measure.
+			pdfArea *= glm::distance2(p1, p2) / absDot(normal, -wi);
+			if (std::isinf(pdfArea)) return 0;
+		}
+
+		return pdfArea;
 	}
 
 }

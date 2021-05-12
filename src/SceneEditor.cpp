@@ -83,8 +83,11 @@ namespace narvalengine {
 		volUniforms[13] = renderCtx.createUniform("densityCoef", { (uint8_t*)&densityCoef, sizeof(densityCoef) }, UniformType::Float, 0);
 		volUniforms[14] = renderCtx.createUniform("numberOfSteps", { (uint8_t*)&numberOfSteps, sizeof(numberOfSteps) }, UniformType::Float, 0);
 		volUniforms[15] = renderCtx.createUniform("shadowSteps", { (uint8_t*)&shadowSteps, sizeof(shadowSteps) }, UniformType::Float, 0);
-		volUniforms[16] = renderCtx.createUniform("lightPosition", { (uint8_t*)&lightPosition[0], sizeof(lightPosition) }, UniformType::Vec3, 0);
-		volUniforms[17] = renderCtx.createUniform("lightColor", { (uint8_t*)&lightColor[0], sizeof(lightColor) }, UniformType::Vec3, 0);
+		//TODO changed to struct Light!
+		volUniforms[16] = renderCtx.createUniform(std::string("lightPoints[0].position").c_str(), { (uint8_t*)&lightPosition, sizeof(lightPosition) }, UniformType::Vec3, 0);
+		volUniforms[17] = renderCtx.createUniform(std::string("lightPoints[0].Li").c_str(), { (uint8_t*)&lightColor, sizeof(glm::vec3) }, UniformType::Vec3, 0);
+		//volUniforms[16] = renderCtx.createUniform("lightPosition", { (uint8_t*)&lightPosition[0], sizeof(lightPosition) }, UniformType::Vec3, 0);
+		//volUniforms[17] = renderCtx.createUniform("lightColor", { (uint8_t*)&lightColor[0], sizeof(lightColor) }, UniformType::Vec3, 0);
 		volUniforms[18] = renderCtx.createUniform("ambientStrength", { (uint8_t*)&ambientStrength, sizeof(ambientStrength) }, UniformType::Float, 0);
 		volUniforms[19] = renderCtx.createUniform("Kc", {(uint8_t*)&Kc, sizeof(Kc) }, UniformType::Float, 0);
 		volUniforms[20] = renderCtx.createUniform("Kl", { (uint8_t*)&Kl, sizeof(Kl) }, UniformType::Float, 0);
@@ -95,6 +98,14 @@ namespace narvalengine {
 		volUniforms[25] = renderCtx.createUniform("frameCount", { (uint8_t*)&frameCount, sizeof(frameCount) }, UniformType::Int, 0);
 		volUniforms[26] = renderCtx.createUniform("enableShadow", { (uint8_t*)&enableShadow, sizeof(enableShadow) }, UniformType::Float, 0);
 		volUniforms[27] = renderCtx.createUniform("invmodel", mb1, UniformType::Mat4, 0);
+		volUniforms[28] = renderCtx.createUniform("invMaxDensity", { (uint8_t*)&invMaxDensity, sizeof(invMaxDensity) }, UniformType::Float, 0);
+		volUniforms[29] = renderCtx.createUniform("densityMc", { (uint8_t*)&densityMc, sizeof(densityMc) }, UniformType::Float, 0);
+		volUniforms[30] = renderCtx.createUniform(std::string("lightPoints[0].minVertex").c_str(), { (uint8_t*)&volLightRecMin, sizeof(glm::vec3) }, UniformType::Vec3, 0);
+		volUniforms[31] = renderCtx.createUniform(std::string("lightPoints[0].maxVertex").c_str(), { (uint8_t*)&volLightRecMax, sizeof(glm::vec3) }, UniformType::Vec3, 0);
+		volUniforms[32] = renderCtx.createUniform(std::string("lightPoints[0].size").c_str(), { (uint8_t*)&volLightRecSize, sizeof(glm::vec3) }, UniformType::Vec3, 0);
+		volUniforms[33] = renderCtx.createUniform(std::string("lightPoints[0].transformWCS").c_str(), { (uint8_t*)&volLightWCS, sizeof(glm::mat4) }, UniformType::Mat4, 0);
+
+		//init shader LBVH
 	}
 
 	void SceneEditor::initPhongShader() {
@@ -458,6 +469,7 @@ namespace narvalengine {
 		hoverObject();
 		updateUI();
 		camera.update();
+		time = glfwGetTime();
 
 		if (shouldUpdateCamera) {
 			shouldUpdateCamera = false;
@@ -470,7 +482,7 @@ namespace narvalengine {
 			currentSelectedIM->invTransformToWCS = glm::inverse(currentSelectedIM->transformToWCS);
 		}
 
-		bool didSceneChange = sceneChanged();
+		didSceneChange = sceneChanged();
 
 		if (didSceneChange && currentRenderingMode == OFFLINE_RENDERING_MODE)
 			startOffEngine();
@@ -726,6 +738,11 @@ namespace narvalengine {
 					if (ImGui::Selectable(imIcons[i], selectedImList == i, ImGuiSelectableFlags_SpanAllColumns)) {
 						currentSelectedIM = getSelectedIMfromListPos(i);
 						selectedImList = i;
+						glm::mat4 transf = currentSelectedIM->transformToWCS;
+
+						selectObjPos = getTranslation(transf);
+						selectObjScale = getScale(transf);
+						selectObjRotation = getRotation(transf);
 					}
 					ImGui::PopID();
 
@@ -1358,6 +1375,7 @@ namespace narvalengine {
 			ImGuizmo::Manipulate(&((*camera.getCam())[0][0]), &proj[0][0], currentGuizmoOp, ImGuizmo::LOCAL, &transf[0][0], NULL, NULL, NULL, NULL);
 
 			if (ImGuizmo::IsUsing()) {
+				//TODO temporary disabled
 				shouldUpdateSelectedIM = true;
 				selectObjPos = getTranslation(transf);
 				selectObjScale = getScale(transf);
@@ -1457,6 +1475,17 @@ namespace narvalengine {
 			renderCtx.updateUniform(pbrLightUniforms[indexpbr], { (uint8_t*)&lightPos[i], sizeof(glm::vec3) });
 			renderCtx.updateUniform(pbrLightUniforms[indexpbr + 1], { (uint8_t*)&imLight->model->materials.at(0)->light->li, sizeof(glm::vec3) });
 
+			//TODO temporary gambiarra
+			Model* m = scene.lights.at(0)->model;
+			Rectangle* r = (Rectangle*)scene.lights.at(0)->model->materials.at(0)->light->primitive;
+			renderCtx.updateUniform(volUniforms[16], { (uint8_t*)&lightPos[0], sizeof(glm::vec3) });
+			renderCtx.updateUniform(volUniforms[17], { (uint8_t*)&scene.lights.at(0)->model->materials.at(0)->light->li, sizeof(glm::vec3) });
+			volLightRecMin = r->getVertex(0);
+			volLightRecMax = r->getVertex(1);
+			volLightRecSize = r->getSize();
+			volLightWCS = imLight->transformToWCS;
+			renderCtx.updateUniform(volUniforms[33], { (uint8_t*)&volLightWCS, sizeof(glm::mat4) });
+
 			//renderCtx.updateUniform(shadowUniforms[1], { (uint8_t*)&proj[0][0], sizeof(glm::mat4) });
 			//renderCtx.updateUniform(shadowUniforms[2], { (uint8_t*)camera.getCam(), sizeof(glm::mat4) });
 
@@ -1502,9 +1531,17 @@ namespace narvalengine {
 	}
 
 	void SceneEditor::renderRealTimePBR() {
-		renderCtx.setFrameBufferClear(fbRenderFrame[0], 0, 0, 0, 1);
-		renderCtx.setFrameBufferClear(fbRenderFrame[1], 0, 0, 0, 1);
-		renderCtx.setFrameBufferClear(fbRenderFrame[2], 0, 0, 0, 1);
+		currentFrame = ++currentFrame % 2;
+		if ((volRenderingMode == 1 || volRenderingMode == 3) && didSceneChange) {
+			frameCount = 0;
+			renderCtx.setFrameBufferClear(fbRenderFrame[0], 0, 0, 0, 1);
+			renderCtx.setFrameBufferClear(fbRenderFrame[1], 0, 0, 0, 1);
+			renderCtx.setFrameBufferClear(fbRenderFrame[2], 0, 0, 0, 1);
+		}else if (volRenderingMode == 0) {
+			renderCtx.setFrameBufferClear(fbRenderFrame[0], 0, 0, 0, 1);
+			renderCtx.setFrameBufferClear(fbRenderFrame[1], 0, 0, 0, 1);
+			renderCtx.setFrameBufferClear(fbRenderFrame[2], 0, 0, 0, 1);
+		}
 
 		for (InstancedModel* im : scene.lights) {
 			if (im == currentSelectedIM) {
@@ -1537,7 +1574,7 @@ namespace narvalengine {
 			renderCtx.updateUniform(pbrUniforms[12], { (uint8_t*)(camera.getPosition()), sizeof(glm::vec3) });
 			renderCtx.setModel(rmToRenderAPI.at(im->modelID));
 
-			renderCtx.setFrameBuffer(fbRenderFrame[0]);
+			renderCtx.setFrameBuffer(fbRenderFrame[currentFrame]);
 
 			renderCtx.render(pbrProgramHandler);
 
@@ -1596,14 +1633,14 @@ namespace narvalengine {
 
 					renderCtx.setMesh(mh.meshes.at(i));
 
-					renderCtx.setFrameBuffer(fbRenderFrame[0]);
+					renderCtx.setFrameBuffer(fbRenderFrame[currentFrame]);
 
 					renderCtx.render(pbrProgramHandler);
 				}
 			}
 
 			if (im->model->materials.at(0)->bsdf->bsdfType & BxDF_TRANSMISSION) {
-				for (int i = 0; i < 28; i++)
+				for (int i = 0; i < 34; i++)
 					renderCtx.setUniform(volUniforms[i]);
 
 				//texHandler e uniformHandler
@@ -1614,9 +1651,20 @@ namespace narvalengine {
 				//if (mh.meshes.at(0).textures.size() > 0)
 				//	renderCtx.setTexture(mh.meshes.at(0).textures.at(0), volUniforms[4]); //volume
 
-				renderCtx.setTexture(renderFrameTex[0], volUniforms[5]);
-				renderCtx.setTexture(renderFrameDepthTex[0], volUniforms[6]);
-				renderCtx.setTexture(shadowDepthTex, phongUniforms[10]); //shadowTex
+				//renderCtx.updateUniform(volUniforms[8], { (uint8_t*)&time, sizeof(time) }); //update time	
+				//renderCtx.updateUniform(volUniforms[25], { (uint8_t*)&frameCount, sizeof(frameCount) }); //update frameCount
+				//TODO invMaxDensity not setted as per volume
+				Medium* m = im->model->materials.at(0)->medium;
+				GridMedia* gm = (GridMedia*)m;
+				densityMc = gm->densityMultiplier;
+				invMaxDensity = gm->invMaxDensity;
+				renderCtx.updateUniform(volUniforms[28], { (uint8_t*)&invMaxDensity, sizeof(float) });
+				renderCtx.updateUniform(volUniforms[29], { (uint8_t*)&densityMc, sizeof(float) });
+
+				renderCtx.setTexture(renderFrameTex[(currentFrame + 1) % 2], volUniforms[5]); //background
+				renderCtx.setTexture(renderFrameDepthTex[(currentFrame + 1) % 2], volUniforms[6]); //backgroundDepth
+				renderCtx.setTexture(renderFrameTex[(currentFrame+1)%2], volUniforms[7]); //previous frame
+				//renderCtx.setTexture(shadowDepthTex, phongUniforms[10]); //shadowTex
 
 				renderCtx.updateUniform(volUniforms[0], { (uint8_t*)(&im->transformToWCS[0][0]), sizeof(im->transformToWCS) });
 				renderCtx.updateUniform(volUniforms[2], { (uint8_t*)camera.getCam(), sizeof(glm::mat4) });
@@ -1624,13 +1672,14 @@ namespace narvalengine {
 				renderCtx.updateUniform(volUniforms[27], { (uint8_t*)&im->invTransformToWCS[0][0], sizeof(glm::mat4) });
 				renderCtx.setModel(rmToRenderAPI.at(im->modelID));
 
-				renderCtx.setFrameBuffer(fbRenderFrame[0]);
-
+				renderCtx.setFrameBuffer(fbRenderFrame[currentFrame]);
+				glDisable(GL_DEPTH_TEST); //TODO temporary, should not expose GL here plus it should be enabled only on volRederingMode = 1 (PATH TRACING MODE)	
 				renderCtx.render(volProgramHandler);
+				glEnable(GL_DEPTH_TEST);
 			}
 		}
 
-		if (currentSelectedIM != nullptr && currentSelectedIM->model->primitives.size() > 0) {
+		/*if (currentSelectedIM != nullptr && currentSelectedIM->model->primitives.size() > 0) {
 			glDisable(GL_DEPTH_TEST); //TODO NOT EXPOSE GL HERE. TEMPORARY
 			renderCtx.setStencil(
 				NE_STENCIL_OP_FAIL_S_KEEP | NE_STENCIL_OP_FAIL_Z_KEEP | NE_STENCIL_OP_PASS_Z_REPLACE |
@@ -1650,10 +1699,10 @@ namespace narvalengine {
 			renderCtx.setFrameBuffer(fbRenderFrame[0]);
 			renderCtx.render(monoColorProgramH);
 			glEnable(GL_DEPTH_TEST);
-		}
+		}*/
 
 		//Render shooting Ray
-		if (!intersectionPoints[0].empty()) {
+		/*if (!intersectionPoints[0].empty()) {
 			glDisable(GL_DEPTH_TEST); //TODO NOT EXPOSE GL HERE. TEMPORARY
 			for (int k = 0; k < numberOfShootedRays; k++) {
 				for (int i = 0; i < 13; i++) {
@@ -1677,7 +1726,7 @@ namespace narvalengine {
 				renderCtx.render(phongProgramHandler);
 			}
 			glEnable(GL_DEPTH_TEST);
-		}
+		}*/
 
 		//Display final result
 		model = glm::mat4(1);
@@ -1700,6 +1749,7 @@ namespace narvalengine {
 
 		if (renderShadowMapping)
 			renderShadowMappingDebug();
+		frameCount++;
 	}
 
 	void SceneEditor::renderRealTime() {

@@ -15,6 +15,7 @@ namespace narvalengine {
 	public:
 		glm::vec3 size;
 		glm::vec3 gridSize;
+		glm::vec3 invGridSize;
 		int vectorSize;
 
 		int bucketSize = 512;
@@ -57,15 +58,16 @@ namespace narvalengine {
 
 		//Convert from local grid CS (0) to (gridSize) to OCS.
 		//Centered AABB with width 1. Corners from (-0.5) to (0.5).
-		glm::vec3 getOCS(float x, float y, float z) {
-			return (glm::vec3(x, y, z) / gridSize) - glm::vec3(0.5);
+		glm::vec4 getOCS(float x, float y, float z) {
+			//return (glm::vec4(x, y, z, 0.0f) / glm::vec4(gridSize, 1.0f)) - glm::vec4(0.5f, 0.5f, 0.5f, 0.0f);
+			return glm::vec4(x * invGridSize.x - 0.5f, y * invGridSize.y - 0.5f, z * invGridSize.z - 0.5f, 0);
 		}
 
-		glm::vec3 getOCS(glm::vec3 v) {
+		glm::vec4 getOCS(glm::vec3 v) {
 			return getOCS(v.x, v.y, v.z);
 		}
 
-		glm::vec3 getOCS(int mortonCode) {
+		glm::vec4 getOCS(int mortonCode) {
 			int x, y, z;
 			decodeSimple3D(mortonCode, x, y, z);
 			return getOCS(x, y, z);
@@ -208,6 +210,15 @@ namespace narvalengine {
 			int currentLevel = 0;
 			intersectionsCount = 1;
 
+			glm::vec3 invDir = 1.0f / r.direction;
+			glm::vec4 ro4 = glm::vec4(r.o, 0);
+			glm::vec4 rd4 = glm::vec4(invDir, 0);
+			__m128 orSIMD;
+			__m128 invDirSIMD;
+			orSIMD = _mm_load_ps(&ro4[0]);
+			invDirSIMD = _mm_load_ps(&rd4[0]);
+
+
 			glm::vec3 bbMin = getOCS(node[currentNode * offsetMinMax - 1]);
 			glm::vec3 bbMax = getOCS(node[currentNode * offsetMinMax]);
 
@@ -233,7 +244,8 @@ namespace narvalengine {
 				if (isEmpty(node[currentNode * offsetMinMax]))
 					miss = true;
 				else {
-					t = intersectBox(r, getOCS(node[currentNode * offsetMinMax - 1]), getOCS(node[currentNode * offsetMinMax]));
+					//t = intersectBox(r, getOCS(node[currentNode * offsetMinMax - 1]), getOCS(node[currentNode * offsetMinMax]));
+					t = intersectBoxSIMD(orSIMD, invDirSIMD, getOCS(node[currentNode * offsetMinMax - 1]), getOCS(node[currentNode * offsetMinMax]));
 					intersectionsCount++;
 					if (t.x > t.y)
 						miss = true;
@@ -303,7 +315,8 @@ namespace narvalengine {
 						min = decodeMorton3D(morton);
 						max = min + 1.0f;
 
-						glm::vec2 t2 = intersectBox(r, getOCS(min), getOCS(max));
+						//glm::vec2 t2 = intersectBox(r, getOCS(min), getOCS(max));
+						glm::vec2 t2 = intersectBoxSIMD(orSIMD, invDirSIMD, getOCS(min), getOCS(max));
 						//if t.x is negative, this voxel is behind the ray
 						if (t2.x < 0 && t2.y < 0) //TODO: not that efficient, should this on all other intersections too
 							continue;
@@ -594,6 +607,7 @@ namespace narvalengine {
 			this->grid = grid;
 			this->size = size;
 			this->gridSize = size;
+			this->invGridSize = 1.0f/size;
 			this->bucketSize = 16;
 			initGrid();
 			genTree();
@@ -604,6 +618,7 @@ namespace narvalengine {
 			this->grid = grid;
 			this->size = size;
 			this->gridSize = size;
+			this->invGridSize = 1.0f / size;
 			initGrid();
 			genTree();
 		}

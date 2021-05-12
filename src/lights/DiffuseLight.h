@@ -23,6 +23,7 @@ namespace narvalengine {
 			///	lightPdf = 0;
 			//else
 				//lightPdf = (distanceSquared / absDot(intersec.normal, wo.d) )* primitive->pdf(intersec, transformToWCS);
+
 			lightPdf = primitive->pdf(intersec, transformToWCS);
 		}
 	};

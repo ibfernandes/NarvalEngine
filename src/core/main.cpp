@@ -21,7 +21,7 @@ int main() {
 	//SceneReader scene("scenes/volumeLamp.json", false);
 	Settings *settings = scene.getSettings();
 	settings->renderMode = REALTIME_RENDERING_MODE;
-	TestPlayground *tp = new TestPlayground();
+	//TestPlayground *tp = new TestPlayground();
 
 	Engine3D *engine = new Engine3D();
 	OfflineEngine *offEngine;
@@ -41,6 +41,7 @@ int main() {
 		//must changfe to pointer
 		//ResourceManager::getSelf()->getTexture3D("cloud")->loadToOpenGL();
 
+		ResourceManager::getSelf()->loadShader("volumeMonteCarlo", "shaders/volumeMonteCarlo.vert", "shaders/volumeMonteCarlo.frag", "");
 		ResourceManager::getSelf()->loadShader("imageDifference", "shaders/imageDifference.vert", "shaders/imageDifference.frag", "");
 		ResourceManager::getSelf()->loadShader("monocolor", "shaders/monoColor.vert", "shaders/monoColor.frag", "");
 		ResourceManager::getSelf()->loadShader("randomVisualizer", "shaders/random.vert", "shaders/random.frag", "");

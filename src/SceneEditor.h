@@ -44,6 +44,7 @@ namespace narvalengine {
 		RendererGL *renderer;
 		bool doneRendering = false;
 		glm::vec2 renderSize;
+		bool didSceneChange = false;
 
 		//FBO fbo;
 		Texture *fboTex;
@@ -116,26 +117,34 @@ namespace narvalengine {
 		UniformHandler volUniforms[100];
 		glm::vec3 cameraPosition = glm::vec3(0,0,0);
 		glm::vec3 cameraPositionCache = cameraPosition;
+		float invMaxDensity = 1;
 		int volumeTexBind = 0;
 		int bgTexBind = 1;
 		int bgDepthTexBind = 2;
 		int prevFrameTexBind = 3;
 		float time = 0;
-		int volRenderingMode = 0;
+		int volRenderingMode = 3;
+		int currentFrame = 1;
+		float densityMc = 1;
 
-		glm::vec3 scattering = glm::vec3(0.2f, 0.2f, 0.2f);
+		glm::vec3 scattering = glm::vec3(1.1f, 1.1f, 1.1f);
 		glm::vec3 absorption = glm::vec3(0.01f);
-		float g = 0.9;
+		float g = 0.0;
 		int SPP = 1;
 		float densityCoef = 1;
 		float numberOfSteps = 64;
 		float shadowSteps = 10;
-		glm::vec3 lightPosition = glm::vec3(0, 4, 0); //TODO: currently hard coded
-		glm::vec3 lightColor = glm::vec3(1.0, 1.0, 1.0);
+		glm::vec3 lightPosition = glm::vec3(0, 6, 0); //TODO: currently hard coded
+		glm::vec3 lightColor = glm::vec3(300.0, 300.0, 300.0);
 		float ambientStrength = 10;
 		float Kc = 1.0, Kl = 0.7, Kq = 1.8;
-		float frameCount = 0;
+		int frameCount = 0;
 		float enableShadow = 1;
+		glm::vec3 volLightRecSize;
+		glm::vec3 volLightRecMin;
+		glm::vec3 volLightRecMax;
+		glm::mat4 volLightWCS;
+
 
 		//Current Selected Object
 		bool shouldUpdateSelectedIM = false;

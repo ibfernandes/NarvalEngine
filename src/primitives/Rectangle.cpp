@@ -173,6 +173,8 @@ namespace narvalengine {
 				area = area * sizeWCS[i];
 
 		// 1 / area
-		return 1.0f / area;
+		//return 1.0f / area;
+		//TODO delegate solid angle conversion to Primitive maybe?
+		return convertAreaToSolidAngle(1.0f / area, interaction.normal, interaction.hitPoint, samplePointOnSurface(interaction, transformToWCS));
 	}
 }

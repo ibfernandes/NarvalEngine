@@ -5,7 +5,7 @@
 		{
 			"name": "emitter",
 			"type": "emitter",
-			"albedo": [900, 900, 900]
+			"albedo": [1900, 1900, 1900]
 		},
 		{
 			"name": "whiteMat",
@@ -53,7 +53,7 @@
 			"type": "rectangle",
 			"transform": {
 				"position": [0, 8, 0],
-				"scale": [1, 1, 1],
+				"scale": [0.1, 0.1, 0.1],
 				"rotation": [-89, 0, 0]
 			},
 			"materialName": "emitter"
