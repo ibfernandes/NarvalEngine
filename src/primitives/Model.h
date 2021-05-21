@@ -77,7 +77,7 @@ namespace narvalengine {
 						glm::vec3 res = gridMedia->lbvh->traverseTreeUntil(ray, tMax);
 
 						//If intersected any non-empty voxel
-						if (res.x <= res.y) {
+						if (res.x <= res.y && !glm::isinf(res.y) && !glm::isinf(res.x)) {
 							tempIntersec.primitive = primitives.at(i);
 							tempIntersec.tNear = res.x;
 							tempIntersec.tFar = res.y;

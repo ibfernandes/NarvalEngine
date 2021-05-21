@@ -241,6 +241,20 @@ file(COPY "C:/vcpkg/installed/x64-windows/bin/tbb.dll" DESTINATION ${CMAKE_BINAR
 #set(TBB_BUILD_TYPE DEBUG)
 #https://github.com/xtensor-stack/xtensor/blob/master/cmake/FindTBB.cmake
 
+# Open Image Denoiser
+#message(STATUS ">>>>>>>>>>>>>> Denoiser inclusion start.")
+#include_directories(includes/oidn)
+#add_subdirectory(includes/oidn)
+#set(OIDN "includes/oidn/include/OpenImageDenoise/oidn.hpp")
+#message(STATUS ">>>>>>>>>>>>>> Denoiser inclusion finished.")
+set(OIDN_DIR "${NarvalEngine_SOURCE_DIR}/includes/oidn")
+find_library(OIDN_LIB "OpenImageDenoise" "${OIDN_DIR}/lib")
+set(OIDN_LIBRARIES ${OIDN_LIB})
+include_directories(includes/oidn/include/OpenImageDenoise)
+set(OIDN "includes/oidn/include/OpenImageDenoise/oidn.hpp")
+file(COPY "${NarvalEngine_SOURCE_DIR}/includes/oidn/bin/OpenImageDenoise.dll" DESTINATION ${CMAKE_BINARY_DIR}/Debug)
+file(COPY "${NarvalEngine_SOURCE_DIR}/includes/oidn/bin/tbb12.dll" DESTINATION ${CMAKE_BINARY_DIR}/Debug)
+
 # Sources files
 set(_src_root_path "${NarvalEngine_SOURCE_DIR}/src/")
 file(
@@ -259,6 +273,6 @@ endforeach()
 
 include_directories( "${CMAKE_SOURCE_DIR}/src" )
 
-add_executable(NarvalEngine ${SOURCE_FILES} ${GLAD} ${NANOVDB} ${IMGUI_SOURCES} ${TINYFILEDIALOGS_SOURCES} ${FASTNOISE_SOURCES} ${STB_SOURCES} )
-target_link_libraries(NarvalEngine ${core_libs} glfw ${GLFW_LIBRARIES} assimp ${TINYEXR_LIBRARIES})
+add_executable(NarvalEngine ${SOURCE_FILES} ${GLAD} ${NANOVDB} ${OIDN} ${IMGUI_SOURCES} ${TINYFILEDIALOGS_SOURCES} ${FASTNOISE_SOURCES} ${STB_SOURCES} )
+target_link_libraries(NarvalEngine ${core_libs} glfw ${GLFW_LIBRARIES} assimp ${TINYEXR_LIBRARIES} ${OIDN_LIBRARIES})
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT NarvalEngine)

@@ -410,6 +410,10 @@ namespace narvalengine {
 			cameraPositionCache = *camera.getPosition();
 			return true;
 		}
+		if (shouldUpdateSelectedIM)
+			return true;
+
+		return false;
 	};
 
 	void SceneEditor::hoverObject() {
@@ -794,7 +798,7 @@ namespace narvalengine {
 			ImGui::NextColumn();
 			ImGui::Text("Position: ");
 			ImGui::NextColumn();
-			if(ImGui::DragFloat3("##selectObjPos", &selectObjPos[0], 0.1, -999, 999, "%.2f"))
+			if (ImGui::DragFloat3("##selectObjPos", &selectObjPos[0], 0.1, -999, 999, "%.2f")) 
 				shouldUpdateSelectedIM = true;
 			ImGui::NextColumn();
 
@@ -995,7 +999,7 @@ namespace narvalengine {
 			ImGui::Text("Power (W): ");
 			ImGui::NextColumn();
 			//TODO not quite right, there should be a treatment case for Le() and Li()
-			ImGui::DragFloat3("##lightpower", &currentSelectedIM->model->lights.at(0)->material->light->li[0], 0.5, 0, 1000, "%.1f");
+			ImGui::DragFloat3("##lightpower", &currentSelectedIM->model->lights.at(0)->material->light->li[0], 0.5, 0, 10000, "%.1f");
 			ImGui::NextColumn();
 
 			ImGui::Columns(1);

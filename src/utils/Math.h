@@ -867,4 +867,23 @@ namespace narvalengine {
 		return pdfArea;
 	}
 
+	//Adapted from pbrt FindInterval
+	template <typename Predicate>
+	inline int binarySearch(int size, const Predicate& pred) {
+		int first = 0;
+		int len = size;
+
+		while (len > 0) {
+			int half = len >> 1;
+			int middle = first + half;
+
+			if (pred(middle)) {
+				first = middle + 1;
+				len -= half + 1;
+			}else
+				len = half;
+		}
+
+		return glm::clamp(first - 1, 0, size - 2);
+	}
 }

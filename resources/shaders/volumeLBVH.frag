@@ -98,7 +98,7 @@ struct Ray{
 
 float seedSum = 0;
 vec2 uv = gl_FragCoord.xy/screenRes.xy;
-int maxBounces = 4;
+int maxBounces = 6;
 //vec3 boxMin = (model * vec4(0,0,0,1)).xyz;
 vec3 boxMin = (model * vec4(-0.5f, -0.5f, -0.5f,1)).xyz;
 //vec3 boxMax = (model * vec4(1,1,1,1)).xyz;
@@ -137,6 +137,35 @@ float randomUniform(vec2 uv) {
 	return fract(sin(dot(seed, vec2(12.9898, 78.233))) * 43758.5453);
 }
 
+void generateOrthonormalCS(vec3 normal, inout vec3 v, inout vec3 u) {
+	//ns, ss, ts
+	if (abs(normal.x) > abs(normal.y))
+		v = vec3(-normal.z, 0, normal.x) / sqrt(normal.x * normal.x + normal.z * normal.z);
+	else
+		v = vec3(0, normal.z, -normal.y) / sqrt(normal.y * normal.y + normal.z * normal.z);
+
+	u = normalize(cross(normal, v));
+}
+
+/*
+	Transforms from Local Coordinate System(LCS) where the normal vector v is "up" to World Coordinate System (WCS)
+	from PBR:
+	http://www.pbr-book.org/3ed-2018/Materials/BSDFs.html#BSDF::ss
+*/
+vec3 toWorld(vec3 v, vec3 ns, vec3 ss, vec3 ts) {
+	return vec3(
+		ss.x * v.x + ts.x * v.y + ns.x * v.z,
+		ss.y * v.x + ts.y * v.y + ns.y * v.z,
+		ss.z * v.x + ts.z * v.y + ns.z * v.z);
+}
+
+/*
+	Transforms from World Coordinate System (WCS) to Local Coordinate System(LCS) where the normal vector v is "up"
+*/
+vec3 toLCS(vec3 v, vec3 ns, vec3 ss, vec3 ts) {
+	return vec3(dot(v, ss), dot(v, ts), dot(v, ns));
+}
+
 float convertAreaToSolidAngle(float pdfArea, vec3 normal, vec3 p1, vec3 p2) {
 	vec3 wi = p1 - p2;
 
@@ -164,7 +193,7 @@ vec3 getPointOnLight(LightPoint light){
 	return pointOnSurface;
 }
 
-float getLightPdf(vec3 intersecP, vec3 normal, LightPoint light){
+float getLightPdf(vec3 intersecP, vec3 normal, LightPoint light, vec3 pointOnLight){
 	vec3 sizeWCS = vec3(light.transformWCS[0][0], light.transformWCS[1][1], light.transformWCS[2][2]) * light.size;
 	float area = 1;
 	
@@ -173,7 +202,7 @@ float getLightPdf(vec3 intersecP, vec3 normal, LightPoint light){
 			area = area * sizeWCS[i];
 
 	//return 1.0f / area;
-	return convertAreaToSolidAngle(1.0f / area, normal, intersecP, getPointOnLight(light));
+	return convertAreaToSolidAngle(1.0f / area, normal, intersecP, pointOnLight);
 }
 
 /*
@@ -507,10 +536,31 @@ float sampleVolume(vec3 pos){
 	return densityCoef * texture(volume, tex).r;
 }
 
+float density(ivec3 gridPoint){
+	return texelFetch( volume, gridPoint, 0).x;
+}
+
+float interpolatedDensity(vec3 gridPoint) {
+	vec3 pSamples = vec3(gridPoint.x - .5f, gridPoint.y - .5f, gridPoint.z - .5f);
+	ivec3 pi = ivec3(floor(pSamples.x), floor(pSamples.y), floor(pSamples.z));
+	vec3 d = pSamples - vec3(pi);
+
+	// Trilinearly interpolate density values to compute local density
+	float d00 = mix(density(pi), density(pi + ivec3(1, 0, 0)), d.x);
+	float d10 = mix(density(pi + ivec3(0, 1, 0)), density(pi + ivec3(1, 1, 0)), d.x);
+	float d01 = mix(density(pi + ivec3(0, 0, 1)), density(pi + ivec3(1, 0, 1)), d.x);
+	float d11 = mix(density(pi + ivec3(0, 1, 1)), density(pi + ivec3(1, 1, 1)), d.x);
+	float d0 = mix(d00, d10, d.y);
+	float d1 = mix(d01, d11, d.y);
+	return mix(d0, d1, d.z);
+}
+
 float sampleVolumeMC(vec3 pos){
 	vec3 tex = ( invmodel * vec4(pos,1)).xyz + 0.5; //added 0.5
+	vec3 texGridPoint = tex * textureSize(volume, 0);
 
-	return texture(volume, tex).r;
+	return interpolatedDensity(texGridPoint);
+	//return texture(volume, tex).r;
 }
 
 float isotropicPhaseFunction(){
@@ -580,6 +630,10 @@ bool isAllOne(vec3 v) {
 	return (v.x == 1 && v.y == 1 && v.z == 1) ? true : false;
 }
 
+bool sameHemisphere(vec3 v1, vec3 v2) {
+	return dot(v1, v2) > 0 ? true : false;
+}
+
 vec3 sphericalToCartesianPre(float cosTheta, float sinTheta, float phi) {
 	return vec3(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
 }
@@ -588,7 +642,7 @@ float powerHeuristic(float pdf0, float pdf1) {
 	return (pdf0*pdf0) / (pdf0*pdf0 + pdf1 * pdf1);
 }
 
-vec3 sampleHG(vec3 incomingDir) {
+vec3 sampleHG(vec3 incomingDir, vec3 normal) {
 	float cosTheta;
 	vec2 u = vec2(randomUniform(uv), randomUniform(uv));
 
@@ -621,14 +675,52 @@ vec3 evalHG(vec3 incoming, vec3 scattered) {
 	return vec3(res, res, res);
 }
 
+vec3 sampleBSDF(vec3 incoming, vec3 normal){
+	vec3 ss, ts;
+	generateOrthonormalCS(normal, ss, ts);
+	incoming = toLCS(incoming, normal, ss, ts);
+	vec3 scattered = sampleHG(incoming, normal);
+
+	scattered = toWorld(scattered, normal, ss, ts);
+
+	return scattered;
+}
+
+/*
+	Calculates the Probability Density Function(PDF) of sampling this scattered direction
+*/
+float pdfBSDF(vec3 incoming, vec3 scattered, vec3 normal) {
+	//if ((!sameHemisphere(-incoming, normal) || !sameHemisphere(scattered, normal)))
+		//return 0;
+
+	vec3 ss, ts;
+	generateOrthonormalCS(normal, ss, ts);
+	incoming = toLCS(incoming, normal, ss, ts);
+	scattered = toLCS(scattered, normal, ss, ts);
+
+	return pdfHG(incoming, scattered);
+}
+
+/*
+	Evals BSDF function Fr(x, w_i, w_o)
+*/
+vec3 evalBSDF(vec3 incoming, vec3 scattered, vec3 normal) {
+	//if ((!sameHemisphere(-incoming, ri.normal) || !sameHemisphere(scattered, ri.normal)))
+		//return vec3(0);
+
+	vec3 ss, ts;
+	generateOrthonormalCS(normal, ss, ts);
+	incoming = toLCS(incoming, normal, ss, ts);
+	scattered = toLCS(scattered, normal, ss, ts);
+
+	return evalHG(incoming, scattered);
+}
+
 int trackingMaxDepth = 500; //If not high enough generates a lot of "light artifacts"
 
 // Perform ratio tracking to estimate the transmittance value
 vec3 ratioTrackingTr(Ray incoming, float tNear, float tFar) {
-
 	incoming.origin = getPointAt(incoming, tNear);
-	tFar = tFar - tNear;
-	tNear = 0;
 	
 	float Tr = 1, t = tNear;
 	for (int i = 0; i < trackingMaxDepth; i++){
@@ -667,7 +759,7 @@ vec3 sampleDeltaTracking(Ray incoming, inout Ray scattered, float tNear, float t
 		float ra = randomUniform(uv);
 		if (sampledDensity * invMaxDensity > ra) {
 			scattered.origin = getPointAt(incoming, t);
-			scattered.direction = sampleHG(incoming.direction);
+			scattered.direction = sampleBSDF(incoming.direction, -incoming.direction);
 			return scatteringMc / extinctionMc;
 		}
 	}
@@ -692,11 +784,14 @@ vec3 visibilityTr(vec3 intersecPoint, vec3 lightPoint){
 			//return vec3(0,1,0);
 		if (didMiss || bothNegative)
 			return Tr;
+		
+		if(thit.x < 0)
+			thit.x = 0;
 
 		Tr *= ratioTrackingTr(ray, thit.x, thit.y);
 
 		ray.origin = getPointAt(ray, thit.y + 0.001);
-		//ray.direction = normalize(lightPoint - ray.origin);
+		ray.direction = lightPoint - ray.origin;
 	}
 	
 	return Tr;
@@ -708,28 +803,31 @@ vec3 estimateDirect(Ray scattered, LightPoint light) {
 	// Sample light source with multiple importance sampling
 	Ray scatteredWo;
 	float lightPdf = 0, scatteringPdf = 0;
+	
 	//vec3 Li = light.Li / distanceSquared(hitPoint, light.position); //if point light
 	vec3 Li = light.Li;
 	
-	
 	//scatteredWo points from the surface to the light source
 	//light->sampleLi()
+	vec3 pointOnLight = getPointOnLight(light);
 	scatteredWo.origin = scattered.origin;
-	scatteredWo.direction = getPointOnLight(light) - scattered.origin;
-	lightPdf = getLightPdf(scattered.origin, normalize(scatteredWo.direction), light);
-	
+	scatteredWo.direction = pointOnLight - scattered.origin;
+	//TODO it was -normalize(scatteredWo.direction) and it was giving brigther iamges...
+	lightPdf = getLightPdf(scattered.origin, -normalize(scattered.direction), light, pointOnLight);
 	//vec2 th = intersectBox(scatteredWo.origin, scatteredWo.direction);
 	//if(th.x <= 0 && th.y > 0)
 	//	return vec3(0,1,0);
 	
-
 	if (lightPdf > 0 && !isBlack(Li)) {
 		// Compute BSDF or phase function's value for light sample
 		vec3 f;
 
 		// Evaluate phase function for light sampling strategy
-		f = evalHG(scattered.direction, scatteredWo.direction);
-		scatteringPdf = f.x;
+		if(false /*isSurfaceInteraction*/){
+		}else{
+			f = evalBSDF(scattered.direction, scatteredWo.direction, -scattered.direction);
+			scatteringPdf = f.x;
+		}
 	
 
 		if (!isBlack(f)) {
@@ -738,7 +836,7 @@ vec3 estimateDirect(Ray scattered, LightPoint light) {
 
 			// Add light's contribution to reflected radiance
 			if (!isBlack(Li)) {
-				if (true /*IsDeltaLight(light.flags)*/)
+				if (false /*IsDeltaLight(light.flags)*/)
 					Ld += f * Li / lightPdf;
 				else {
 					float weight = powerHeuristic(lightPdf, scatteringPdf);
@@ -749,19 +847,22 @@ vec3 estimateDirect(Ray scattered, LightPoint light) {
 	}
 
 	// Sample BSDF with multiple importance sampling
-	if (true) {
+	if (true  /*!IsDeltaLight(light.flags)*/) {
 		vec3 f;
-
-		// Sample scattered direction for medium interactions
-		f = evalHG(scattered.direction, scatteredWo.direction);
-		scatteredWo.direction = sampleHG(scattered.direction);
-		scatteringPdf = f.x;
+		
+		if(false /*isSurfaceInteraction*/){
+		}else{
+			// Sample scattered direction for medium interactions
+			f = evalBSDF(scattered.direction, scatteredWo.direction, -scattered.direction);
+			scatteredWo.direction = sampleBSDF(scattered.direction, -scattered.direction);
+			scatteringPdf = f.x;
+		}
 		
 		if (!isBlack(f) && scatteringPdf > 0) {
 			// Account for light contributions along sampled direction _wi_
 			float weight = 1;
-			if (true) {
-				lightPdf = getLightPdf(scattered.origin, normalize(scatteredWo.direction), light);
+			if (true /*!sampledSpecular*/) {
+				lightPdf = getLightPdf(scattered.origin, normalize(scattered.direction), light, pointOnLight);
 				if (lightPdf == 0) return Ld;
 				weight = powerHeuristic(scatteringPdf, lightPdf);
 			}
@@ -775,6 +876,7 @@ vec3 estimateDirect(Ray scattered, LightPoint light) {
 			//always handle media
 			//Li = light.Li / distanceSquared(hitPoint, light.position); //changed from Le to Li
 			Li = light.Li; //changed from Le to Li
+			
 			if (!isBlack(Li)) 
 				Ld += f * Li * Tr * weight / scatteringPdf;
 		}
@@ -796,37 +898,40 @@ vec3 uniformSampleOneLight(Ray scattered) {
 
 vec3 integrateMC(Ray incoming){
 	vec3 L = vec3(0, 0, 0);
-	vec3 transmittance = vec3(1, 1, 1);
+	vec3 transmittance = vec3(1);
 	
 	for (int b = 0; b < maxBounces; b++) {
 		vec2 t = intersectBox(incoming.origin, incoming.direction);
+		if(t.x < 0)
+			t.x = 0;
 		
 		//if missed
 		if ((t.x > t.y || (t.x < 0 && t.y < 0)) || isBlack(transmittance))
 			break;
 			
 		Ray scattered;
-		float tFar = t.y - t.x;
-		float tNear = 0;
-
+		
 		//Move ray origin to volume's AABB boundary
 		incoming.origin = getPointAt(incoming, t.x);
+		
+		float tFar = t.y - t.x;
+		float tNear = 0;
 
 		//Samples the Media for a scattered direction and point. Returns the transmittance from the incoming ray up to that point.
 		vec3 sampledTransmittance = sampleDeltaTracking(incoming, scattered, tNear, tFar);
 		
 		if (isAllOne(sampledTransmittance)) {
 			incoming.origin = getPointAt(incoming, tFar + 0.01f);
-			b--; //TODO causing crash
+			b--;
 			continue;
 		}
 		
 		transmittance *= sampledTransmittance;
 
 		//Evaluates the Phase Function BSDF
-		vec3 phaseFr = evalHG(incoming.direction, scattered.direction);
+		vec3 phaseFr = evalBSDF(incoming.direction, scattered.direction, -incoming.direction);
 		//Evaluates the Phase Function BSDF PDF
-		float phasePdf = pdfHG(incoming.direction, scattered.direction);
+		float phasePdf = pdfBSDF(incoming.direction, scattered.direction, -incoming.direction);
 		
 		//If the BSDF or its PDF is zero, then it is not a valid scattered ray direction
 		if (isBlack(phaseFr) || phasePdf == 0.f )
@@ -839,6 +944,9 @@ vec3 integrateMC(Ray incoming){
 
 		if (isBlack(transmittance)) 
 			break;
+
+		//transmittance always less than 1
+		//lightSample always less than its Li.
 
 		L += transmittance * lightSample;
 		incoming = scattered;
@@ -1078,7 +1186,7 @@ void main(){
 			thisColor = lbvhPathTracing(bg, incomingRay.origin, incomingRay.direction, depth); 
 			break;
 		case 3:
-			thisColor = pathTracingMC(bg, incomingRayNN.origin, incomingRayNN.direction, depth);  
+			thisColor = pathTracingMC(bg, incomingRay.origin, incomingRay.direction, depth);  
 			break;
 	}
 	

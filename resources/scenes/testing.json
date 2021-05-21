@@ -5,7 +5,7 @@
 		{
 			"name": "emitter",
 			"type": "emitter",
-			"albedo": [9000, 9000, 9000]
+			"albedo": [15000, 15000, 15000]
 		},
 		{
 			"name": "whiteMat",
@@ -30,8 +30,8 @@
 			"absorption": [0.01, 0.01, 0.01],
 			"phaseFunction": "hg",
 			"g": 0,
-			"path" : "vdb/cube.vdb",
-			"density": 10
+			"path" : "vdb/wdas_cloud_sixteenth.vdb",
+			"density": 100
 		}
 	],
 	
@@ -40,37 +40,17 @@
 			"name": "rectLight",
 			"type": "rectangle",
 			"transform": {
-				"position": [0, 6, 0],
+				"position": [0, 5, 0],
 				"scale": [1, 1, 1],
 				"rotation": [-89, 0, 0]
 			},
 			"materialName": "emitter"
 		},
 		{
-			"name": "cubeFloor",
-			"type": "rectangle",
-			"transform": {
-				"position": [0, 0, 0],
-				"scale": [0, 0, 0],
-				"rotation": [90, 0, 0]
-			},
-			"materialName": "whiteMat"
-		},
-		{
-			"name": "sky",
-			"type": "rectangle",
-			"transform": {
-				"position": [0, 0, 4],
-				"scale": [40, 40, 1],
-				"rotation": [0, 0, 0]
-			},
-			"materialName": "blueSky"
-		},
-		{
 			"name": "cloud",
 			"type": "volume",
 			"transform": {
-				"position": [0.0, 2, 0],
+				"position": [0.0, 0, 0],
 				"scale": [1.59, 0.951, 1.35],
 				"rotation": [0, 0, 0]
 			},
@@ -79,8 +59,8 @@
 	],
 
 	"camera": {
-		"position": [0, 2, -5],
-		"lookAt": [0, 2, 0],
+		"position": [0, 0, -2],
+		"lookAt": [0, 0, 0],
 		"up": [0, 1, 0],
 		"speed": 5,
 		"vfov": 45,
@@ -94,7 +74,7 @@
 		"spp": 1,
 		"bounces": 6,
 		"mode": "realtime",
-		"HDR": false,
+		"HDR": true,
 		"toneMapping": false
 	}
 }

@@ -170,7 +170,7 @@ namespace narvalengine {
 
 				//ray.o = intersec.hitPoint;
 				ray.o = ray.getPointAt(intersec.tFar + 0.001);
-				//ray.d = lightPoint - ray.o;
+				ray.d = lightPoint - ray.o;
 			}
 			//std::cout << "reached end of visibilityTr" << std::endl;
 			return Tr;

@@ -10,6 +10,7 @@
 #include <immintrin.h>
 
 #include "core/Scene.h"
+#include "integrators/VolumetricPathIntegrator.h"
 #include "core/Microfacet.h"
 #include "io/SceneReader.h"
 #include <sstream>
@@ -18,6 +19,11 @@
 #include <nanovdb/util/OpenToNanoVDB.h> // converter from OpenVDB to NanoVDB (includes NanoVDB.h and GridManager.h)
 #include <nanovdb/util/IO.h>
 #include "utils/Timer.h"
+
+#include "oidn/include/OpenImageDenoise/oidn.hpp"
+
+#include "oidn/include/OpenImageDenoise/oidn.hpp"
+//#include <OpenImageDenoise/oidn.hpp>
 
 namespace narvalengine {
 	class TestPlayground {
@@ -723,6 +729,59 @@ namespace narvalengine {
 
 		}
 
+		void oidnTest();
+
+		void testMSFactorapproach() {
+			SceneReader sceneReader;
+			sceneReader.loadScene("scenes/testing.json", false);
+			Scene *scene = sceneReader.getScene();
+			scene->settings.bounces = 1;
+
+			VolumetricPathIntegrator *volPath = new VolumetricPathIntegrator();
+
+			Ray r = { glm::vec3(0.1f, 0.1f,-2.0f), glm::vec3(0, 0, 1) };
+
+			const int nTests = 100;
+			glm::vec3 LiAvg[nTests];
+			for(int i = 0; i < nTests; i++)
+				LiAvg[i] = glm::vec3(0);
+
+			int samples = 100;
+
+			std::ofstream file;
+			file.open(std::string(RESOURCES_DIR) + "tests/Li.txt", std::ios::out | std::ios::ate | std::ios::trunc);
+
+			std::cout << "Samples per Bounce N" << samples << std::endl;
+			for (int k = 0; k < nTests; k++) {
+				for (int i = 0; i < samples; i++) {
+					glm::vec3 Li = volPath->Li(r, scene);
+					LiAvg[k] += Li;
+				}
+				LiAvg[k] = LiAvg[k] / float(samples);
+				std::cout << "Bounces: " << k + 1 << std::endl;
+				printVec3(LiAvg[k]);
+				file << LiAvg[k].x << " " << LiAvg[k].y << " " << LiAvg[k].z << " ";
+
+				scene->settings.bounces++;
+			}
+
+			file.close();
+			/*for (float x = -0.5; x < 0.5; x = x + 0.1f)
+				for (float y = -0.5; y < 0.5; y = y + 0.1f) {
+					r.o.x = x;
+					r.o.y = y;
+
+					RayIntersection ri;
+					bool didhit = scene->intersectScene(r, ri, 0, 999);
+
+					if (didhit) {
+						Li = volPath
+						printVec3(Li);
+					}
+				}*/
+			float d = 0;
+		}
+
 		TestPlayground() {
 			//testRandomGenRange();
 			//testBasisChange();
@@ -735,7 +794,11 @@ namespace narvalengine {
 			//floatRoundError();
 			//testEXR();
 			//glmSIMD();
-			aabbSIMD();
+			//aabbSIMD();
+
+			//oidnTest();
+
+			testMSFactorapproach();
 			float t;
 		}
 

@@ -277,6 +277,7 @@ namespace narvalengine {
 
 			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GLTextureWrap[filterFlag(flags, NE_TEX_SAMPLER_U_MASK, NE_TEX_SAMPLER_U_SHIFT)]);
 			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GLTextureWrap[filterFlag(flags, NE_TEX_SAMPLER_V_MASK, NE_TEX_SAMPLER_V_SHIFT)]);
+			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GLTextureWrap[filterFlag(flags, NE_TEX_SAMPLER_W_MASK, NE_TEX_SAMPLER_W_SHIFT)]);
 
 			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GLTextureFilter[filterFlag(flags, NE_TEX_SAMPLER_MIN_MASK, NE_TEX_SAMPLER_MIN_SHIFT)]);
 			glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GLTextureFilter[filterFlag(flags, NE_TEX_SAMPLER_MAG_MASK, NE_TEX_SAMPLER_MAG_SHIFT)]);
