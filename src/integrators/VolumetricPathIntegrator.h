@@ -20,59 +20,6 @@ namespace narvalengine {
 			If this ray is occluded, returns (0,0,0).
 			If it intersects a participating media, returns the Transmittance of light's source radiance.
 		*/
-		glm::vec3 visibility(Ray scatteredToLight, Scene *s, RayIntersection currentIntersection, Light *light) {
-			glm::vec3 Tr(1);
-
-			bool insideVol = false;
-			RayIntersection intersectionInsideVol;
-
-			//if current intersection happened within a volume
-			if (currentIntersection.primitive->material->bsdf->bsdfType & BxDF_TRANSMISSION) {
-				bool intersecScene = s->intersectScene(scatteredToLight, intersectionInsideVol, -0.001f, INFINITY); //TODO should test only inside THIS currentIntersection primitive
-
-				if (intersecScene && intersectionInsideVol.primitive->material->bsdf != nullptr ) {
-					insideVol = true;
-					//float pathLength = intersectionInsideVol.tFar - intersectionInsideVol.tNear;
-					//Tr = currentIntersection.primitive->material->medium->Tr(pathLength);
-					Ray scatteredToLightOCS = transformRay(scatteredToLight, currentIntersection.instancedModel->invTransformToWCS);
-					Tr = currentIntersection.primitive->material->medium->Tr(scatteredToLightOCS, intersectionInsideVol);
-					if(debugText)
-						printVec3(Tr, "Vis Tr: ");
-					scatteredToLight.o = scatteredToLight.getPointAt(intersectionInsideVol.tFar + 0.001f);
-
-				//if it hits light directly, return full transmission
-				} else if (intersecScene && intersectionInsideVol.primitive->material->light != nullptr) {
-					return glm::vec3(0, 0, 0); //Basically when exactly at the border
-				}
-			}
-			//testing
-			//return Tr;
-
-			RayIntersection ri;
-			bool didIntersect = s->intersectScene(scatteredToLight, ri, 0.001f, INFINITY);
-			//if it hits a volume from a ray origin that is outside it
-			if (didIntersect && !insideVol && ri.primitive->material->light == nullptr && (ri.primitive->material->bsdf->bsdfType & BxDF_TRANSMISSION)) {
-				//float pathLength = ri.tFar - ri.tNear;
-
-				//Tr = ri.primitive->material->medium->Tr(pathLength);
-				Ray scatteredToLightOCS = transformRay(scatteredToLight, ri.instancedModel->invTransformToWCS);
-				Tr = ri.primitive->material->medium->Tr(scatteredToLightOCS, ri);
-
-				return Tr;
-			}
-
-			//if scatteredToLight is not pointing towards light, return a debug red only transmission.
-			if (!didIntersect && insideVol && isBlack(light->Le()))
-				return glm::vec3(1, 0, 0); // doesnt seem to reach this point
-
-			if (didIntersect && ri.primitive->material->light != nullptr)
-				return Tr;
-			//If it is an inifite area light and the ray did not intersect any object along the way
-			else if (!isBlack(light->Le()) && !didIntersect) {
-				return Tr;
-			}else
-				return Tr * 0.0f;
-		}
 
 		bool intersectTr(Ray ray, RayIntersection *ri, glm::vec3 *Tr, Scene* s) {
 			*Tr = glm::vec3(1.0f);
@@ -183,10 +130,10 @@ namespace narvalengine {
 			Ray scatteredWo;
 			float lightPdf = 0, scatteringPdf = 0;
 			//VisibilityTester visibility;
-			glm::vec3 Li = light->Li();
+			//glm::vec3 Li = light->Li();
 
 			//scatteredWo points from the surface to the light source
-			light->sampleLi(intersecOnASurface, lightIm->transformToWCS, scatteredWo, lightPdf);
+			glm::vec3 Li = light->sampleLi(intersecOnASurface, lightIm->transformToWCS, scatteredWo, lightPdf);
 
 			bool isSurfaceInteraction = false;
 			if (intersecOnASurface.primitive->material->medium == nullptr)
@@ -280,52 +227,6 @@ namespace narvalengine {
 			return Ld;
 		}
 
-		glm::vec3 estimateDirectLightning(Ray incoming, RayIntersection intersec, Scene *scene, Light *light, InstancedModel *lightIm) {
-			glm::vec3 radianceL(0.f);
-			Ray scattered;
-			float lightPdf = 0;
-			float scatteringPdf = 0;
-
-			//Sample scattered light direction and calculate BRDF with respect to it
-			light->sampleLi(intersec, lightIm->transformToWCS, scattered, lightPdf);
-			//glm::vec3 vis = visibility(scattered, scene, intersec, light);
-			//printVec3(vis, "Visibility Tr:");
-			//scattered.d = glm::normalize(scattered.d);
-
-			glm::vec3 Li = light->Li();
-			if (lightPdf > 0 && !isBlack(Li)) {
-				glm::vec3 fr;
-				if (intersec.primitive->material->bsdf->bsdfType & BxDF_TRANSMISSION) {
-					//phase function is coupled with the bsdf
-					fr = intersec.primitive->material->bsdf->eval(incoming.d, scattered.d, intersec);
-					//scatteringPdf = intersec.primitive->material->bsdf->pdf(incoming.d, scattered.d, intersec.normal);
-					scatteringPdf = fr.x;
-				} else {
-					//Eval BRDF with respect to light
-					fr = intersec.primitive->material->bsdf->eval(incoming.d, scattered.d, intersec) * absDot(scattered.direction, intersec.normal);
-					scatteringPdf = intersec.primitive->material->bsdf->pdf(incoming.d, scattered.d, intersec.normal);
-				}
-
-				if (!isBlack(fr)) {
-					//Calculate visibility term ( takes occlusion and participating media into account)
-					Li *= visibility(scattered, scene, intersec, light);
-
-					//Add light randiance contribution
-					if (!isBlack(Li) && scatteringPdf > 0) {
-						if (!isBlack(light->Le())) { //Lights that cant have sampled direction (point, directional light) Infinite area too??
-							radianceL += fr * Li / lightPdf;
-						}else {
-							float weight = powerHeuristic(lightPdf, scatteringPdf);
-							radianceL += fr * Li * weight / lightPdf;
-						}
-					}
-				}
-			}
-
-			//printVec3(radianceL, "Radiance L:");
-			return radianceL;
-		}
-
 		glm::vec3 uniformSampleOneLight(Ray incoming, RayIntersection intersecOnASurface, Scene *s) {
 			float r = random();
 			int i = (s->lights.size()) * r;
@@ -342,20 +243,6 @@ namespace narvalengine {
 			Light *light = s->lights.at(i)->model->getRandomLightPrimitive()->material->light;
 
 			return estimateDirect(incoming, intersecOnASurface, light, s->lights.at(i), s) / lightPdf;
-			//return estimateDirectLightning(incoming, intersecOnASurface, s, light, s->lights.at(i)) / lightPdf; 
-		}
-
-		void testIntersectionInsideMedia(Scene *s) {
-			Ray ray;
-			ray.o = glm::vec3(0.4, 0, 0.6);
-			ray.d = glm::vec3(0, 0, 1);
-
-			RayIntersection rayIntersection;
-
-			s->intersectScene(ray, rayIntersection, -0.001f, INFINITY);
-
-			while (true)
-				continue;
 		}
 
 		std::vector<PointPathDebugInfo> getPath(Ray incoming, Scene *scene) {
@@ -389,7 +276,7 @@ namespace narvalengine {
 							//TODO: watch for nulls? materials will be restricted to one light only?
 							for (Material *m : light->model->materials) {
 								Light *l = m->light;
-								//L += transmittance * l->Le(incoming);
+								L += transmittance * l->Le(incoming, light->invTransformToWCS);
 							}
 						}
 				}

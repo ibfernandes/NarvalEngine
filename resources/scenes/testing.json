@@ -8,6 +8,13 @@
 			"albedo": [15000, 15000, 15000]
 		},
 		{
+			"name": "emitterSky",
+			"type": "infiniteAreaLight",
+			"path": "imgs/sunset.png",
+			"albedo": [15000, 15000, 15000],
+			"scale": 10
+		},
+		{
 			"name": "whiteMat",
 			"type": "microfacet",
 			"roughness": 0.95,
@@ -29,7 +36,7 @@
 			"scattering": [1.1, 1.1, 1.1],
 			"absorption": [0.01, 0.01, 0.01],
 			"phaseFunction": "hg",
-			"g": 0,
+			"g": 0.0,
 			"path" : "vdb/wdas_cloud_sixteenth.vdb",
 			"density": 100
 		}
@@ -51,7 +58,8 @@
 			"type": "volume",
 			"transform": {
 				"position": [0.0, 0, 0],
-				"scale": [1.59, 0.951, 1.35],
+				"scaleC": [1.59, 0.951, 1.35],
+				"scale": [4, 4, 4],
 				"rotation": [0, 0, 0]
 			},
 			"materialName": "cloudVolMat"
@@ -59,7 +67,7 @@
 	],
 
 	"camera": {
-		"position": [0, 0, -2],
+		"position": [0, 2, -6],
 		"lookAt": [0, 0, 0],
 		"up": [0, 1, 0],
 		"speed": 5,
@@ -72,7 +80,7 @@
 	"renderer": {
 		"resolution": [1200, 600],
 		"spp": 1,
-		"bounces": 6,
+		"bounces": 3,
 		"mode": "realtime",
 		"HDR": true,
 		"toneMapping": false

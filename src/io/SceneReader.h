@@ -15,6 +15,7 @@
 #include "core/Microfacet.h"
 #include "lights/DiffuseLight.h"
 #include "lights/DirectionalLight.h"
+#include "lights/InfiniteAreaLight.h"
 #include "utils/Math.h"
 #include "rapidjson/document.h"
 #include "rapidjson/writer.h"

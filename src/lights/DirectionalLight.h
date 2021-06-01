@@ -9,7 +9,7 @@ namespace narvalengine {
 		/*
 			Implemented only by Infinite Area Lights
 		*/
-		glm::vec3 Le() override{
+		glm::vec3 Le(Ray ray, glm::mat4 invTransformWCS) override{
 			return le;
 		}
 
@@ -17,11 +17,20 @@ namespace narvalengine {
 			return le;
 		}
 
-		void sampleLi(RayIntersection intersec, glm::mat4 transformToWCS, Ray& wo, float& lightPdf) {
+		glm::vec3 sampleLi(RayIntersection intersec, glm::mat4 transformToWCS, Ray& wo, float& lightPdf) {
 			wo.o = intersec.hitPoint;
 			wo.d = -direction;
 
 			lightPdf = 1; //TODO correct?
+
+			return li;
+		}
+
+		glm::vec3 sampleLe(Ray& fromLight, glm::mat4 transformToWCS, float& lightDirPdf, float& lightPosPdf) {
+			lightDirPdf = 0;
+			lightPosPdf = 0;
+
+			return le;
 		}
 	};
 }

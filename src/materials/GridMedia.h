@@ -18,6 +18,8 @@ namespace narvalengine {
 		BucketLBVH *lbvh;
 		float densityMultiplier =  1.0f;
 		float invMaxDensity = 1;
+		float t = 0;
+		glm::vec3 tr = glm::vec3(1);
 
 		GridMedia(glm::vec3 scattering, glm::vec3 absorption, std::string material, float density) {
 			this->scattering = scattering * density;
@@ -37,19 +39,6 @@ namespace narvalengine {
 			return exp(-v);
 		}
 
-		//should also account for in scattering?
-		/*glm::vec3 Tr(Ray incoming, RayIntersection ri) {
-			glm::vec3 hit = lbvh->traverseTreeUntil(incoming, 99999);
-
-			//if hit volume calculate Tr
-			if (hit.x <= hit.y) {
-				float sampledDensity = hit.z;
-				float distInsideVol = hit.y - hit.x;
-				return Tr(distInsideVol * hit.z);
-			} else
-				return Tr(0);
-		}*/
-		
 		/*
 			Incoming Ray must be in OCS.
 		*/
@@ -88,47 +77,6 @@ namespace narvalengine {
 			return glm::vec3(Tr);
 		}
 
-		/*
-			intersection must be inside the volume
-		*/
-		/*glm::vec3 sample(Ray incoming, Ray &scattered, RayIntersection intersection) {
-			float t = -std::log(1 - random()) / avg(extinction);
-			glm::vec3 hit = lbvh->traverseTreeUntil(incoming, 99999);
-			float distVoxels = hit.y - hit.x;
-			float distAABB = intersection.tFar - intersection.tNear;
-			t = t / distVoxels;
-
-			//if missed all voxels
-			if (hit.x > hit.y) {
-				scattered.o = incoming.getPointAt(distAABB + 0.001f);
-				scattered.d = incoming.d;
-				//return glm::vec3(1.5,0,0);
-				return glm::vec3(-1);
-			}
-
-			bool sampledMedia = t < distVoxels;
-
-			//point is inside volume
-			if (sampledMedia) {
-				incoming.o = incoming.getPointAt(hit.x);
-				scattered.o = incoming.getPointAt(t);
-				scattered.d = intersection.primitive->material->bsdf->sample(incoming.d, intersection.normal);
-			} else {
-				scattered.o = incoming.getPointAt(distAABB + 0.001f);
-				scattered.d = incoming.d;
-				//return glm::vec3(-1);
-			}
-
-			glm::vec3 Tr = this->Tr(t * hit.z);
-
-			glm::vec3 density = sampledMedia ? (extinction * Tr) : Tr;
-
-			float pdf = avg(density);
-
-			if (pdf == 0) pdf = 1;
-
-			return sampledMedia ? (Tr * scattering / pdf) : Tr / pdf;
-		}*/
 		//delta tracking
 		glm::vec3 sample(Ray incoming, Ray& scattered, RayIntersection intersection) {
 			scattered.o = incoming.o;
@@ -150,16 +98,20 @@ namespace narvalengine {
 			//float dist = hit.y - hit.x;
 			while (true) {
 				float r = random();
-				t -= std::log(1 - r) * invMaxDensity / avg(extinction);
+				float sampledDist = std::log(1 - r) * invMaxDensity / avg(extinction);
+				t -= sampledDist;
 				if (t >= intersection.tFar) {
 					scattered.o = incoming.getPointAt(intersection.tFar + 0.0001f);
 					break;
 				}
+				this->t -= sampledDist;
+
 				float density = lbvh->sampleAt(incoming, t);
 				float ra = random();
 				if (density * invMaxDensity > ra) {
 					scattered.o = incoming.getPointAt(t);
 					scattered.d = intersection.primitive->material->bsdf->sample(incoming.d, -incoming.d);
+					tr *= scattering / extinction;
 					return scattering / extinction;
 				}
 			}

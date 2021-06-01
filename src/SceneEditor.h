@@ -76,9 +76,9 @@ namespace narvalengine {
 		const char* models[6] = { "cloud", "dragonHavard", "fireball", "explosion", "bunny_cloud", "explosion" };
 		std::map<StringID, ModelHandler> rmToRenderAPI;
 		FrameBufferHandler frameBuffers[4];
-		TextureHandler renderFrameTex[3];
-		TextureHandler renderFrameDepthTex[3];
-		FrameBufferHandler fbRenderFrame[3];
+		TextureHandler renderFrameTex[4];
+		TextureHandler renderFrameDepthTex[4];
+		FrameBufferHandler fbRenderFrame[4];
 		int numberOfActiveLights = 1;
 
 		//REAL TIME - SHADOWS
@@ -126,6 +126,8 @@ namespace narvalengine {
 		int volRenderingMode = 3;
 		int currentFrame = 1;
 		float densityMc = 1;
+		int maxBounces = 1;
+		int useFactor = 0;
 
 		glm::vec3 scattering = glm::vec3(1.1f, 1.1f, 1.1f);
 		glm::vec3 absorption = glm::vec3(0.01f);
@@ -250,9 +252,11 @@ namespace narvalengine {
 		void renderShadowMappingDebug();
 		void renderOffline();
 		void renderRealTimeShadows();
+		void renderScene(FrameBufferHandler* fbh, TextureHandler* fbhTex, int currentFrame);
 		void renderRealTimePBR();
 		void renderRealTime();
 		void renderCompare();
+		void renderCompareRealTime();
 		void render();
 		void reloadScene();
 		void compareScene();

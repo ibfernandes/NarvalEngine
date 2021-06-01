@@ -739,47 +739,278 @@ namespace narvalengine {
 
 			VolumetricPathIntegrator *volPath = new VolumetricPathIntegrator();
 
-			Ray r = { glm::vec3(0.1f, 0.1f,-2.0f), glm::vec3(0, 0, 1) };
+			Ray r = { glm::vec3(0.1f, 0.1f,-3.0f), glm::vec3(0, 0, 1) };
 
-			const int nTests = 100;
-			glm::vec3 LiAvg[nTests];
-			for(int i = 0; i < nTests; i++)
-				LiAvg[i] = glm::vec3(0);
+			const int maxBouncesToTest = 30;
+			const int samples = 1000;
+			const int test = 5;
 
-			int samples = 100;
+			if (test == 0) {
+				/*
+					Avg Li radiance 
+				*/
+				glm::vec3 LiAvg[maxBouncesToTest];
+				for (int i = 0; i < maxBouncesToTest; i++)
+					LiAvg[i] = glm::vec3(0);
 
-			std::ofstream file;
-			file.open(std::string(RESOURCES_DIR) + "tests/Li.txt", std::ios::out | std::ios::ate | std::ios::trunc);
+				std::ofstream file;
+				file.open(std::string(RESOURCES_DIR) + "tests/Li.txt", std::ios::out | std::ios::ate | std::ios::trunc);
 
-			std::cout << "Samples per Bounce N" << samples << std::endl;
-			for (int k = 0; k < nTests; k++) {
-				for (int i = 0; i < samples; i++) {
-					glm::vec3 Li = volPath->Li(r, scene);
-					LiAvg[k] += Li;
+				std::cout << "Samples per Bounce N" << samples << std::endl;
+				for (int k = 0; k < maxBouncesToTest; k++) {
+					for (int i = 0; i < samples; i++) {
+						glm::vec3 Li = volPath->Li(r, scene);
+						LiAvg[k] += Li;
+					}
+					LiAvg[k] = LiAvg[k] / float(samples);
+					std::cout << "Bounces: " << k + 1 << std::endl;
+					printVec3(LiAvg[k], "Li ");
+					file << LiAvg[k].x << " " << LiAvg[k].y << " " << LiAvg[k].z << " ";
+
+					scene->settings.bounces++;
 				}
-				LiAvg[k] = LiAvg[k] / float(samples);
-				std::cout << "Bounces: " << k + 1 << std::endl;
-				printVec3(LiAvg[k]);
-				file << LiAvg[k].x << " " << LiAvg[k].y << " " << LiAvg[k].z << " ";
 
-				scene->settings.bounces++;
+				file.close();
+			}else if (test == 1) {
+				/*
+					Avg Path Depth (should correlate to mean free path?)
+				*/
+				std::ofstream file;
+				file.open(std::string(RESOURCES_DIR) + "tests/pathDepth.txt", std::ios::out | std::ios::ate | std::ios::trunc);
+
+				GridMedia* m = (GridMedia*)scene->instancedModels.at(0)->model->materials.at(0)->medium;
+				float avgPathDepth[maxBouncesToTest];
+				for (int i = 0; i < maxBouncesToTest; i++)
+					avgPathDepth[i] = 0;
+
+				for (int b = 0; b < maxBouncesToTest; b++) {
+					for (int i = 0; i < samples; i++) {
+						m->t = 0;
+						Ray incoming = r;
+
+						for (int k = 0; k < b+1; k++) {
+							RayIntersection ri;
+							Ray scattered;
+
+							bool didHit = scene->intersectScene(incoming, ri, 0, 9999);
+							if (!didHit)
+								break;
+
+							m->sample(incoming, scattered, ri);
+							incoming = scattered;
+						}
+
+						avgPathDepth[b] += m->t;
+					}
+
+					avgPathDepth[b] /= samples;
+					std::cout << "Bounces: " << b + 1 << std::endl;
+					std::cout << avgPathDepth[b] << std::endl;
+					file << avgPathDepth[b] << " ";
+				}
+				file.close();
+			}else if (test == 2) {
+				/*
+					Avg Transmittance Tr
+				*/
+				std::ofstream file;
+				file.open(std::string(RESOURCES_DIR) + "tests/Tr.txt", std::ios::out | std::ios::ate | std::ios::trunc);
+
+				GridMedia* m = (GridMedia*)scene->instancedModels.at(0)->model->materials.at(0)->medium;
+				glm::vec3 avgTr[maxBouncesToTest];
+				for (int i = 0; i < maxBouncesToTest; i++)
+					avgTr[i] = glm::vec3(1);
+
+				for (int b = 0; b < maxBouncesToTest; b++) {
+					for (int i = 0; i < samples; i++) {
+						m->tr = glm::vec3(1);
+						Ray incoming = r;
+
+						for (int k = 0; k < b + 1; k++) {
+							RayIntersection ri;
+							Ray scattered;
+
+							bool didHit = scene->intersectScene(incoming, ri, 0, 9999);
+							if (!didHit)
+								break;
+
+							m->sample(incoming, scattered, ri);
+							incoming = scattered;
+						}
+
+						avgTr[b] += m->tr;
+					}
+
+					avgTr[b] /= samples;
+					std::cout << "Bounces: " << b + 1 << std::endl;
+					printVec3(avgTr[b]);
+					file << avgTr[b].x << " " << avgTr[b].y << " " << avgTr[b].z << " ";
+				}
+				file.close();
+			}else if (test == 3) {
+				/*
+					Avg Theta from HG
+				*/
+				std::ofstream file;
+				file.open(std::string(RESOURCES_DIR) + "tests/avgHGCos.txt", std::ios::out | std::ios::ate | std::ios::trunc);
+
+				GridMedia* m = (GridMedia*)scene->instancedModels.at(0)->model->materials.at(0)->medium;
+
+				const int numberOfgs = 21;
+				float increment = 0.1;
+				float g = -1.0;
+
+				float avgTheta[numberOfgs];
+				for (int i = 0; i < numberOfgs; i++)
+					avgTheta[i] = 0;
+
+				for (int i = 0; i < numberOfgs; i++) {
+					for (int k = 0; k < samples; k++) {
+						Ray incoming = r;
+						RayIntersection ri;
+						Ray scattered;
+
+						bool didHit = scene->intersectScene(incoming, ri, 0, 9999);
+						if (!didHit)
+							break;
+
+						VolumeBSDF* volbsdf = (VolumeBSDF*)ri.instancedModel->model->materials.at(0)->bsdf->bxdf[0];
+						HG* hg = (HG*)volbsdf->phaseFunction;
+						hg->g = g;
+
+						m->sample(incoming, scattered, ri);
+						avgTheta[i] += hg->theta;
+
+						incoming = scattered;
+					}
+					avgTheta[i] /= samples;
+
+					std::cout << "Avg Theta for g = " << g << ": " << std::endl;
+					std::cout << avgTheta[i] << std::endl;
+					file << avgTheta[i] << " ";
+
+					g += increment;
+				}
+				file.close();
+			}else if (test == 4) {
+				/*
+					Ray paths
+				*/
+				std::ofstream file;
+				file.open(std::string(RESOURCES_DIR) + "tests/paths.txt", std::ios::out | std::ios::ate | std::ios::trunc);
+
+				GridMedia* m = (GridMedia*)scene->instancedModels.at(0)->model->materials.at(0)->medium;
+				const int numberOfPaths = 15;
+
+				for (int i = 0; i < numberOfPaths; i++) {
+					Ray incoming = r;
+
+					for (int k = 0; k < maxBouncesToTest; k++) {
+						file << incoming.o.x << " " << incoming.o.y << " " << incoming.o.z << " ";
+						RayIntersection intersection;
+						Ray scattered;
+
+						bool didHit = scene->intersectScene(incoming, intersection, 0, 9999);
+						if (!didHit)
+							break;
+
+						incoming.o = incoming.getPointAt(intersection.tNear);
+						intersection.tFar = intersection.tFar - intersection.tNear;
+						intersection.tNear = 0;
+
+						//Samples the Media for a scattered direction and point. Returns the transmittance from the incoming ray up to that point.
+						Ray rayOCS = transformRay(incoming, intersection.instancedModel->invTransformToWCS);
+						glm::vec3 sampledTransmittance = intersection.primitive->material->medium->sample(rayOCS, scattered, intersection);
+						scattered = transformRay(scattered, intersection.instancedModel->transformToWCS);
+
+						VolumeBSDF* volbsdf = (VolumeBSDF*)intersection.instancedModel->model->materials.at(0)->bsdf->bxdf[0];
+						HG* hg = (HG*)volbsdf->phaseFunction;
+						//scattered.d = hg->sample(rayOCS.d);
+						//scattered.d = glm::normalize(scattered.d);
+
+						incoming = scattered;
+					}
+
+					file << std::endl;
+				}
+				file.close();
+			}else if (test == 5) {
+			/*
+				Plot influence per bounces
+			*/
+				std::ofstream file;
+				file.open(std::string(RESOURCES_DIR) + "tests/bsdf.txt", std::ios::out | std::ios::ate | std::ios::trunc);
+
+				GridMedia* m = (GridMedia*)scene->instancedModels.at(0)->model->materials.at(0)->medium;
+
+				float theta[maxBouncesToTest][samples];
+				float phi[maxBouncesToTest][samples];
+				float bsdfValue[maxBouncesToTest][samples];
+				float tr[maxBouncesToTest][samples];
+
+				for(int k = 0; k < maxBouncesToTest; k++)
+					for (int i = 0; i < samples; i++) {
+						theta[k][i] = 0;
+						phi[k][i] = 0;
+						bsdfValue[k][i] = 0;
+						tr[k][i] = 1;
+					}
+
+
+				// 1 bounces, n samples
+				// 2 bounces, n samples
+				//...
+				for (int k = 0; k < maxBouncesToTest; k++) {
+					for (int i = 0; i < samples; i++) {
+
+						Ray incoming = r;//FFS
+
+						for (int b = 0; b < k + 1; b++) {
+							RayIntersection ri;
+							Ray scattered;
+
+							bool didHit = scene->intersectScene(incoming, ri, 0, 9999);
+							if (!didHit || ri.instancedModel->model->lights.size() > 0)
+								break;
+
+							VolumeBSDF* volbsdf = (VolumeBSDF*)ri.instancedModel->model->materials.at(0)->bsdf->bxdf[0];
+							HG* hg = (HG*)volbsdf->phaseFunction;
+
+							glm::vec3 sampledTransmittance = m->sample(incoming, scattered, ri);
+							glm::vec3 fr = volbsdf->eval(incoming.d, scattered.d, ri);
+
+							theta[k][i] += hg->theta;
+							phi[k][i] += hg->phi;
+							bsdfValue[k][i] += fr.x;
+							tr[k][i] *= sampledTransmittance.x;
+
+							incoming = scattered;
+						}
+
+						theta[k][i] /= (k+1);
+						phi[k][i] /= (k+1);
+						//bsdfValue[k][i] /= (k+1);
+					}
+					std::cout << "Bounce " << k + 1 << " finished" << std::endl;
+
+					for (int i = 0; i < samples; i++)
+						file << theta[k][i] << " ";
+					file << std::endl;
+					for (int i = 0; i < samples; i++)
+						file << phi[k][i] << " ";
+					file << std::endl;
+					for (int i = 0; i < samples; i++)
+						file << bsdfValue[k][i] << " ";
+					file << std::endl;
+					for (int i = 0; i < samples; i++)
+						file << tr[k][i] << " ";
+					file << std::endl;
+				}
+
+				file.close();
 			}
 
-			file.close();
-			/*for (float x = -0.5; x < 0.5; x = x + 0.1f)
-				for (float y = -0.5; y < 0.5; y = y + 0.1f) {
-					r.o.x = x;
-					r.o.y = y;
-
-					RayIntersection ri;
-					bool didhit = scene->intersectScene(r, ri, 0, 999);
-
-					if (didhit) {
-						Li = volPath
-						printVec3(Li);
-					}
-				}*/
-			float d = 0;
+			float k = 0;
 		}
 
 		TestPlayground() {

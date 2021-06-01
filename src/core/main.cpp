@@ -21,7 +21,7 @@ int main() {
 	//SceneReader scene("scenes/volumeLamp.json", false);
 	Settings *settings = scene.getSettings();
 	settings->renderMode = REALTIME_RENDERING_MODE;
-	TestPlayground *tp = new TestPlayground();
+	//TestPlayground *tp = new TestPlayground();
 
 	Engine3D *engine = new Engine3D();
 	OfflineEngine *offEngine;

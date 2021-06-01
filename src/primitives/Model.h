@@ -112,7 +112,7 @@ namespace narvalengine {
 
 			for (int i = 0; i < lights.size(); i++) {
 				//If infinite area light, ignore intersection
-				if (!isBlack(lights.at(i)->material->light->Le()))
+				if (!isBlack(lights.at(i)->material->light->Le(ray, glm::mat4(1))))
 					continue;
 
 				bool localIntersec = lights.at(i)->intersect(ray, tempIntersec);

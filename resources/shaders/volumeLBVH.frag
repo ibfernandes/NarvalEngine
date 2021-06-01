@@ -98,7 +98,8 @@ struct Ray{
 
 float seedSum = 0;
 vec2 uv = gl_FragCoord.xy/screenRes.xy;
-int maxBounces = 6;
+uniform int maxBounces = 6;
+uniform int useFactor = 0;
 //vec3 boxMin = (model * vec4(0,0,0,1)).xyz;
 vec3 boxMin = (model * vec4(-0.5f, -0.5f, -0.5f,1)).xyz;
 //vec3 boxMax = (model * vec4(1,1,1,1)).xyz;
@@ -939,6 +940,9 @@ vec3 integrateMC(Ray incoming){
 
 		//Samples the Radiance arriving from a light source
 		vec3 lightSample = uniformSampleOneLight(scattered);
+
+		if(useFactor == 1)
+			phaseFr += 0.2;
 
 		transmittance *= phaseFr / phasePdf;
 

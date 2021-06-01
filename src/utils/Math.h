@@ -17,8 +17,12 @@
 #define EPSILON	  0.0000000001
 #define EPSILON12 0.00000000001
 #define PI 3.14159265358979323846264338327950288
+#define INVPI 0.31830988618379067154
+#define INV2PI 0.15915494309189533577
 #define INV4PI float(0.07957747154594766788)
 #define TWO_PI 6.283185307179586476925286766559
+#define PI_OVER_2 1.57079632679489661923
+#define PI_OVER_4 0.78539816339744830961
 #define INFINITY 9999999.0
 
 namespace narvalengine {
@@ -58,7 +62,7 @@ namespace narvalengine {
 	Converts 2D point to 1D index in YX order.
 	*/
 	inline int to1D(int width, int height, int x, int y) {
-		return width * x + y;
+		return height * x + y;
 	}
 
 	inline int to1D(int width, int height, glm::vec2 vec) {
@@ -332,6 +336,27 @@ namespace narvalengine {
 		float r = sqrt(random());
 
 		return r * glm::vec3(cos(theta), sin(theta), 0);
+	}
+
+	inline glm::vec2 sampleConcentricDisk() {
+		glm::vec2 u = glm::vec2(random(), random());
+		glm::vec2 uOffset = 2.0f * u - glm::vec2(1.0f, 1.0f);
+
+		// Handle degeneracy at the origin
+		if (uOffset.x == 0 && uOffset.y == 0) 
+			return glm::vec2(0, 0);
+
+		// Apply concentric mapping to point
+		float theta;
+		float r;
+		if (std::abs(uOffset.x) > std::abs(uOffset.y)) {
+			r = uOffset.x;
+			theta = PI_OVER_4 * (uOffset.y / uOffset.x);
+		}else {
+			r = uOffset.y;
+			theta = PI_OVER_2 - PI_OVER_4 * (uOffset.x / uOffset.y);
+		}
+		return r * glm::vec2(std::cos(theta), std::sin(theta));
 	}
 
 	inline int sign(float x) {
@@ -885,5 +910,14 @@ namespace narvalengine {
 		}
 
 		return glm::clamp(first - 1, 0, size - 2);
+	}
+
+	inline float getSphericalPhi(glm::vec3 v) {
+		float p = std::atan2(v.x, v.y);
+		return (p < 0) ? (p + TWO_PI) : p;
+	}
+
+	inline float getSphericalTheta(glm::vec3 v) {
+		return std::acos(glm::clamp(v.z, -1.0f, 1.0f));
 	}
 }

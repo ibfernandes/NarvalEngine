@@ -197,6 +197,24 @@ namespace narvalengine {
 			lightMaterial->light = dirLight;
 
 			ResourceManager::getSelf()->replaceMaterial(name, lightMaterial);
+		}else if (type.compare("infiniteAreaLight") == 0) {
+			Texture* tex;
+
+			if (material.HasMember("path")) {
+				std::string path = material["path"].GetString();
+
+				ResourceManager::getSelf()->loadTexture(name + ".tex_1", path);
+				tex = ResourceManager::getSelf()->getTexture(name + ".tex_1");
+				tex->textureName = TextureName::TEX_1;
+			}
+
+			InfiniteAreaLight* infLight = new InfiniteAreaLight(tex);
+
+			Material* lightMaterial = new Material();
+			lightMaterial->light = infLight;
+			lightMaterial->addTexture(TextureName::TEX_1, ResourceManager::getSelf()->getTexture(name + ".tex_1"));
+
+			ResourceManager::getSelf()->replaceMaterial(name, lightMaterial);
 		}else if (type.compare("volume") == 0) {
 			glm::vec3 scattering = getVec3(material["scattering"]);
 			glm::vec3 absorption = getVec3(material["absorption"]);
@@ -243,6 +261,9 @@ namespace narvalengine {
 		std::string name = primitive["name"].GetString();
 		std::string type = primitive["type"].GetString();
 		glm::vec3 pos = getVec3(primitive["transform"]["position"]);
+		bool collision = true;
+		if(primitive.HasMember("collision"))
+			collision = primitive["collision"].GetBool();
 
 		if (type.compare("obj") == 0) {
 			glm::vec3 scale = getVec3(primitive["transform"]["scale"]);
@@ -356,6 +377,7 @@ namespace narvalengine {
 
 			StringID modelID = ResourceManager::getSelf()->replaceModel(name, model);
 			InstancedModel *instancedModel = new InstancedModel(model, modelID, getTransform(pos, glm::vec3(0, 0, 0), glm::vec3(1, 1, 1)));
+			instancedModel->isCollisionEnabled = collision;
 			if (material->light != nullptr)
 				scene->lights.push_back(instancedModel);
 			else

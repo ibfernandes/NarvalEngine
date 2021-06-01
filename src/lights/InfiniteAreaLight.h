@@ -6,10 +6,21 @@
 
 namespace narvalengine {
 	class InfiniteAreaLight : public Light{
+        public:
         Texture* tex;
 		Distribution2D *distribution;
+        //glm::vec3 worldCenter;
+        //float worldRadius;
+        float scale = 1;
+
+        InfiniteAreaLight() {
+
+        }
 
 		InfiniteAreaLight(Texture *tex) {
+            //this->worldCenter = worldCenter;
+            //this->worldRadius = worldRadius;
+            this->tex = tex;
 
             float filter = 1.0f / glm::max(tex->width, tex->height);
 			float *img = new float[tex->width * tex->height];
@@ -32,59 +43,86 @@ namespace narvalengine {
 			return li;
 		}
 
-		void sampleLi(RayIntersection intersec, glm::mat4 transformToWCS, Ray& wo, float& lightPdf) {
+        glm::vec3 Le(Ray ray, glm::mat4 invTransformToWCS) {
+            glm::vec3 w = glm::normalize(invTransformToWCS * glm::vec4(ray.d, 0));
+            glm::vec3 normal = glm::vec3(0, 0, 1);
+            glm::vec3 ss, ts;
+            generateOrthonormalCS(normal, ss, ts);
+            glm::vec3 incoming = toLCS(w, normal, ss, ts);
+
+            glm::vec2 st = glm::vec2(getSphericalPhi(incoming) * INV2PI, getSphericalTheta(incoming) * INVPI);
+            return tex->sample(st.x, st.y);
+        }
+
+		glm::vec3 sampleLi(RayIntersection intersec, glm::mat4 transformToWCS, Ray& wo, float& lightPdf) {
             // Find $(u,v)$ sample coordinates in infinite light texture
-            /*float mapPdf;
+            float mapPdf;
             glm::vec2 u = glm::vec2(random(), random());
 
             glm::vec2 uv = distribution->sampleContinuous(u, &mapPdf);
-           // if (mapPdf == 0) return glm::vec3(0);
+            if (mapPdf == 0) 
+                return glm::vec3(0);
 
             // Convert infinite light sample point to direction
             float theta = uv[1] * PI;
             float phi = uv[0] * 2 * PI;
             float cosTheta = std::cos(theta), sinTheta = std::sin(theta);
             float sinPhi = std::sin(phi), cosPhi = std::cos(phi);
-            *wi =
-                LightToWorld(Vector3f(sinTheta * cosPhi, sinTheta * sinPhi, cosTheta));
+            wo.o = intersec.hitPoint;
+            glm::vec3 polarCoord = glm::vec3(sinTheta * cosPhi, sinTheta * sinPhi, cosTheta);
+            glm::vec3 ss, ts;
+            generateOrthonormalCS(glm::vec3(0,1,0), ss, ts);
+            wo.d = toLCS(polarCoord, glm::vec3(0,1,0), ss, ts);
+
 
             // Compute PDF for sampled infinite light direction
-            *pdf = mapPdf / (2 * Pi * Pi * sinTheta);
-            if (sinTheta == 0) *pdf = 0;
+            lightPdf = mapPdf / (2 * PI * PI * sinTheta);
+            if (sinTheta == 0) 
+                lightPdf = 0;
 
             // Return radiance value for infinite light direction
-            *vis = VisibilityTester(ref, Interaction(ref.p + *wi * (2 * worldRadius),
-                ref.time, mediumInterface));
-            return Spectrum(Lmap->Lookup(uv), SpectrumType::Illuminant);*/
+            return tex->sample(uv.x, uv.y); //SpectrumType::Illuminant
 		}
 
-        void sampleLe() {
-           /* ProfilePhase _(Prof::LightSample);
+        //TODO pass the matrix by reference instead of copy
+        glm::vec3 sampleLe(Ray &fromLight, glm::mat4 transformToWCS, float &lightDirPdf, float &lightPosPdf) {
+            Sphere* s = (Sphere*) this->primitive;
+            glm::vec3 worldCenter = transformToWCS * glm::vec4(s->getCenter(), 1.0f);
+
             // Compute direction for infinite light sample ray
-            Point2f u = u1;
+            glm::vec2 u = glm::vec2(random(), random());
 
             // Find $(u,v)$ sample coordinates in infinite light texture
-            Float mapPdf;
-            Point2f uv = distribution->SampleContinuous(u, &mapPdf);
-            if (mapPdf == 0) return Spectrum(0.f);
-            Float theta = uv[1] * Pi, phi = uv[0] * 2.f * Pi;
-            Float cosTheta = std::cos(theta), sinTheta = std::sin(theta);
-            Float sinPhi = std::sin(phi), cosPhi = std::cos(phi);
-            Vector3f d =
-                -LightToWorld(Vector3f(sinTheta * cosPhi, sinTheta * sinPhi, cosTheta));
-            *nLight = (Normal3f)d;
+            float mapPdf;
+            glm::vec2 uv = distribution->sampleContinuous(u, &mapPdf);
+            if (mapPdf == 0) 
+                return glm::vec3(0);
+
+            float theta = uv[1] * PI;
+            float phi = uv[0] * 2.f * PI;
+
+            float cosTheta = std::cos(theta), sinTheta = std::sin(theta);
+            float sinPhi = std::sin(phi);
+            float cosPhi = std::cos(phi);
+            glm::vec3 polarCoord = glm::vec3(sinTheta * cosPhi, sinTheta * sinPhi, cosTheta);
+            glm::vec3 ss, ts;
+
+            generateOrthonormalCS(glm::vec3(0, 1, 0), ss, ts);
+            fromLight.d = toLCS(polarCoord, glm::vec3(0, 1, 0), ss, ts);
 
             // Compute origin for infinite light sample ray
-            Vector3f v1, v2;
-            CoordinateSystem(-d, &v1, &v2);
-            Point2f cd = ConcentricSampleDisk(u2);
-            Point3f pDisk = worldCenter + worldRadius * (cd.x * v1 + cd.y * v2);
-            *ray = Ray(pDisk + worldRadius * -d, d, Infinity, time);
+            glm::vec3 v1, v2;
+            generateOrthonormalCS(fromLight.d, v1, v2);
+            glm::vec2 cd = sampleConcentricDisk();
+            glm::vec3 pDisk = worldCenter + s->radius * (cd.x * v1 + cd.y * v2);
+
+            fromLight.o = pDisk + s->radius * -fromLight.d;
 
             // Compute _InfiniteAreaLight_ ray PDFs
-            *pdfDir = sinTheta == 0 ? 0 : mapPdf / (2 * Pi * Pi * sinTheta);
-            *pdfPos = 1 / (Pi * worldRadius * worldRadius);
-            return Spectrum(Lmap->Lookup(uv), SpectrumType::Illuminant);*/
+            lightDirPdf = sinTheta == 0 ? 0 : mapPdf / (2 * PI * PI * sinTheta);
+            lightPosPdf = 1 / (PI * s->radius * s->radius);
+            return tex->sample(uv.x, uv.y); //SpectrumType::Illuminant
+            return le;
         }
 	};
 };

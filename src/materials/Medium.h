@@ -38,6 +38,11 @@ namespace narvalengine {
 	class HG : public PhaseFunction {
 	public:
 		float g = 0;
+		/*
+			TODO: for debug purposes only
+		*/
+		float theta = 0;
+		float phi = 0;
 
 		HG(float g = 0) {
 			this->g = g;
@@ -59,6 +64,11 @@ namespace narvalengine {
 			float sinTheta = glm::sqrt(1.0f - cosTheta * cosTheta);
 			float phi = 2.0f * PI * u[1];
 			glm::vec3 scattered = sphericalToCartesianPre(sinTheta, cosTheta, phi);
+
+			//TODO: for debug only
+			theta = glm::acos(cosTheta);
+			this->phi = phi;
+
 			return scattered;
 		}
 

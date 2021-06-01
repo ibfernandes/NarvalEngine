@@ -8,6 +8,7 @@ namespace narvalengine {
 	class InstancedModel {
 	public:
 		StringID modelID = NE_INVALID_STRING_ID;
+		bool isCollisionEnabled = true;
 		Model *model;
 		glm::mat4 transformToWCS;
 		glm::mat4 invTransformToWCS;

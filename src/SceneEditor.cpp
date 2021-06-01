@@ -104,6 +104,8 @@ namespace narvalengine {
 		volUniforms[31] = renderCtx.createUniform(std::string("lightPoints[0].maxVertex").c_str(), { (uint8_t*)&volLightRecMax, sizeof(glm::vec3) }, UniformType::Vec3, 0);
 		volUniforms[32] = renderCtx.createUniform(std::string("lightPoints[0].size").c_str(), { (uint8_t*)&volLightRecSize, sizeof(glm::vec3) }, UniformType::Vec3, 0);
 		volUniforms[33] = renderCtx.createUniform(std::string("lightPoints[0].transformWCS").c_str(), { (uint8_t*)&volLightWCS, sizeof(glm::mat4) }, UniformType::Mat4, 0);
+		volUniforms[34] = renderCtx.createUniform("maxBounces", { (uint8_t*)&maxBounces, sizeof(int) }, UniformType::Int, 0);
+		volUniforms[35] = renderCtx.createUniform("useFactor", { (uint8_t*)&useFactor, sizeof(int) }, UniformType::Int, 0);
 
 		//init shader LBVH
 	}
@@ -374,12 +376,14 @@ namespace narvalengine {
 		renderFrameTex[0] = renderCtx.createTexture(res.x, res.y, 0, TextureLayout::RGB32F, { data, sizeBytes }, NE_TEX_SAMPLER_MIN_MAG_LINEAR | NE_TEX_SAMPLER_UVW_CLAMP);
 		renderFrameTex[1] = renderCtx.createTexture(res.x, res.y, 0, TextureLayout::RGB32F, { new uint8_t[sizeBytes], sizeBytes }, NE_TEX_SAMPLER_MIN_MAG_LINEAR | NE_TEX_SAMPLER_UVW_CLAMP);
 		renderFrameTex[2] = renderCtx.createTexture(res.x, res.y, 0, TextureLayout::RGB32F, { new uint8_t[sizeBytes], sizeBytes }, NE_TEX_SAMPLER_MIN_MAG_LINEAR | NE_TEX_SAMPLER_UVW_CLAMP);
+		renderFrameTex[3] = renderCtx.createTexture(res.x, res.y, 0, TextureLayout::RGB32F, { new uint8_t[sizeBytes], sizeBytes }, NE_TEX_SAMPLER_MIN_MAG_LINEAR | NE_TEX_SAMPLER_UVW_CLAMP);
 
 		sizeBytes = res.x * res.y * 4; // 3 bytes per depth pixel (4 to fill integer)
 		uint8_t* dataD = new uint8_t[sizeBytes];
 		renderFrameDepthTex[0] = renderCtx.createTexture(res.x, res.y, 0, TextureLayout::D24S8, { dataD, sizeBytes }, NE_TEX_SAMPLER_MIN_MAG_LINEAR | NE_TEX_SAMPLER_UVW_CLAMP);
 		renderFrameDepthTex[1] = renderCtx.createTexture(res.x, res.y, 0, TextureLayout::D24S8, { new uint8_t[sizeBytes], sizeBytes }, NE_TEX_SAMPLER_MIN_MAG_LINEAR | NE_TEX_SAMPLER_UVW_CLAMP);
 		renderFrameDepthTex[2] = renderCtx.createTexture(res.x, res.y, 0, TextureLayout::D24S8, { new uint8_t[sizeBytes], sizeBytes }, NE_TEX_SAMPLER_MIN_MAG_LINEAR | NE_TEX_SAMPLER_UVW_CLAMP);
+		renderFrameDepthTex[3] = renderCtx.createTexture(res.x, res.y, 0, TextureLayout::D24S8, { new uint8_t[sizeBytes], sizeBytes }, NE_TEX_SAMPLER_MIN_MAG_LINEAR | NE_TEX_SAMPLER_UVW_CLAMP);
 	
 		Attachment a[2];
 		a[0] = { renderFrameTex[0] };
@@ -395,6 +399,11 @@ namespace narvalengine {
 		c[0] = { renderFrameTex[2] };
 		c[1] = { renderFrameDepthTex[2] };
 		fbRenderFrame[2] = renderCtx.createFrameBuffer(2, &c[0]);
+
+		Attachment d[2];
+		d[0] = { renderFrameTex[3] };
+		d[1] = { renderFrameDepthTex[3] };
+		fbRenderFrame[3] = renderCtx.createFrameBuffer(2, &d[0]);
 
 		initRenderAPI();
 	};
@@ -1290,6 +1299,11 @@ namespace narvalengine {
 		if (ImGui::MenuItem("Compare Renderer")) {
 			compareScene();
 		}
+		if (ImGui::MenuItem("Compare RealTime")) {
+			frameCount = 0;
+			didSceneChange = true;
+			currentRenderingMode = 3;
+		}
 		ImGui::EndMenuBar();
 		ImGui::End();
 		ImGui::PopStyleVar();
@@ -1481,7 +1495,13 @@ namespace narvalengine {
 
 			//TODO temporary gambiarra
 			Model* m = scene.lights.at(0)->model;
-			Rectangle* r = (Rectangle*)scene.lights.at(0)->model->materials.at(0)->light->primitive;
+			Rectangle* r;
+			if (r = dynamic_cast<Rectangle*>(scene.lights.at(0)->model->materials.at(0)->light->primitive)) {
+
+			}
+			else
+				continue;
+
 			renderCtx.updateUniform(volUniforms[16], { (uint8_t*)&lightPos[0], sizeof(glm::vec3) });
 			renderCtx.updateUniform(volUniforms[17], { (uint8_t*)&scene.lights.at(0)->model->materials.at(0)->light->li, sizeof(glm::vec3) });
 			volLightRecMin = r->getVertex(0);
@@ -1534,19 +1554,7 @@ namespace narvalengine {
 		}
 	}
 
-	void SceneEditor::renderRealTimePBR() {
-		currentFrame = ++currentFrame % 2;
-		if ((volRenderingMode == 1 || volRenderingMode == 3) && didSceneChange) {
-			frameCount = 0;
-			renderCtx.setFrameBufferClear(fbRenderFrame[0], 0, 0, 0, 1);
-			renderCtx.setFrameBufferClear(fbRenderFrame[1], 0, 0, 0, 1);
-			renderCtx.setFrameBufferClear(fbRenderFrame[2], 0, 0, 0, 1);
-		}else if (volRenderingMode == 0) {
-			renderCtx.setFrameBufferClear(fbRenderFrame[0], 0, 0, 0, 1);
-			renderCtx.setFrameBufferClear(fbRenderFrame[1], 0, 0, 0, 1);
-			renderCtx.setFrameBufferClear(fbRenderFrame[2], 0, 0, 0, 1);
-		}
-
+	void SceneEditor::renderScene(FrameBufferHandler *fbh, TextureHandler *fbhTex, int currentFrame) {
 		for (InstancedModel* im : scene.lights) {
 			if (im == currentSelectedIM) {
 				renderCtx.setStencil(
@@ -1578,7 +1586,7 @@ namespace narvalengine {
 			renderCtx.updateUniform(pbrUniforms[12], { (uint8_t*)(camera.getPosition()), sizeof(glm::vec3) });
 			renderCtx.setModel(rmToRenderAPI.at(im->modelID));
 
-			renderCtx.setFrameBuffer(fbRenderFrame[currentFrame]);
+			renderCtx.setFrameBuffer(fbh[currentFrame]);
 
 			renderCtx.render(pbrProgramHandler);
 
@@ -1611,7 +1619,7 @@ namespace narvalengine {
 					}
 
 					//texHandler e uniformHandler
-					if(isHandleValid(mh.meshes.at(i).material.textures[ctz(TextureName::ALBEDO)].id))
+					if (isHandleValid(mh.meshes.at(i).material.textures[ctz(TextureName::ALBEDO)].id))
 						renderCtx.setTexture(mh.meshes.at(i).material.textures[ctz(TextureName::ALBEDO)], pbrUniforms[6]); //material.diffuse
 					if (isHandleValid(mh.meshes.at(i).material.textures[ctz(TextureName::METALLIC)].id))
 						renderCtx.setTexture(mh.meshes.at(i).material.textures[ctz(TextureName::METALLIC)], pbrUniforms[7]); //material.metallic
@@ -1621,14 +1629,14 @@ namespace narvalengine {
 					if (isHandleValid(mh.meshes.at(i).material.textures[ctz(TextureName::ROUGHNESS)].id))
 						renderCtx.setTexture(mh.meshes.at(i).material.textures[ctz(TextureName::ROUGHNESS)], pbrUniforms[10]); //material.roughness
 					//renderCtx.setTexture(mh.meshes.at(i).material.textures[TextureName::AO], pbrUniforms[11]); //material.ao
-					
+
 					/*renderCtx.setTexture(mh.meshes.at(i).textures.at(0), pbrUniforms[6]); //material.diffuse
 					renderCtx.setTexture(mh.meshes.at(i).textures.at(0), pbrUniforms[7]); //material.metallic
 					//renderCtx.setTexture(mh.meshes.at(i).textures.at(0), pbrUniforms[8]); //material.specular
 					renderCtx.setTexture(mh.meshes.at(i).textures.at(0), pbrUniforms[9]); //material.normal
 					renderCtx.setTexture(mh.meshes.at(i).textures.at(0), pbrUniforms[10]); //material.roughness
 					renderCtx.setTexture(mh.meshes.at(i).textures.at(0), pbrUniforms[11]); //material.ao*/
-					
+
 					renderCtx.setTexture(shadowDepthTex, pbrUniforms[13]); //shadowTex
 
 					renderCtx.updateUniform(pbrUniforms[0], { (uint8_t*)(&im->transformToWCS[0][0]), sizeof(im->transformToWCS) });
@@ -1637,14 +1645,14 @@ namespace narvalengine {
 
 					renderCtx.setMesh(mh.meshes.at(i));
 
-					renderCtx.setFrameBuffer(fbRenderFrame[currentFrame]);
+					renderCtx.setFrameBuffer(fbh[currentFrame]);
 
 					renderCtx.render(pbrProgramHandler);
 				}
 			}
 
 			if (im->model->materials.at(0)->bsdf->bsdfType & BxDF_TRANSMISSION) {
-				for (int i = 0; i < 34; i++)
+				for (int i = 0; i < 36; i++)
 					renderCtx.setUniform(volUniforms[i]);
 
 				//texHandler e uniformHandler
@@ -1662,12 +1670,16 @@ namespace narvalengine {
 				GridMedia* gm = (GridMedia*)m;
 				densityMc = gm->densityMultiplier;
 				invMaxDensity = gm->invMaxDensity;
+				VolumeBSDF *volbsdf = (VolumeBSDF*)im->model->materials.at(0)->bsdf->bxdf[0];
+				HG* hg = (HG*)volbsdf->phaseFunction;
+				g = hg->g;
+
 				renderCtx.updateUniform(volUniforms[28], { (uint8_t*)&invMaxDensity, sizeof(float) });
 				renderCtx.updateUniform(volUniforms[29], { (uint8_t*)&densityMc, sizeof(float) });
 
-				renderCtx.setTexture(renderFrameTex[(currentFrame + 1) % 2], volUniforms[5]); //background
+				renderCtx.setTexture(fbhTex[(currentFrame + 1) % 2], volUniforms[5]); //background
 				renderCtx.setTexture(renderFrameDepthTex[(currentFrame + 1) % 2], volUniforms[6]); //backgroundDepth
-				renderCtx.setTexture(renderFrameTex[(currentFrame+1)%2], volUniforms[7]); //previous frame
+				renderCtx.setTexture(fbhTex[(currentFrame + 1) % 2], volUniforms[7]); //previous frame
 				//renderCtx.setTexture(shadowDepthTex, phongUniforms[10]); //shadowTex
 
 				renderCtx.updateUniform(volUniforms[0], { (uint8_t*)(&im->transformToWCS[0][0]), sizeof(im->transformToWCS) });
@@ -1676,12 +1688,29 @@ namespace narvalengine {
 				renderCtx.updateUniform(volUniforms[27], { (uint8_t*)&im->invTransformToWCS[0][0], sizeof(glm::mat4) });
 				renderCtx.setModel(rmToRenderAPI.at(im->modelID));
 
-				renderCtx.setFrameBuffer(fbRenderFrame[currentFrame]);
+				renderCtx.setFrameBuffer(fbh[currentFrame]);
 				glDisable(GL_DEPTH_TEST); //TODO temporary, should not expose GL here plus it should be enabled only on volRederingMode = 1 (PATH TRACING MODE)	
 				renderCtx.render(volProgramHandler);
 				glEnable(GL_DEPTH_TEST);
 			}
 		}
+	}
+
+	void SceneEditor::renderRealTimePBR() {
+		currentFrame = ++currentFrame % 2;
+		if ((volRenderingMode == 1 || volRenderingMode == 3) && didSceneChange) {
+			frameCount = 0;
+			renderCtx.setFrameBufferClear(fbRenderFrame[0], 0, 0, 0, 1);
+			renderCtx.setFrameBufferClear(fbRenderFrame[1], 0, 0, 0, 1);
+			renderCtx.setFrameBufferClear(fbRenderFrame[2], 0, 0, 0, 1);
+		}else if (volRenderingMode == 0) {
+			renderCtx.setFrameBufferClear(fbRenderFrame[0], 0, 0, 0, 1);
+			renderCtx.setFrameBufferClear(fbRenderFrame[1], 0, 0, 0, 1);
+			renderCtx.setFrameBufferClear(fbRenderFrame[2], 0, 0, 0, 1);
+		}
+
+		maxBounces = scene.settings.bounces;
+		renderScene(&fbRenderFrame[0], &renderFrameTex[0], currentFrame);
 
 		/*if (currentSelectedIM != nullptr && currentSelectedIM->model->primitives.size() > 0) {
 			glDisable(GL_DEPTH_TEST); //TODO NOT EXPOSE GL HERE. TEMPORARY
@@ -2028,6 +2057,100 @@ namespace narvalengine {
 		renderCtx.render(imgDiffProgramH);
 	}
 
+	void SceneEditor::renderCompareRealTime() {
+		currentFrame = ++currentFrame % 2;
+		if ((volRenderingMode == 1 || volRenderingMode == 3) && didSceneChange) {
+			frameCount = 0;
+			renderCtx.setFrameBufferClear(fbRenderFrame[0], 0, 0, 0, 1);
+			renderCtx.setFrameBufferClear(fbRenderFrame[1], 0, 0, 0, 1);
+			renderCtx.setFrameBufferClear(fbRenderFrame[2], 0, 0, 0, 1);
+			renderCtx.setFrameBufferClear(fbRenderFrame[3], 0, 0, 0, 1);
+		}
+		else if (volRenderingMode == 0) {
+			renderCtx.setFrameBufferClear(fbRenderFrame[0], 0, 0, 0, 1);
+			renderCtx.setFrameBufferClear(fbRenderFrame[1], 0, 0, 0, 1);
+			renderCtx.setFrameBufferClear(fbRenderFrame[2], 0, 0, 0, 1);
+			renderCtx.setFrameBufferClear(fbRenderFrame[3], 0, 0, 0, 1);
+		}
+
+		glm::vec2 viewSize = glm::vec2(WIDTH - rightColumnMenuSize.x, 0);
+		viewSize.x = viewSize.x / 2;
+		viewSize.y = sceneFrameSize.y;
+
+		glm::vec2 totalView = glm::vec2((WIDTH - rightColumnMenuSize.x), HEIGHT - menuBarSize.y);
+
+		//view 1 - Original
+		volRenderingMode = 3;
+		maxBounces = 6;
+		useFactor = 0;
+		renderScene(&fbRenderFrame[0], &renderFrameTex[0], currentFrame);
+
+		model = glm::mat4(1);
+		//(x,y) = (0,0) is the bottom left corner
+		model = glm::translate(model, { viewSize.x / 2, viewSize.y / 2 + totalView.y / 2, 0 });
+		model = glm::scale(model, { viewSize.x / 2, -viewSize.y / 2, 1 });
+
+		renderCtx.setUniform(uniforms[0]);
+		renderCtx.setUniform(uniforms[1]);
+		renderCtx.setUniform(uniforms[2]);
+		renderCtx.setUniform(uniforms[4]);
+
+		renderCtx.updateUniform(uniforms[0], { (uint8_t*)(&model[0]), sizeof(model) });
+		renderCtx.updateUniform(uniforms[1], { (uint8_t*)(&orthoProj[0]), sizeof(model) });
+		renderCtx.updateUniform(uniforms[2], { (uint8_t*)(&staticCam[0]), sizeof(model) });
+
+		renderCtx.setTexture(renderFrameTex[currentFrame], uniforms[4]);
+		renderCtx.setModel(quadModelHandler);
+
+		renderCtx.render(simpleTexProgramH);
+
+		//view 2 - MS factor
+		volRenderingMode = 3;
+		maxBounces = 1;
+		useFactor = 1;
+		renderScene(&fbRenderFrame[2], &renderFrameTex[2], currentFrame);
+
+		model = glm::mat4(1);
+		model = glm::translate(model, { viewSize.x / 2 + viewSize.x, viewSize.y / 2 + totalView.y / 2, 0 });
+		model = glm::scale(model, { viewSize.x / 2, -viewSize.y / 2, 1 });
+
+		renderCtx.setUniform(uniforms[0]);
+		renderCtx.setUniform(uniforms[1]);
+		renderCtx.setUniform(uniforms[2]);
+		renderCtx.setUniform(uniforms[4]);
+
+		renderCtx.updateUniform(uniforms[0], { (uint8_t*)(&model[0]), sizeof(model) });
+		renderCtx.updateUniform(uniforms[1], { (uint8_t*)(&orthoProj[0]), sizeof(model) });
+		renderCtx.updateUniform(uniforms[2], { (uint8_t*)(&staticCam[0]), sizeof(model) });
+
+		renderCtx.setTexture(renderFrameTex[currentFrame + 2], uniforms[4]);
+		renderCtx.setModel(quadModelHandler);
+
+		renderCtx.render(simpleTexProgramH);
+
+		//view 3 - Difference between both
+		model = glm::mat4(1);
+		model = glm::translate(model, { totalView.x / 2, viewSize.y / 2 + 60, 0 });
+		model = glm::scale(model, { viewSize.x / 2, -viewSize.y / 2, 1 });
+
+		renderCtx.setUniform(imgDiffUniforms[0]);
+		renderCtx.setUniform(imgDiffUniforms[1]);
+		renderCtx.setUniform(imgDiffUniforms[2]);
+		renderCtx.setUniform(imgDiffUniforms[3]);
+		renderCtx.setUniform(imgDiffUniforms[4]);
+
+		renderCtx.updateUniform(imgDiffUniforms[0], { (uint8_t*)(&model[0]), sizeof(model) });
+		renderCtx.updateUniform(imgDiffUniforms[1], { (uint8_t*)(&orthoProj[0]), sizeof(model) });
+		renderCtx.updateUniform(imgDiffUniforms[2], { (uint8_t*)(&staticCam[0]), sizeof(model) });
+
+		renderCtx.setTexture(renderFrameTex[currentFrame], imgDiffUniforms[3]);
+		renderCtx.setTexture(renderFrameTex[currentFrame + 2], imgDiffUniforms[4]);
+		renderCtx.setModel(quadModelHandler);
+
+		renderCtx.render(imgDiffProgramH);
+		frameCount++;
+	}
+
 	void SceneEditor::render() {
 		if (currentRenderingMode == OFFLINE_RENDERING_MODE) {
 			renderOffline();
@@ -2039,6 +2162,9 @@ namespace narvalengine {
 		}
 		else if (currentRenderingMode == COMPARE_RENDERING_MODE) {
 			renderCompare();
+		}
+		else if (currentRenderingMode == 3) {
+			renderCompareRealTime();
 		}
 
 		renderImGUI();

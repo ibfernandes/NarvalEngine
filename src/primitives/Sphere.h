@@ -12,6 +12,11 @@ namespace narvalengine {
 
 		Sphere();
 		~Sphere();
+
+		glm::vec3 getCenter() {
+			return glm::vec3(*vertexData[0], *(vertexData[0] + 1), *(vertexData[0] + 2));
+		}
+
 		/*
 			Checks if Ray r intesercts this primitive. If true, stores its values on hit.
 			Ray must be in OCS.
