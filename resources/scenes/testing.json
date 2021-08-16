@@ -5,30 +5,7 @@
 		{
 			"name": "emitter",
 			"type": "emitter",
-			"albedo": [15000, 15000, 15000]
-		},
-		{
-			"name": "emitterSky",
-			"type": "infiniteAreaLight",
-			"path": "imgs/sunset.png",
-			"albedo": [15000, 15000, 15000],
-			"scale": 10
-		},
-		{
-			"name": "whiteMat",
-			"type": "microfacet",
-			"roughness": 0.95,
-			"metallic": 0.0,
-			"albedo": [0.8, 0.8, 0.8],
-			"normalMap": [0.5, 0.5, 1.0]
-		},
-		{
-			"name": "blueSky",
-			"type": "microfacet",
-			"roughness": 0.95,
-			"metallic": 0.0,
-			"albedo": [0.6, 0.7, 0.9],
-			"normalMap": [0.5, 0.5, 1.0]
+			"albedo": [200, 200, 200]
 		},
 		{
 			"name": "cloudVolMat",
@@ -38,7 +15,7 @@
 			"phaseFunction": "hg",
 			"g": 0.0,
 			"path" : "vdb/wdas_cloud_sixteenth.vdb",
-			"density": 100
+			"density": 10
 		}
 	],
 	
@@ -47,8 +24,8 @@
 			"name": "rectLight",
 			"type": "rectangle",
 			"transform": {
-				"position": [0, 5, 0],
-				"scale": [1, 1, 1],
+				"position": [0, 10, 0],
+				"scale": [100, 100, 1],
 				"rotation": [-89, 0, 0]
 			},
 			"materialName": "emitter"
@@ -58,8 +35,7 @@
 			"type": "volume",
 			"transform": {
 				"position": [0.0, 0, 0],
-				"scaleC": [1.59, 0.951, 1.35],
-				"scale": [4, 4, 4],
+				"scale": [15.9, 9.51, 13.5],
 				"rotation": [0, 0, 0]
 			},
 			"materialName": "cloudVolMat"
@@ -67,7 +43,7 @@
 	],
 
 	"camera": {
-		"position": [0, 2, -6],
+		"position": [0, 0, -27],
 		"lookAt": [0, 0, 0],
 		"up": [0, 1, 0],
 		"speed": 5,

@@ -1,0 +1,120 @@
+{
+	"version" : "0.0.1a",
+	
+	"materials": [
+		{
+			"name": "emitter",
+			"type": "emitter",
+			"albedo": [1000.0, 685.0, 539.0]
+		},
+		{
+			"name": "emitterRocket",
+			"type": "emitter",
+			"albedo": [10000.0, 4850.0, 1390.0]
+		},
+		{
+			"name": "cloudVolMat",
+			"type": "volume",
+			"scattering": [1.1, 1.1, 1.1],
+			"absorption": [0.01, 0.01, 0.01],
+			"phaseFunction": "hg",
+			"g": 0.0,
+			"path" : "vdb/largeCloud5.vdb",
+			"density": 200
+		},
+		{
+			"name": "cloudVolMat2",
+			"type": "volume",
+			"scattering": [1.1, 1.1, 1.1],
+			"absorption": [0.29, 0.29, 0.29],
+			"phaseFunction": "hg",
+			"g": 0.0,
+			"path" : "vdb/largeCloud3.vdb",
+			"density": 200
+		},
+		{
+			"name": "explosionVolMat",
+			"type": "volume",
+			"scattering": [1.1, 1.1, 1.1],
+			"absorption": [0.01, 0.10, 0.10],
+			"phaseFunction": "hg",
+			"g": 0.0,
+			"path" : "vdb/explosion.vdb",
+			"density": 200
+		}
+	],
+	
+	"primitives": [
+		{
+			"name": "rectLight",
+			"type": "rectangle",
+			"transform": {
+				"position": [40, 100, 40],
+				"scale": [100, 100, 1],
+				"rotation": [-89, 0, 0]
+			},
+			"materialName": "emitter"
+		},
+		{
+			"name": "cloud",
+			"type": "volume",
+			"transform": {
+				"position": [0.0, -16, 0],
+				"scale": [82.8, 35.6, 64],
+				"rotation": [0, 0, 0]
+			},
+			"materialName": "cloudVolMat"
+		},
+		{
+			"name": "cloud2",
+			"type": "volume",
+			
+			"transform": {
+				"position": [45, -7, 100],
+				"scale": [64.4, 72, 23.4],
+				"rotation": [0, 0, 0]
+			},
+			"materialName": "cloudVolMat2"
+		},			
+		{
+			"name": "rocketExplosion",
+			"type": "volume",
+			"transform": {
+				"position": [4.35, -2.5, 0],
+				"scale": [18, 5.0, 1],
+				"rotation": [0, 0, -17.87]
+			},
+			"materialName": "explosionVolMat"
+		},
+		{
+			"name": "rocket",
+			"type": "obj",
+			"transform": {
+				"position": [0, 0, 0],
+				"scale": [1, 1, 1],
+				"rotation": [-76, 16, 87]
+			},
+			"path" : "models/rocket/rocket.obj"
+		}
+	],
+
+	"camera": {
+		"position": [0, 0, -45],
+		"lookAt": [0, 0, 0],
+		"up": [0, 1, 0],
+		"speed": 5,
+		"vfov": 45,
+		"aperture": 0.0001,
+		"autoFocus": true,
+		"focus": 1
+	},
+	
+	"renderer": {
+		"resolution": [1200, 600],
+		"spp": 1,
+		"bounces": 3,
+		"mode": "realtime",
+		"HDR": true,
+		"toneMapping": false
+	}
+}

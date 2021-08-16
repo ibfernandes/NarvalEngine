@@ -1002,7 +1002,7 @@ uniform float stepSize = 0.1; // TODO better calculate it
 uniform int newNumberOfSteps = 100;
 uniform int nPointsToSample = 10;
 uniform int newMeanPathMult = 20;
-uniform float param_1 = 10;
+uniform float param_1 = 1;
 vec3 pointsToSample[100]; //should be [nPointsToSample], points on phase function lobe
 vec3 sampledDirections[100]; //should be [nPointsToSample]
 
@@ -1020,15 +1020,6 @@ vec3 newCalculateTr(vec3 A, vec3 B){
 	for(int i = 0; i < newNumberOfSteps; i++){
 		float sampledDensity = sampleVolumeMC(r.origin);
 		Tr *= exp(-extinctionMc.x * sampledDensity * invMaxDensity);
-		/*Tr *= 1 - max(0.0f, sampledDensity * invMaxDensity);
-		const float rrThreshold = .1;
-		
-		if (Tr < rrThreshold) {
-			float q = max(0.05f, 1.0f - Tr);
-			if (randomUniform(uv) < q) 
-				return vec3(0.0f);
-			Tr /= 1 - q;
-		}*/
 		
 		r.origin = getPointAt(r, stepSize);
 	}
@@ -1106,7 +1097,7 @@ vec3 newMethod(Ray incoming){
 	
 	avgL = avgL * scatteringMc;
 	
-	finalL = avgL + trAvg; //TODO try sum instead of multiply
+	finalL = param_1 * avgL + trAvg; //TODO try sum instead of multiply
 	
 	return finalL;
 }

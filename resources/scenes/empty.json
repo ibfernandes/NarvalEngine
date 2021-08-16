@@ -1,0 +1,29 @@
+{
+	"version" : "0.0.1a",
+	
+	"materials": [
+	],
+	
+	"primitives": [
+	],
+
+	"camera": {
+		"position": [0, 1, -5],
+		"lookAt": [0, 0, 0],
+		"up": [0, 1, 0],
+		"speed": 5,
+		"vfov": 45,
+		"aperture": 0.0001,
+		"autoFocus": true,
+		"focus": 1
+	},
+	
+	"renderer": {
+		"resolution": [1200, 600],
+		"spp": 1,
+		"bounces": 3,
+		"mode": "realtime",
+		"HDR": false,
+		"toneMapping": false
+	}
+}
