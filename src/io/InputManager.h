@@ -83,6 +83,8 @@ namespace narvalengine {
 			keyMapping.insert({ "YAW_LEFT", {KeyHolding, GLFW_KEY_H} });
 			//keyMapping.insert({ "YAW_LEFT", {KeyHolding, GLFW_KEY_LEFT} });
 
+			keyMapping.insert({ "MOUSE_MOVE_CAMERA", {KeyHolding, GLFW_MOUSE_BUTTON_MIDDLE} });
+
 			keyMapping.insert({ "SELECT_OBJECT", {KeyRelease, GLFW_MOUSE_BUTTON_LEFT} });
 
 			keyMapping.insert({ "ROTATE_OBJECT", {KeyRelease, NE_INPUT_MOD_SET(GLFW_KEY_R, NE_INPUT_MOD_CTRL)} });

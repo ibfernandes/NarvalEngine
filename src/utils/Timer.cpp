@@ -24,6 +24,10 @@ namespace narvalengine {
 		return std::chrono::duration_cast<std::chrono::seconds>(end - begin).count();
 	}
 
+	float Timer::getMilliseconds() {
+		return std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+	}
+
 	float Timer::getMicroseconds() {
 		return std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() / 1000000.0;
 	}

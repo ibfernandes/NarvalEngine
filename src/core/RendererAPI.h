@@ -133,14 +133,18 @@
 #define NE_MAX_VERTEX_BUFFERS 2048
 #define NE_MAX_INDEX_BUFFERS 2048
 #define NE_MAX_UNIFORMS 2048
-#define NE_MAX_SHADERS 16
-#define NE_MAX_PROGRAMS 16
+#define NE_MAX_SHADERS 32
+#define NE_MAX_PROGRAMS 32
 #define NE_MAX_MESHS 1024
 #define NE_MAX_MATERIALS 1024
 #define NE_MAX_MODELS 1024
 #define NE_MAX_STAGES	8
 
 namespace narvalengine {
+	enum ImageFileFormat {
+		PNG,
+		EXR
+	};
 
 	struct VertexAttrib{
 		enum Enum {

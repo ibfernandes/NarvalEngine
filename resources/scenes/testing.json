@@ -24,7 +24,7 @@
 			"name": "rectLight",
 			"type": "rectangle",
 			"transform": {
-				"position": [0, 10, 0],
+				"position": [0, 40, 0],
 				"scale": [100, 100, 1],
 				"rotation": [-89, 0, 0]
 			},

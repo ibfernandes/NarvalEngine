@@ -44,7 +44,7 @@ namespace narvalengine {
 
 				// Accumulate beam transmittance for ray segment
 				Medium* m = nullptr;
-				if(hitSurface)
+				if(hitSurface && ri->primitive->material)
 					m = ri->primitive->material->medium;
 				if (m != nullptr) {
 					Ray scatteredToLightOCS = transformRay(ray, intersec.instancedModel->invTransformToWCS);
@@ -53,7 +53,7 @@ namespace narvalengine {
 
 				// Initialize next ray segment or terminate transmittance computation
 				if (!hitSurface) return false;
-				if (ri->primitive->material->medium != nullptr) return true;
+				if (m != nullptr) return true;
 				/*If nullptr is returned, ray intersections with the primitive should be ignored;
 				the primitive only serves to delineate a volume of space for participating media.
 				This method is also used to check if two rays have intersected the same object by comparing their Material pointers. */
@@ -86,13 +86,13 @@ namespace narvalengine {
 					printVec3(intersec.hitPoint, "hitPoint ");
 				}*/
 
-				if (hitSurface && intersec.primitive->material->light != nullptr)
+				if (hitSurface && intersec.primitive->material && intersec.primitive->material->light != nullptr)
 					return Tr;
 
 				// Handle opaque surface along ray's path
 				//if (hitSurface && isect.primitive->GetMaterial() != nullptr)
 				//	return Spectrum(0.0f);
-				if (hitSurface && intersec.primitive->material->medium == nullptr) {
+				if (hitSurface && intersec.primitive->material && intersec.primitive->material->medium == nullptr) {
 					//std::cout << "visTr returned 0" << std::endl;
 					return glm::vec3(0.0f);
 				}
@@ -106,7 +106,9 @@ namespace narvalengine {
 					break;
 
 				// Update transmittance for current ray segment
-				Medium* m = intersec.primitive->material->medium;
+				Medium* m = nullptr;
+				if(intersec.primitive->material)
+					m = intersec.primitive->material->medium;
 				if (m != nullptr) {
 					Ray scatteredToLightOCS = transformRay(ray, intersec.instancedModel->invTransformToWCS);
 					Tr *= m->Tr(scatteredToLightOCS, intersec);
@@ -188,7 +190,7 @@ namespace narvalengine {
 				}else {
 					// Sample scattered direction for medium interactions
 					f = intersecOnASurface.primitive->material->bsdf->eval(incoming.d, scatteredWo.d, intersecOnASurface);
-					scatteredWo.d = intersecOnASurface.primitive->material->bsdf->sample(incoming.d, intersecOnASurface.normal);
+					scatteredWo.d = intersecOnASurface.primitive->material->bsdf->sample(incoming.d, glm::vec3(0,0,1)); //intersecOnASurface.normal
 					scatteringPdf = f.x;
 				}
 				
@@ -266,25 +268,10 @@ namespace narvalengine {
 
 				bool didIntersect = scene->intersectScene(incoming, intersection, 0.001f, 9999);
 
-				if (b == 0 /*|| specularBounce*/) {
-					//If ray intersected a primitive and it is emissive, get its Light Emission Radiance (Le).
-					if (didIntersect && (intersection.primitive->material->light != nullptr))
-						L += transmittance * intersection.primitive->material->light->Li();
-					else
-						//For each scene's light, get its Le (which is different from 0 only for infinite area lights)
-						for (InstancedModel *light : scene->lights) {
-							//TODO: watch for nulls? materials will be restricted to one light only?
-							for (Material *m : light->model->materials) {
-								Light *l = m->light;
-								L += transmittance * l->Le(incoming, light->invTransformToWCS);
-							}
-						}
-				}
-
-				if (!didIntersect || !intersection.primitive->material->bsdf || isBlack(transmittance))
+				if (/*!didIntersect || !intersection.primitive->material->bsdf ||*/ isBlack(transmittance))
 					break;
 
-				if (intersection.primitive->material->bsdf->bsdfType & BxDF_TRANSMISSION) {
+				if (didIntersect && intersection.primitive->material && intersection.primitive->material->bsdf && intersection.primitive->material->bsdf->bsdfType & BxDF_TRANSMISSION) {
 					Ray scattered;
 
 					//Move ray origin to volume's AABB boundary
@@ -346,6 +333,25 @@ namespace narvalengine {
 					if (shouldComputePath)
 						path.push_back({ incoming, transmittance, phaseFr, L });
 				} else {
+
+					if (b == 0 /*|| specularBounce*/) {
+						//If ray intersected a primitive and it is emissive, get its Light Emission Radiance (Le).
+						if (didIntersect && intersection.primitive->material && (intersection.primitive->material->light != nullptr))
+							L += transmittance * intersection.primitive->material->light->Li();
+						else
+							//For each scene's light, get its Le (which is different from 0 only for infinite area lights)
+							for (InstancedModel* light : scene->lights) {
+								//TODO: watch for nulls? materials will be restricted to one light only?
+								for (Material* m : light->model->materials) {
+									Light* l = m->light;
+									L += transmittance * l->Le(incoming, light->invTransformToWCS);
+								}
+							}
+					}
+
+					if (!didIntersect || !intersection.primitive->material || !intersection.primitive->material->bsdf)
+						break;
+
 					//Sample BSDF for scattered direction
 					float bsdfPdf;
 					Ray scattered;

@@ -8,15 +8,16 @@ namespace narvalengine {
 		this->aperture = aperture;
 		lensRadius = aperture / 2.0f;
 		this->vfov = vfov;
-		theta = glm::radians(vfov);
-		halfHeight = tan(theta / 2.0f);
+		float t = glm::radians(vfov);
+		halfHeight = tan(t / 2.0f);
 		halfWidth = aspectRatio * halfHeight;
 		this->focusDistance = focusDistance;
 
 		position = lookFrom;
+		lookAtPoint = lookAt;
+		this->up = up;
 		front = glm::normalize(lookFrom - lookAt);
 		side = glm::normalize(glm::cross(up, front));
-		this->up = glm::cross(front, side);
 
 		lowerLeft = position - focusDistance * halfWidth * -side - focusDistance * halfHeight * this->up - focusDistance * -front;
 		horizontal = 2.0f * focusDistance * halfWidth * -side;
@@ -28,13 +29,55 @@ namespace narvalengine {
 	Camera::~Camera(){
 	}
 
+	void Camera::changeHeading(float deg) {
+		if (pitch > 90 && pitch < 270 || (pitch < -90 && pitch > -270)) 
+			heading -= deg;	
+		else 
+			heading += deg;
+		
+		if (heading > 360.0f) 
+			heading -= 360.0f;
+		else if (heading < -360.0f) 
+			heading += 360.0f;
+	}
+
+	void Camera::changePitch(float deg) {
+		pitch += deg;
+
+		if (pitch > 60)
+			pitch = 60;
+		else if (pitch < -60)
+			pitch = -60;
+
+		if (pitch > 360.0f) 
+			pitch -= 360.0f;
+		else if (pitch < -360.0f) 
+			pitch += 360.0f;
+	}
+
+	void Camera::moveUsingMouse() {
+		glm::vec2 mousePos = InputManager::getSelf()->getMousePosition();
+		glm::vec2 delta = previousMousePos - mousePos;
+
+		if (InputManager::getSelf()->eventTriggered("MOUSE_MOVE_CAMERA")) {
+			pitch = prevPitch;
+			heading = prevHeading;
+			changeHeading(0.08f * delta.x);
+			changePitch(0.08f * delta.y);
+		}else {
+			previousMousePos = InputManager::getSelf()->getMousePosition();
+			prevPitch = pitch;
+			prevHeading = heading;
+		}
+	}
+
 	void Camera::update() {
 		previousPosition = position;
 
 		if (InputManager::getSelf()->eventTriggered("MOVE_FORWARD"))
-			position -= front * movementSpeed;
-		else if (InputManager::getSelf()->eventTriggered("MOVE_BACKWARDS"))
 			position += front * movementSpeed;
+		else if (InputManager::getSelf()->eventTriggered("MOVE_BACKWARDS"))
+			position -= front * movementSpeed;
 
 		if (InputManager::getSelf()->eventTriggered("MOVE_RIGHT"))
 			position += side * movementSpeed;
@@ -47,29 +90,34 @@ namespace narvalengine {
 			position -= up * movementSpeed;
 
 		if (InputManager::getSelf()->eventTriggered("PITCH_UP"))
-			pitch -= rotationSpeed;
+			changePitch(rotationSpeed);
 		else if (InputManager::getSelf()->eventTriggered("PITCH_DOWN"))
-			pitch += rotationSpeed;
+			changePitch(-rotationSpeed);
 
 		if (InputManager::getSelf()->eventTriggered("YAW_RIGHT"))
-			yaw += rotationSpeed;
+			changeHeading(rotationSpeed);
 		else if (InputManager::getSelf()->eventTriggered("YAW_LEFT"))
-			yaw -= rotationSpeed;
+			changeHeading(-rotationSpeed);
 
-		if (pitch > 89.0f)
-			pitch = 89.0f;
-		if (pitch < -89.0f)
-			pitch = -89.0f;
+		moveUsingMouse();
 
-		front.x = cos(glm::radians(pitch)) * cos(glm::radians(yaw));
-		front.y = sin(glm::radians(pitch));
-		front.z = -cos(glm::radians(pitch)) * sin(glm::radians(yaw));
+		side = glm::cross(front, up);
+		glm::quat pitch_quat = glm::angleAxis(glm::radians(pitch), side);
+		glm::quat heading_quat = glm::angleAxis(glm::radians(heading), up);
+		glm::quat temp = glm::cross(pitch_quat, heading_quat);
+		temp = glm::normalize(temp);
+		front = glm::rotate(temp, glm::vec3(0,0,1));
 
-		front = glm::normalize(front);
-		cam = glm::lookAt(position, position - front, up);
-		side = -glm::cross(front, up);
+		lookAtPoint = position + front * 1.0f;
 
-		lowerLeft = position - focusDistance * halfWidth * -side - focusDistance * halfHeight * this->up - focusDistance * -front;
+		//printVec3(front, "front ");
+		//printVec3(lookAtPoint, "lookAtPoint ");
+		//std::cout << "pitch " << pitch << std::endl;
+		//std::cout << "heading " << heading << std::endl;
+
+		cam = glm::lookAt(position, position + front, up);
+
+		lowerLeft = position - focusDistance * halfWidth * -side - focusDistance * halfHeight * this->up - focusDistance * front;
 		horizontal = 2.0f * focusDistance * halfWidth * -side;
 		vertical = 2.0f * focusDistance * halfHeight * this->up;
 	}

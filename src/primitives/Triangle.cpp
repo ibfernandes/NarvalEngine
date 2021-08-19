@@ -37,7 +37,7 @@ namespace narvalengine {
 		hit.tNear = t;
 		hit.tFar = t;
 		hit.hitPoint = r.getPointAt(hit.tNear);
-		hit.uv = glm::vec2(0, 0);//TODO: barycentric coordinates
+		hit.uv = samplePointOnTexture(hit.hitPoint);
 		hit.normal = glm::normalize(normal);
 		hit.primitive = this;
 
@@ -67,11 +67,32 @@ namespace narvalengine {
 	}
 
 	glm::vec2 Triangle::samplePointOnTexture(glm::vec3 pointOnSurface) {
-		if (true /*packet contains texCoord */) {
-			glm::vec2 tex[3];
-			//do barycentric stuff and get final point on texture in normalized space
+		if (vertexLayout == nullptr || !vertexLayout->contains(VertexAttrib::TexCoord0))
+			return glm::vec3(0);
+		else {
+			glm::vec2 uv[3];
+			int stride = vertexLayout->stride / sizeof(float);
+			int texOffset = vertexLayout->offset[VertexAttrib::TexCoord0] / sizeof(float);
+			int vertexOffset = vertexLayout->offset[VertexAttrib::Position] / sizeof(float);
+			float* texPointer = vertexData[0] + texOffset;
+
+			uv[0] = *((glm::vec2*)texPointer);
+			uv[1] = *((glm::vec2*)(texPointer + stride * 1));
+			uv[2] = *((glm::vec2*)(texPointer + stride * 2));
+
+			glm::vec3 vertices[3];
+			vertices[0] = *((glm::vec3*)vertexData[0]);
+			vertices[1] = *((glm::vec3*)(vertexData[0] + stride * 1));
+			vertices[2] = *((glm::vec3*)(vertexData[0] + stride * 2));
+
+			glm::vec3 baryCoord = barycentricCoordinates(pointOnSurface, vertices[0], vertices[1], vertices[2]);
+			glm::vec3 lambda = glm::vec3(baryCoord);
+
+			glm::vec2 res;
+			res = glm::vec2(lambda.x * uv[0] + lambda.y * uv[1] + lambda.z * uv[2]);
+
+			return res;
 		}
-		return glm::vec2(0, 0);
 	}
 
 	float Triangle::pdf(RayIntersection interaction, glm::mat4 transformToWCS) {

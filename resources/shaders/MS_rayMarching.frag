@@ -1,5 +1,6 @@
 #version 430 core
 #define PI 3.1415926535897932384626433832795
+#define INV4PI 0.07957747154594766788
 #define MAX_LIGHTS 32
 
 out vec4 color; 
@@ -8,32 +9,36 @@ in vec3 vertCoord;
 flat in vec3 translation;
 flat in vec3 scale;
 
+uniform mat4 model;
+uniform mat4 cam;
+uniform mat4 proj;
+uniform mat4 invmodel;
+uniform vec3 cameraPosition;
+
 uniform sampler3D volume;
 uniform sampler2D background;
 uniform sampler2D backgroundDepth;
 
-uniform vec2 screenRes;
-uniform vec3 cameraPosition;
-uniform mat4 model;
-uniform mat4 invmodel;
-
+vec2 uv = gl_FragCoord.xy/textureSize(background, 0);
 
 /* Volume properties */
 uniform vec3 scattering;
 uniform vec3 absorption;
 #define extinction (absorption + scattering)
 #define albedo (scattering/extinction)
-
 uniform float densityCoef;
-uniform float numberOfSteps;
-uniform float shadowSteps;
 
 /* Phase function properties */
 uniform float g;
 
+/* Method Params */
+uniform int numberOfSteps;
+uniform int numberOfShadowSteps;
+const float transmittanceThreshold = 0.1;
+
 /* Light properties */
 // 0 = rect, 1 = infAreaLight
-struct LightPoint {    
+struct Light {    
     vec3 position;
 	vec3 minVertex;
 	vec3 maxVertex;
@@ -43,12 +48,8 @@ struct LightPoint {
 	int type;
 };
 
-uniform LightPoint lightPoints[MAX_LIGHTS];
+uniform Light lights[MAX_LIGHTS];
 uniform int numberOfLights = 1;
-
-uniform float Kc;
-uniform float Kl;
-uniform float Kq;
 
 struct Ray{
 	vec3 origin;
@@ -93,12 +94,6 @@ vec2 intersectBox(vec3 orig, vec3 dir) {
 	return intersectBox(orig, dir, boxMin, boxMax);
 }
 
-float sampleVolume(vec3 pos){
-	vec3 tex = ( invmodel * vec4(pos,1)).xyz + 0.5; //added 0.5
-
-	return densityCoef * texture(volume, tex).r;
-}
-
 float density(ivec3 gridPoint){
 	return texelFetch( volume, gridPoint, 0).x;
 }
@@ -118,29 +113,32 @@ float interpolatedDensity(vec3 gridPoint) {
 	return mix(d0, d1, d.z);
 }
 
-float henyeyGreensteinPhaseFunction(float cosTheta, float g){
-	float g2 = g * g;
-	return  (0.25 / PI) * (1.0 - g2) / pow(1.0 + g2 - 2.0 * g * cosTheta, 1.5);
+float sampleVolume(vec3 pos){
+	vec3 tex = ( invmodel * vec4(pos,1)).xyz + 0.5;
+	vec3 texGridPoint = tex * textureSize(volume, 0);
+
+	return interpolatedDensity(texGridPoint);
 }
 
-float phaseFunction(float theta, float g){
-	return henyeyGreensteinPhaseFunction(theta, g);
+vec3 evalHG(vec3 incoming, vec3 scattered) {
+	float cosTheta = dot(normalize(incoming), normalize(scattered));
+	float denom = 1.0f + g * g + 2.0f * g * cosTheta;
+	
+	float res = INV4PI * (1.0f - g * g) / (denom * sqrt(denom));
+	return vec3(res, res, res);
 }
 
 //geometric term
-float evaluateLight(LightPoint light, in vec3 pos){
+vec3 evaluateLight(Light light, in vec3 pos){
     float d = length(light.position - pos);
-    return (1.0f / (Kc + Kl * d + Kq * d * d));
+    return light.Li / d;
 }
 
 vec3 volumetricShadow(in vec3 cubePos, in vec3 lightPos){
-	if(enableShadow==0)
-		return vec3(1,1,1);
-
     vec3 transmittance = vec3(1.0);
-    float distance = length(lightPos-cubePos) / shadowSteps;
+    float distance = length(lightPos-cubePos) / numberOfShadowSteps;
 	vec3 lightDir = normalize(lightPos - cubePos);
-	float stepSizeShadow = 1.0f / shadowSteps;
+	float stepSizeShadow = 1.0f / numberOfShadowSteps;
 
     for(float tshadow = stepSizeShadow; tshadow < distance; tshadow += stepSizeShadow){
         vec3 cubeShadowPos = cubePos + tshadow * lightDir;
@@ -159,23 +157,22 @@ vec3 volumetricShadow(in vec3 cubePos, in vec3 lightPos){
     return transmittance;
 }
 
-bool integrate(Ray incomingRay, LightPoint light, vec2 tHit, out vec3 transmittance, out vec3 inScattering){
+bool integrate(Ray incomingRay, Light light, vec2 tHit, out vec3 transmittance, out vec3 inScattering){
 	if (tHit.x > tHit.y) 
 		return false;
 
 	tHit.x = max(tHit.x, 0.0f);
 	vec3 absDir = abs(incomingRay.direction);
 	float dt = 1.0f / ( numberOfSteps * max(absDir.x, max(absDir.y, absDir.z)));
-	float lightDotEye = dot(normalize(incomingRay.direction), normalize(light.position));
-	vec3 cubePos = incomingRay.origin + tHit.x * incomingRay.direction;
+	incomingRay.origin = getPointAt(incomingRay, tHit.x);
 	vec3 totalTr = vec3(1.0f);
 	vec3 sum = vec3(0.0f);
 	vec3 currentTr = vec3(0);
 
 	for(float t = tHit.x; t < tHit.y; t += dt){
-		float density = sampleVolume(cubePos);
+		float density = sampleVolume(incomingRay.origin);
 		if(density == 0){
-			cubePos += incomingRay.direction * dt;
+			incomingRay.origin = getPointAt(incomingRay, dt);
 			continue;
 		}
 		
@@ -185,12 +182,15 @@ bool integrate(Ray incomingRay, LightPoint light, vec2 tHit, out vec3 transmitta
 			totalTr *= currentTr;
 		}
 		
-		vec3 Ls = ambientStrength * evaluateLight(light, cubePos) * volumetricShadow(cubePos, light.position) * phaseFunction(lightDotEye, g);
+		vec3 Ls = evaluateLight(light, incomingRay.origin) 
+					* volumetricShadow(incomingRay.origin, light.position) 
+					* evalHG(incomingRay.direction, normalize(light.position - incomingRay.origin));
+					
 		//Integrate Ls from 0 to d
 		Ls =  (Ls - Ls * currentTr) / extinction; 
 
 		sum += totalTr * scattering * Ls;
-		cubePos += incomingRay.direction * dt;
+		incomingRay.origin = getPointAt(incomingRay, dt);
 	}
 
 	transmittance = totalTr;
@@ -207,7 +207,7 @@ void main(){
 	Ray incomingRay = {cameraPosition, normalize(rayDirection)};
 	vec2 tHit = intersectBox(incomingRay.origin, incomingRay.direction); 
 
-	if(integrate(incomingRay, lightPoints[0], tHit, transmittance, inScattering))
+	if(integrate(incomingRay, lights[0], tHit, transmittance, inScattering))
 		thisColor = vec4(bg.xyz * transmittance + inScattering, 1.0f);
 
 	color = thisColor;

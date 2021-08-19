@@ -397,10 +397,10 @@ namespace narvalengine {
 		}
 
 		void generateCubeVDB() {
-			glm::ivec3 res = glm::vec3(5,5,5);
+			glm::ivec3 res = glm::vec3(50,50,50);
 			float *fgrid = new float[res.x * res.y * res.z];
 			for (int i = 0; i < res.x * res.y * res.z; i++)
-				fgrid[i] = 1;
+				fgrid[i] = 0.02;
 
 			openvdb::FloatGrid::Ptr grid = openvdb::FloatGrid::create();
 			openvdb::FloatGrid::Accessor accessor = grid->getAccessor();
@@ -419,7 +419,7 @@ namespace narvalengine {
 				for (int y = -res.y/2; y < glm::ceil(res.y/2.0f); y++)
 					for (int z = -res.z/2; z < glm::ceil(res.z/2.0f); z++) {
 						openvdb::Coord xyz(x, y, z);
-						accessor.setValue(xyz, 1.0); // Should be fgrid[i] value
+						accessor.setValue(xyz, 0.02); // Should be fgrid[i] value
 					}
 			
 			//grid->insertMeta("radius", openvdb::FloatMetadata(50.0));
@@ -428,7 +428,7 @@ namespace narvalengine {
 			grid->setName("density");
 
 			// Create a VDB file object.
-			openvdb::io::File file(RESOURCES_DIR + std::string("vdb/cube.vdb"));
+			openvdb::io::File file(RESOURCES_DIR + std::string("vdb/cubeBig.vdb"));
 			openvdb::GridPtrVec grids;
 			grids.push_back(grid);
 			file.write(grids);
@@ -739,9 +739,9 @@ namespace narvalengine {
 
 			VolumetricPathIntegrator *volPath = new VolumetricPathIntegrator();
 
-			Ray r = { glm::vec3(0.1f, 0.1f,-3.0f), glm::vec3(0, 0, 1) };
+			Ray r = { glm::vec3(0.0f, 1.5f,-0.0f), glm::vec3(0, 0, 1) };
 
-			const int maxBouncesToTest = 30;
+			const int maxBouncesToTest = 100;
 			const int samples = 1000;
 			const int test = 5;
 
@@ -943,17 +943,20 @@ namespace narvalengine {
 
 				GridMedia* m = (GridMedia*)scene->instancedModels.at(0)->model->materials.at(0)->medium;
 
-				float theta[maxBouncesToTest][samples];
-				float phi[maxBouncesToTest][samples];
-				float bsdfValue[maxBouncesToTest][samples];
-				float tr[maxBouncesToTest][samples];
+				float *theta = new float[maxBouncesToTest*samples];
+				float *phi = new float[maxBouncesToTest*samples];
+				float *bsdfValue = new float[maxBouncesToTest*samples];
+				float *tr = new float[maxBouncesToTest*samples];
+				glm::vec3 *Li = new glm::vec3[maxBouncesToTest*samples*3];
 
 				for(int k = 0; k < maxBouncesToTest; k++)
 					for (int i = 0; i < samples; i++) {
-						theta[k][i] = 0;
-						phi[k][i] = 0;
-						bsdfValue[k][i] = 0;
-						tr[k][i] = 1;
+						int pos = to1D(maxBouncesToTest, samples, k, i);
+						theta[pos] = 0;
+						phi[pos] = 0;
+						bsdfValue[pos] = 0;
+						tr[pos] = 1;
+						Li[pos] = glm::vec3(0);
 					}
 
 
@@ -962,8 +965,8 @@ namespace narvalengine {
 				//...
 				for (int k = 0; k < maxBouncesToTest; k++) {
 					for (int i = 0; i < samples; i++) {
-
-						Ray incoming = r;//FFS
+						int pos = to1D(maxBouncesToTest, samples, k, i);
+						Ray incoming = r;
 
 						for (int b = 0; b < k + 1; b++) {
 							RayIntersection ri;
@@ -978,40 +981,63 @@ namespace narvalengine {
 
 							glm::vec3 sampledTransmittance = m->sample(incoming, scattered, ri);
 							glm::vec3 fr = volbsdf->eval(incoming.d, scattered.d, ri);
+							float pdf = volbsdf->pdf(incoming.d, scattered.d);
 
-							theta[k][i] += hg->theta;
-							phi[k][i] += hg->phi;
-							bsdfValue[k][i] += fr.x;
-							tr[k][i] *= sampledTransmittance.x;
+							glm::vec3 lightSample = volPath->uniformSampleOneLight(scattered, ri, scene);
+
+							theta[pos] = hg->theta;
+							phi[pos] = hg->phi;
+							bsdfValue[pos] += (fr.x/pdf);
+							tr[pos] *= sampledTransmittance.x;
+							Li[pos] += tr[pos] * lightSample;
 
 							incoming = scattered;
 						}
 
-						theta[k][i] /= (k+1);
-						phi[k][i] /= (k+1);
+						//theta[k][i] /= (k+1);
+						//phi[k][i] /= (k+1);
+						//Li[k][i] /= (k+1);
 						//bsdfValue[k][i] /= (k+1);
 					}
 					std::cout << "Bounce " << k + 1 << " finished" << std::endl;
 
-					for (int i = 0; i < samples; i++)
-						file << theta[k][i] << " ";
+					for (int i = 0; i < samples; i++) {
+						int pos = to1D(maxBouncesToTest, samples, k, i);
+						file << theta[pos] << " ";
+					}
 					file << std::endl;
-					for (int i = 0; i < samples; i++)
-						file << phi[k][i] << " ";
+
+					for (int i = 0; i < samples; i++) {
+						int pos = to1D(maxBouncesToTest, samples, k, i);
+						file << phi[pos] << " ";
+					}
 					file << std::endl;
-					for (int i = 0; i < samples; i++)
-						file << bsdfValue[k][i] << " ";
+
+					for (int i = 0; i < samples; i++) {
+						int pos = to1D(maxBouncesToTest, samples, k, i);
+						file << bsdfValue[pos] << " ";
+					}
 					file << std::endl;
-					for (int i = 0; i < samples; i++)
-						file << tr[k][i] << " ";
+
+					for (int i = 0; i < samples; i++) {
+						int pos = to1D(maxBouncesToTest, samples, k, i);
+						file << tr[pos] << " ";
+					}
+					file << std::endl;
+
+					for (int i = 0; i < samples; i++) {
+						int pos = to1D(maxBouncesToTest, samples, k, i);
+						file << Li[pos].x << " ";
+					}
 					file << std::endl;
 				}
-
 				file.close();
 			}
 
 			float k = 0;
 		}
+
+		void compareEXR(std::string img1, std::string img2, std::string writeTo);
 
 		TestPlayground() {
 			//testRandomGenRange();
@@ -1020,17 +1046,22 @@ namespace narvalengine {
 			//testMicrofacetBSDF();
 			//testUVSampling();
 			//testDot();
-			//generateCubeVDB();
+			generateCubeVDB();
 			//convertToNanoVDB();
 			//floatRoundError();
 			//testEXR();
 			//glmSIMD();
 			//aabbSIMD();
-
 			//oidnTest();
 
-			testMSFactorapproach();
-			float t;
+			//testMSFactorapproach();
+
+			//std::string img1 = RESOURCES_DIR + std::string("scenes/tests/10000spp 1000b quarter.exr");
+			//std::string img2 = RESOURCES_DIR + std::string("scenes/tests/10000spp 35b quarter.exr");
+			//std::string writeTo = RESOURCES_DIR + std::string("scenes/tests/RED1000bVS35b.exr");
+			//compareEXR(img1, img2, writeTo);
+
+			float t = 0;
 		}
 
 		~TestPlayground();

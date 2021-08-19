@@ -5,7 +5,6 @@
 #include "utils/MurmurHash3.h"
 
 namespace narvalengine {
-
 	struct HandleAllocator {
 
 		HandleAllocator() {};
@@ -95,6 +94,14 @@ namespace narvalengine {
 	*/
 	static MemoryBuffer* memBufferAlloc(uint32_t size) {
 		return new MemoryBuffer{new uint8_t[size], size};
+	}
+
+	/*
+		Frees a MemoryBuffer data
+	*/
+	static void memBufferFree(MemoryBuffer *mem) {
+		mem->size = -1;
+		free(mem->data);
 	}
 
 	/*

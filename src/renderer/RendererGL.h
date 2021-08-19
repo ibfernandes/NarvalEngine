@@ -330,6 +330,11 @@ namespace narvalengine {
 
 			}
 		}
+
+		void read(void *data, int mip) {
+			glBindTexture(GL_TEXTURE_2D, id);
+			glGetTexImage(target, mip, glTexFormatInfo.format, glTexFormatInfo.type, data);
+		}
 	};
 
 	class FrameBufferGL {
@@ -430,6 +435,10 @@ namespace narvalengine {
 			uniforms[uh.id] = ugl;
 
 			//uniforms.insert({ name, ugl });
+		}
+
+		void readTexture(TextureHandler texh, void* data, int mip = 0) {
+			textures[texh.id].read(data, mip);
 		}
 
 		void createTexture(TextureHandler texh, int width, int height, int depth, TextureLayout texFormat, MemoryBuffer memBuffer, int flags) {

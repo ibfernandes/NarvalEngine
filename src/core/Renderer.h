@@ -12,7 +12,7 @@ namespace narvalengine {
 	};
 
 	struct UniformHandler {
-		uint16_t id;
+		uint16_t id = INVALID_HANDLE;
 	};
 
 	struct ShaderHandler {
@@ -32,7 +32,7 @@ namespace narvalengine {
 	};
 
 	struct TextureHandler {
-		uint16_t id;
+		uint16_t id = INVALID_HANDLE;
 	};
 
 	struct MaterialHandler {
@@ -160,6 +160,7 @@ namespace narvalengine {
 		virtual void createIndexBuffer(IndexBufferHandler ibh, MemoryBuffer mem, VertexLayout vertexLayout) = 0;
 		virtual void createVertexBuffer(VertexBufferHandler vbh, MemoryBuffer mem, VertexLayout vertexLayout) = 0;
 		virtual void createUniform(UniformHandler uh, const char* name, MemoryBuffer memBuffer, UniformType::Enum type, int flags) = 0;
+		virtual void readTexture(TextureHandler texh, void *data, int mip) = 0;
 		virtual void createTexture(TextureHandler texh, int width, int height, int depth, TextureLayout texFormat, MemoryBuffer memBuffer, int flags) = 0;
 		virtual void createFrameBuffer(FrameBufferHandler fbh, int len, Attachment *attachments) = 0;
 		virtual void createFrameBuffer(FrameBufferHandler fbh, int width, int height, TextureLayout texFormat, TextureLayout depthFormat) = 0;
@@ -346,6 +347,10 @@ namespace narvalengine {
 
 			void updateUniform(UniformHandler uh, MemoryBuffer memBuffer) {
 				renderer->updateUniform(uh, memBuffer);
+			}
+
+			void readTexture(TextureHandler texHandler, void *data, int mip = 0) {
+				renderer->readTexture(texHandler, data, mip);
 			}
 
 			void updateTexture(TextureHandler texHandler, int offsetX, int offsetY, int offsetZ, int width, int height, int depth, MemoryBuffer mem) {

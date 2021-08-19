@@ -16,16 +16,16 @@ namespace narvalengine {
 		glm::vec3 scattering;
 		glm::vec3 extinction;
 		BucketLBVH *lbvh;
-		float densityMultiplier =  1.0f;
+		float density =  1.0f;
 		float invMaxDensity = 1;
 		float t = 0;
 		glm::vec3 tr = glm::vec3(1);
 
 		GridMedia(glm::vec3 scattering, glm::vec3 absorption, std::string material, float density) {
-			this->scattering = scattering * density;
-			this->absorption = absorption * density;
+			this->scattering = scattering;
+			this->absorption = absorption;
 			this->extinction = this->absorption + this->scattering;
-			this->densityMultiplier = density;
+			this->density = density;
 
 			Texture* tex = ResourceManager::getSelf()->getTexture(material);
 
@@ -61,7 +61,7 @@ namespace narvalengine {
 			float Tr = 1, t = ri.tNear;
 			//std::cout << "before ratio " << Tr << std::endl;
 			while (true) {
-				t -= std::log(1 - random()) * invMaxDensity / avg(extinction);
+				t -= std::log(1 - random()) * invMaxDensity / avg(extinction * density);
 				if (t >= ri.tFar) break;
 				float density = lbvh->sampleAt(incoming, t);
 				Tr *= 1 - std::max(0.0f, density * invMaxDensity);
@@ -98,7 +98,7 @@ namespace narvalengine {
 			//float dist = hit.y - hit.x;
 			while (true) {
 				float r = random();
-				float sampledDist = std::log(1 - r) * invMaxDensity / avg(extinction);
+				float sampledDist = std::log(1 - r) * invMaxDensity / avg(extinction * density);
 				t -= sampledDist;
 				if (t >= intersection.tFar) {
 					scattered.o = incoming.getPointAt(intersection.tFar + 0.0001f);
@@ -110,7 +110,7 @@ namespace narvalengine {
 				float ra = random();
 				if (density * invMaxDensity > ra) {
 					scattered.o = incoming.getPointAt(t);
-					scattered.d = intersection.primitive->material->bsdf->sample(incoming.d, -incoming.d);
+					scattered.d = intersection.primitive->material->bsdf->sample(incoming.d, glm::vec3(0,0,1)); //-incoming.d
 					tr *= scattering / extinction;
 					return scattering / extinction;
 				}

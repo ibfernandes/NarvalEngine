@@ -62,7 +62,7 @@ namespace narvalengine {
 	Converts 2D point to 1D index in YX order.
 	*/
 	inline int to1D(int width, int height, int x, int y) {
-		return height * x + y;
+		return width * y + x;
 	}
 
 	inline int to1D(int width, int height, glm::vec2 vec) {
@@ -803,6 +803,12 @@ namespace narvalengine {
 		explicit operator float() const { return v; }
 	};
 
+	inline void linearToRGB(float *linear, float *rgb) {
+		rgb[0] = glm::clamp(linear[0] * 255.0f, 0.0f, 255.0f);
+		rgb[1] = glm::clamp(linear[1] * 255.0f, 0.0f, 255.0f);
+		rgb[2] = glm::clamp(linear[2] * 255.0f, 0.0f, 255.0f);
+	}
+
 	inline void rgbToCIE(float* inputrgb, float* lab) {
 		float num = 0;
 		float rgb[3] = { 0,0,0 };
@@ -913,11 +919,24 @@ namespace narvalengine {
 	}
 
 	inline float getSphericalPhi(glm::vec3 v) {
-		float p = std::atan2(v.x, v.y);
+		float p = std::atan2(v.y, v.x);
 		return (p < 0) ? (p + TWO_PI) : p;
 	}
 
 	inline float getSphericalTheta(glm::vec3 v) {
 		return std::acos(glm::clamp(v.z, -1.0f, 1.0f));
+	}
+
+	inline glm::vec3 computeRMSE(glm::vec3 c1, glm::vec3 c2) {
+		float r = c1.r - c2.r;
+		r *= r;
+		float g = c1.g - c2.g;
+		g *= g;
+		float b = c1.b - c2.b;
+		b *= b;
+
+		float dist = sqrt((r + g + b) / 3.0f);
+
+		return glm::vec3(dist, dist, dist);
 	}
 }

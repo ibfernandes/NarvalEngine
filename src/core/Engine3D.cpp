@@ -244,7 +244,7 @@ namespace narvalengine {
 		for (int i = 0; i < count; i++) {
 			float previous = glfwGetTime();
 
-			camera.update();
+			//camera.update(); //TODO: Why it was here
 			sm.update(targetUPSTime);
 			glfwPollEvents();
 		}

@@ -16,6 +16,7 @@
 #include <GLFW/glfw3.h>
 #include <thread>
 #include "core/Camera.h"
+#include "VMS.h"
 #include <sstream>
 
 namespace narvalengine {
@@ -78,6 +79,7 @@ namespace narvalengine {
 		FrameBufferHandler frameBuffers[4];
 		TextureHandler renderFrameTex[4];
 		TextureHandler renderFrameDepthTex[4];
+		TextureHandler infAreaLightTex;
 		FrameBufferHandler fbRenderFrame[4];
 		int numberOfActiveLights = 1;
 
@@ -122,17 +124,17 @@ namespace narvalengine {
 		int bgTexBind = 1;
 		int bgDepthTexBind = 2;
 		int prevFrameTexBind = 3;
+		int infAreaLightTexBind = 4;
 		float time = 0;
 		int volRenderingMode = 3;
 		int currentFrame = 1;
 		float densityMc = 1;
 		int maxBounces = 1;
-		int useFactor = 0;
+		int useFactor = 1;
 
 		glm::vec3 scattering = glm::vec3(1.1f, 1.1f, 1.1f);
 		glm::vec3 absorption = glm::vec3(0.01f);
 		float g = 0.0;
-		int SPP = 1;
 		float densityCoef = 1;
 		float numberOfSteps = 64;
 		float shadowSteps = 10;
@@ -146,6 +148,7 @@ namespace narvalengine {
 		glm::vec3 volLightRecMin;
 		glm::vec3 volLightRecMax;
 		glm::mat4 volLightWCS;
+		int volLightType = 0;
 
 
 		//Current Selected Object
@@ -159,8 +162,8 @@ namespace narvalengine {
 		//Selected Object Material is Volumetric
 		int currentRenderMode = 0;
 		int phaseFunctionOption = 0;
-		const char* renderModes[3] = { "Ray marching grid", "Path tracing MC", "LBVH" };
-		const char* phaseFunctionOptions[3] = { "Isotropic", "Rayleigh", "Henyey-Greenstein" };
+		const char* renderModes[3] = { "Ray marching", "Lobe Sampling", "Monte Carlo" };
+		const char* phaseFunctionOptions[1] = { "Henyey-Greenstein" };
 
 		//Mono Color Shader
 		ProgramHandler monoColorProgramH;
@@ -181,6 +184,7 @@ namespace narvalengine {
 		int FPSCount = 0;
 		int lastFPS = 0;
 		Timer offEngineTimer;
+		Timer realTimeTimer;
 
 		//Scene Instanced Models list
 		ImVec4 listHoverColor = ImVec4(66/255.0f, 77/255.0f, 194/255.0f, 1.0f);
@@ -222,8 +226,22 @@ namespace narvalengine {
 		bool logState[2] = { true, true };
 
 		//CompareTexture
-		StringID texIDToCompare = -1;
-		TextureHandler compareTex;
+		// 0 = compare to offline pah tracing, 1 = compare to another texture
+		int compareMode = 1;
+		StringID texIDToCompare1 = -1;
+		StringID texIDToCompare2 = -1;
+		TextureHandler compareTex1;
+		TextureHandler compareTex2;
+
+		//new Render test params
+		float newStepSize = 0.1;
+		int newNumberOfSteps = 100;
+		int newnPointsToSample = 10;
+		int newMeanPathMult = 10;
+		float param_1 = 1;
+
+		//Volumetric Method Shaders settings
+		VMS *vms;
 
 		SceneEditor();
 
@@ -249,6 +267,7 @@ namespace narvalengine {
 		void shootMultipleRays(int qtt);
 		void shootRayImGUI();
 		void shadowMappingImGUI();
+		void newVolRenderImGUI();
 		void renderShadowMappingDebug();
 		void renderOffline();
 		void renderRealTimeShadows();
@@ -259,7 +278,7 @@ namespace narvalengine {
 		void renderCompareRealTime();
 		void render();
 		void reloadScene();
-		void compareScene();
+		void compareScene(int mode);
 		void initVolumetricShader();
 		void initPhongShader();
 		void initPBR();

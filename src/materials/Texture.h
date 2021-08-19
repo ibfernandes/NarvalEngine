@@ -3,6 +3,8 @@
 #include "core/RendererAPI.h"
 #include "utils/Utils.h"
 #include <glm/glm.hpp>
+#include "stb_image_write.h"
+#include "tinyexr.h"
 #include "utils/Math.h"
 
 namespace narvalengine {
@@ -19,6 +21,37 @@ namespace narvalengine {
 			return 0;
 		}
 	};
+
+	//TODO: properly verify formats and data types
+	inline void saveImage(MemoryBuffer mem, int width, int height, TextureLayout format, ImageFileFormat fileFormat, const char* path) {
+		int channels = getNumberOfChannels(format);
+		const char* err = NULL;
+
+		if (fileFormat == ImageFileFormat::PNG) {
+			if (format == TextureLayout::RGB32F) {
+				int sizeBytes = width * height * channels * sizeof(char);
+				MemoryBuffer converted = { new uint8_t[sizeBytes], sizeBytes };
+				float* startPoint = (float*)mem.data;
+
+				for (int i = 0; i < width * height * channels; i++) {
+					float v = startPoint[i];
+					v = glm::clamp(v, 0.0f, 1.0f);
+					converted.data[i] = (uint8_t)(v * 255);
+				}
+
+				stbi_write_png(path, width, height, channels, converted.data, width * channels);
+				memBufferFree(&converted);
+			}
+		}else if (fileFormat == ImageFileFormat::EXR) {
+			int r = SaveEXR((float*)mem.data, width, height, channels, 0, path, &err);
+			if (r != TINYEXR_SUCCESS) {
+				if (err) {
+					fprintf(stderr, "ERR : %s\n", err);
+					FreeEXRErrorMessage(err); // release memory of error message.
+				}
+			}
+		}
+	}
 
 	class Texture {
 	public:

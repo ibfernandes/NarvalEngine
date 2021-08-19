@@ -12,6 +12,7 @@ namespace narvalengine {
 		void startTimer();
 		void endTimer();
 		float getElapsedSeconds();
+		float getMilliseconds();
 		float getMicroseconds();
 		float getSeconds();
 		void printlnNanoSeconds();

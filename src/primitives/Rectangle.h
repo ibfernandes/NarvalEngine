@@ -6,7 +6,7 @@
 namespace narvalengine {
 	class Rectangle : public Primitive {
 	public:
-		float *vertexData[2];
+		float *vertexData[2]; //TODO why is it not contiguous? Should be for performance reasons.
 		glm::vec3 normal = glm::vec3(0, 0, -1);
 
 		glm::vec3 getVertex(int n);

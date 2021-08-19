@@ -17,11 +17,11 @@ using namespace narvalengine;
 
 int main() {
 	//SceneReader scene("scenes/sponza.json", false);
-	SceneReader scene("scenes/defaultCube.json", false);
+	SceneReader scene("scenes/empty.json", false);
 	//SceneReader scene("scenes/volumeLamp.json", false);
 	Settings *settings = scene.getSettings();
 	settings->renderMode = REALTIME_RENDERING_MODE;
-	//TestPlayground *tp = new TestPlayground();
+	//TestPlayground* tp = new TestPlayground();
 
 	Engine3D *engine = new Engine3D();
 	OfflineEngine *offEngine;
@@ -64,6 +64,10 @@ int main() {
 		ResourceManager::getSelf()->loadShader("volumelbvh", "shaders/volumeLBVH.vert", "shaders/volumeLBVH.frag", "");
 		ResourceManager::getSelf()->loadShader("simpleLightDepth", "shaders/simpleLightDepth.vert", "shaders/simpleLightDepth.frag", "");
 		ResourceManager::getSelf()->loadShader("composeTex", "shaders/composeTex.vert", "shaders/composeTex.frag", "");
+
+		ResourceManager::getSelf()->loadShader("MS_rayMarching", "shaders/MS_rayMarching.vert", "shaders/MS_rayMarching.frag", "");
+		ResourceManager::getSelf()->loadShader("MS_lobeSampling", "shaders/MS_lobeSampling.vert", "shaders/MS_lobeSampling.frag", "");
+		ResourceManager::getSelf()->loadShader("MS_monteCarlo", "shaders/MS_monteCarlo.vert", "shaders/MS_monteCarlo.frag", "");
 
 		//ResourceManager::getSelf()->loadVDBasTexture3D("cloud", "vdb/wdas_cloud_sixteenth.vdb"); //512
 		//ResourceManager::getSelf()->getTexture3D("cloud")->loadToOpenGL();

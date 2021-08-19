@@ -22,6 +22,10 @@ namespace narvalengine {
 			//textures.push_back(tex2D);
 		}
 
+		Texture *getTexture(TextureName textureType) {
+			return textures[ctz(textureType)];
+		}
+
 		bool containsMaterialName(TextureName type) {
 			return textureTypes & type;
 		}

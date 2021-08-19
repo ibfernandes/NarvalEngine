@@ -102,6 +102,7 @@ set(FASTNOISE_SOURCES
 
 set(STB_SOURCES
     "includes/stb/stb_image.h"
+    "includes/stb/stb_image_write.h"
 )
 
 # --------------------------------------------------------------------------------------

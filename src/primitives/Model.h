@@ -212,6 +212,11 @@ namespace narvalengine {
 			//TODO primitives->material all null!
 			aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
 
+
+			//TODO support material colors (which internally will be convertedd to textures.)
+			//aiColor3D color(0.f, 0.f, 0.f);
+			//material->Get(AI_MATKEY_COLOR_DIFFUSE, color);
+
 			std::vector<TextureInfo> textures;
 			// 1. diffuse maps
 			std::vector<TextureInfo> diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "material.diffuse", TextureName::ALBEDO, scene);
@@ -290,6 +295,7 @@ namespace narvalengine {
 				//TODO this normal here is not correct?
 				primitives.push_back(new Triangle(vertexAddress[0], vertexAddress[1], vertexAddress[2], m, vertexAddress[0] + 3));
 				primitives.at(primitives.size() - 1)->material = m;
+				primitives.at(primitives.size() - 1)->vertexLayout = &vertexLayout;
 			}
 
 			thismesh.strideLength = stride;

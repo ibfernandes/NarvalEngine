@@ -66,8 +66,10 @@ namespace narvalengine {
             // Convert infinite light sample point to direction
             float theta = uv[1] * PI;
             float phi = uv[0] * 2 * PI;
-            float cosTheta = std::cos(theta), sinTheta = std::sin(theta);
-            float sinPhi = std::sin(phi), cosPhi = std::cos(phi);
+            float cosTheta = std::cos(theta);
+            float sinTheta = std::sin(theta);
+            float sinPhi = std::sin(phi);
+            float cosPhi = std::cos(phi);
             wo.o = intersec.hitPoint;
             glm::vec3 polarCoord = glm::vec3(sinTheta * cosPhi, sinTheta * sinPhi, cosTheta);
             glm::vec3 ss, ts;
