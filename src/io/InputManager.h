@@ -90,6 +90,8 @@ namespace narvalengine {
 			keyMapping.insert({ "ROTATE_OBJECT", {KeyRelease, NE_INPUT_MOD_SET(GLFW_KEY_R, NE_INPUT_MOD_CTRL)} });
 			keyMapping.insert({ "SCALE_OBJECT", {KeyRelease, NE_INPUT_MOD_SET(GLFW_KEY_S, NE_INPUT_MOD_CTRL)} });
 			keyMapping.insert({ "TRANSLATE_OBJECT", {KeyRelease, NE_INPUT_MOD_SET(GLFW_KEY_T, NE_INPUT_MOD_CTRL)} });
+
+			keyMapping.insert({ "TESTING_KEY", {KeyHolding, GLFW_KEY_1} });
 		}
 
 	};

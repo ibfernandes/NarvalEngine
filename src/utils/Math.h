@@ -418,7 +418,7 @@ namespace narvalengine {
 		return glm::vec3(glm::dot(v, ss), glm::dot(v, ts), glm::dot(v, ns));
 	}
 
-	inline glm::vec3 sphericalToCartesianPre(float cosTheta, float sinTheta, float phi) {
+	inline glm::vec3 sphericalToCartesianPre(float sinTheta, float cosTheta, float phi) {
 		return glm::vec3(std::cos(phi) * sinTheta, std::sin(phi) * sinTheta, cosTheta);
 	}
 

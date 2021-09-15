@@ -13,8 +13,9 @@ namespace narvalengine {
 		RendererContext *renderCtx;
 		Scene* scene;
 		float dummyVar[3] = {-1, -1, -1};
-		int currentMethod = MONTE_CARLO;
+		int currentMethod = LOBE_SAMPLING;
 		static const int maxUniforms = 50;
+		float avgMeanPath = 0;
 
 		//Shader Commons
 		glm::mat4 proj = glm::mat4(1);
@@ -24,7 +25,7 @@ namespace narvalengine {
 		glm::vec3 *scattering;
 		glm::vec3 *absorption;
 		float *density;
-		float g = 0;
+		float *g;
 		float time = 0;
 		int numberOfLights = 0;
 		int volTexBind = 0;
@@ -38,17 +39,20 @@ namespace narvalengine {
 		//rm = Ray Marching
 		ProgramHandler rmProgram;
 		UniformHandler rmUniforms[maxUniforms];
-		int rmNumberOfSteps = 100;
-		int rmNumberOfShadowSteps = 30;
+		int rmNumberOfSteps = 60;
+		int rmNumberOfShadowSteps = 10;
 
 		//MS_lobeSampling shader parameters
 		//ls = Lobe Sampling
 		ProgramHandler lsProgram;
 		UniformHandler lsUniforms[maxUniforms];
+		UniformHandler lsPointUniforms[maxUniforms];
 		float lsStepSize = 0.1;
-		int lsNumberOfSteps = 100;
-		int lsnPointsToSample = 10;
+		int lsNumberOfSteps = 50;
+		int lsnPointsToSample = 30;
 		int lsMeanPathMult = 20;
+		glm::vec3 *lsPoints;
+		bool lshasPointsBeenGenerated = false;
 
 		//MS_monterCarlo shader parameters
 		//mc = Monte Carlo
@@ -69,6 +73,24 @@ namespace narvalengine {
 			initLobeSamplingShader();
 		};
 
+		void handPickLobeSampling() {
+			lshasPointsBeenGenerated = true;
+			//sphere points
+			lsPoints[0] = glm::normalize(glm::vec3(1,0,0));
+			lsPoints[1] = glm::normalize(glm::vec3(0,1,0));
+			lsPoints[2] = glm::normalize(glm::vec3(-1,0,0));
+			lsPoints[3] = glm::normalize(glm::vec3(0,-1,0));
+
+			lsPoints[4] = glm::normalize(glm::vec3(0,1,1));
+			lsPoints[5] = glm::normalize(glm::vec3(0,-1,1));
+
+			lsPoints[6] = glm::normalize(glm::vec3(0,1,-1));
+			lsPoints[7] = glm::normalize(glm::vec3(0,-1,-1));
+
+			lsPoints[8] = glm::normalize(glm::vec3(0,0,1));
+			lsPoints[9] = glm::normalize(glm::vec3(0,0,-1));
+		}
+
 		void updateLights() {
 			numberOfLights = scene->lights.size();
 
@@ -88,6 +110,7 @@ namespace narvalengine {
 					renderCtx.updateUniform(volUniforms[16], { (uint8_t*)&lightPos[0], sizeof(glm::vec3) });
 					volLightRecSize = glm::vec3(s->radius);
 					continue;*/
+					continue;
 				}
 
 				lightSize[i] = r->getSize();
@@ -139,7 +162,7 @@ namespace narvalengine {
 			mcUniforms[8] = renderCtx->createUniform("scattering", { (uint8_t*)&dummyVar, sizeof(glm::vec3) }, UniformType::Vec3, 0);
 			mcUniforms[9] = renderCtx->createUniform("absorption", { (uint8_t*)&dummyVar, sizeof(glm::vec3) }, UniformType::Vec3, 0);
 			mcUniforms[10] = renderCtx->createUniform("densityCoef", { (uint8_t*)&dummyVar, sizeof(float) }, UniformType::Float, 0);
-			mcUniforms[11] = renderCtx->createUniform("g", { (uint8_t*)&g, sizeof(float) }, UniformType::Float, 0);
+			mcUniforms[11] = renderCtx->createUniform("g", { (uint8_t*)dummyVar, sizeof(float) }, UniformType::Float, 0);
 			mcUniforms[12] = renderCtx->createUniform("previousFrame", { (uint8_t*)&mcPreviousFrameTexBind, sizeof(float) }, UniformType::Sampler, 0);
 			mcUniforms[13] = renderCtx->createUniform("invMaxDensity", { (uint8_t*)&dummyVar, sizeof(int) }, UniformType::Float, 0);
 			mcUniforms[14] = renderCtx->createUniform("time", { (uint8_t*)&time, sizeof(float) }, UniformType::Float, 0);
@@ -166,7 +189,7 @@ namespace narvalengine {
 			lsUniforms[8] = renderCtx->createUniform("scattering", { (uint8_t*)&dummyVar, sizeof(glm::vec3) }, UniformType::Vec3, 0);
 			lsUniforms[9] = renderCtx->createUniform("absorption", { (uint8_t*)&dummyVar, sizeof(glm::vec3) }, UniformType::Vec3, 0);
 			lsUniforms[10] = renderCtx->createUniform("densityCoef", { (uint8_t*)&dummyVar, sizeof(float) }, UniformType::Float, 0);
-			lsUniforms[11] = renderCtx->createUniform("g", { (uint8_t*)&g, sizeof(float) }, UniformType::Float, 0);
+			lsUniforms[11] = renderCtx->createUniform("g", { (uint8_t*)dummyVar, sizeof(float) }, UniformType::Float, 0);
 			
 			lsUniforms[12] = renderCtx->createUniform("time", { (uint8_t*)&time, sizeof(float) }, UniformType::Float, 0);
 			lsUniforms[13] = renderCtx->createUniform("invMaxDensity", { (uint8_t*)&dummyVar, sizeof(float) }, UniformType::Float, 0);
@@ -174,6 +197,12 @@ namespace narvalengine {
 			lsUniforms[15] = renderCtx->createUniform("numberOfSteps", { (uint8_t*)&lsNumberOfSteps, sizeof(int) }, UniformType::Int, 0);
 			lsUniforms[16] = renderCtx->createUniform("nPointsToSample", { (uint8_t*)&lsnPointsToSample, sizeof(int) }, UniformType::Int, 0);
 			lsUniforms[17] = renderCtx->createUniform("meanPathMult", { (uint8_t*)&lsMeanPathMult, sizeof(int) }, UniformType::Int, 0);
+			
+			lsPoints = new glm::vec3[lsnPointsToSample];
+			for (int i = 0; i < lsnPointsToSample; i++) {
+				std::string name = "lobePoints[" + std::to_string(i) + "]";
+				lsPointUniforms[i] = renderCtx->createUniform(name.c_str(), { (uint8_t*)&lsPoints[i], sizeof(glm::vec3) }, UniformType::Vec3, 0);
+			}
 		}
 
 		void initRayMarchingShader() {
@@ -196,7 +225,7 @@ namespace narvalengine {
 			rmUniforms[10] = renderCtx->createUniform("densityCoef", { (uint8_t*)&dummyVar, sizeof(float) }, UniformType::Float, 0);
 			rmUniforms[11] = renderCtx->createUniform("numberOfSteps", { (uint8_t*)&rmNumberOfSteps, sizeof(int) }, UniformType::Int, 0);
 			rmUniforms[12] = renderCtx->createUniform("numberOfShadowSteps", { (uint8_t*)&rmNumberOfShadowSteps, sizeof(int) }, UniformType::Int, 0);
-			rmUniforms[13] = renderCtx->createUniform("g", { (uint8_t*)&g, sizeof(float) }, UniformType::Float, 0);
+			rmUniforms[13] = renderCtx->createUniform("g", { (uint8_t*)dummyVar, sizeof(float) }, UniformType::Float, 0);
 		}
 
 		void prepareMonteCarlo(Camera* camera, ModelHandler mh, InstancedModel* im, FrameBufferHandler fbh, TextureHandler previousFrame, TextureHandler background, TextureHandler backgroundDepth) {
@@ -222,7 +251,7 @@ namespace narvalengine {
 			GridMedia* gm = (GridMedia*)m;
 			VolumeBSDF* volbsdf = (VolumeBSDF*)im->model->materials.at(0)->bsdf->bxdf[0];
 			HG* hg = (HG*)volbsdf->phaseFunction;
-			g = hg->g;
+			g = &hg->g;
 
 			scattering = &gm->scattering; //TODO  divide by gm->densityMultiplier
 			absorption = &gm->absorption;
@@ -232,6 +261,7 @@ namespace narvalengine {
 			renderCtx->updateUniform(mcUniforms[9], { (uint8_t*)absorption, sizeof(glm::vec3) });
 			renderCtx->updateUniform(mcUniforms[10], { (uint8_t*)density, sizeof(float) });
 			renderCtx->updateUniform(mcUniforms[13], { (uint8_t*)&gm->invMaxDensity, sizeof(float) });
+			renderCtx->updateUniform(mcUniforms[11], { (uint8_t*)g, sizeof(float) });
 
 			renderCtx->setTexture(background, mcUniforms[6]); //background Tex
 			renderCtx->setTexture(backgroundDepth, mcUniforms[7]); //backgroundDepth Tex
@@ -259,6 +289,12 @@ namespace narvalengine {
 			}
 
 			for (int i = 0; i < maxUniforms; i++) {
+				if (lsPointUniforms[i].id == INVALID_HANDLE)
+					break;
+				renderCtx->setUniform(lsPointUniforms[i]);
+			}
+
+			for (int i = 0; i < maxUniforms; i++) {
 				if (lightUniforms[i].id == INVALID_HANDLE)
 					break;
 				renderCtx->setUniform(lightUniforms[i]);
@@ -271,7 +307,19 @@ namespace narvalengine {
 			GridMedia* gm = (GridMedia*)m;
 			VolumeBSDF* volbsdf = (VolumeBSDF*)im->model->materials.at(0)->bsdf->bxdf[0];
 			HG* hg = (HG*)volbsdf->phaseFunction;
-			g = hg->g;
+			g = &hg->g;
+			avgMeanPath = 1.0f / (avg(gm->extinction) * gm->density);
+			
+			if (InputManager::getSelf()->eventTriggered("TESTING_KEY"))
+				lshasPointsBeenGenerated = false;
+
+			if (!lshasPointsBeenGenerated) {
+				lshasPointsBeenGenerated = true;
+				for (int i = 0; i < lsnPointsToSample; i++) 
+					lsPoints[i] = hg->sample(glm::vec3(0, 0, 1));
+
+				//handPickLobeSampling();
+			}
 
 			scattering = &gm->scattering; //TODO  divide by gm->densityMultiplier
 			absorption = &gm->absorption;
@@ -281,6 +329,7 @@ namespace narvalengine {
 			renderCtx->updateUniform(lsUniforms[9], { (uint8_t*)absorption, sizeof(glm::vec3) });
 			renderCtx->updateUniform(lsUniforms[10], { (uint8_t*)density, sizeof(float) });
 			renderCtx->updateUniform(lsUniforms[13], { (uint8_t*)&gm->invMaxDensity, sizeof(float) });
+			renderCtx->updateUniform(lsUniforms[11], { (uint8_t*)g, sizeof(float) });
 
 			renderCtx->setTexture(background, lsUniforms[6]); //background Tex
 			renderCtx->setTexture(backgroundDepth, lsUniforms[7]); //backgroundDepth Tex
@@ -318,7 +367,7 @@ namespace narvalengine {
 			GridMedia* gm = (GridMedia*)m;
 			VolumeBSDF* volbsdf = (VolumeBSDF*)im->model->materials.at(0)->bsdf->bxdf[0];
 			HG* hg = (HG*)volbsdf->phaseFunction;
-			g = hg->g;
+			g = &hg->g;
 
 			scattering = &gm->scattering; //TODO  divide by gm->densityMultiplier
 			absorption = &gm->absorption;
@@ -327,6 +376,7 @@ namespace narvalengine {
 			renderCtx->updateUniform(rmUniforms[8], { (uint8_t*)scattering, sizeof(glm::vec3) });
 			renderCtx->updateUniform(rmUniforms[9], { (uint8_t*)absorption, sizeof(glm::vec3) });
 			renderCtx->updateUniform(rmUniforms[10], { (uint8_t*)density, sizeof(float) });
+			renderCtx->updateUniform(rmUniforms[13], { (uint8_t*)g, sizeof(float) });
 
 			renderCtx->setTexture(background, rmUniforms[6]); //background Tex
 			renderCtx->setTexture(backgroundDepth, rmUniforms[7]); //backgroundDepth Tex
@@ -349,7 +399,7 @@ namespace narvalengine {
 			else if(currentMethod == LOBE_SAMPLING)
 				prepareLobeSampling(camera, mh, im, fbh, background, backgroundDepth);
 			else if(currentMethod == MONTE_CARLO)
-				prepareMonteCarlo(camera, mh, im, fbh, previousFrame, background, backgroundDepth);
+				prepareMonteCarlo(camera, mh, im, fbh, previousFrame, background, backgroundDepth); 
 		}
 	};
 }

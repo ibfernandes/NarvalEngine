@@ -41,6 +41,7 @@ namespace narvalengine {
 		glm::mat4 cam;
 		glm::mat4 orthoProj;
 		glm::mat4 model = glm::mat4(1);
+		glm::mat4 identity = glm::mat4(1);
 		RendererContext renderCtx;
 		RendererGL *renderer;
 		bool doneRendering = false;
@@ -76,7 +77,7 @@ namespace narvalengine {
 		//REAL TIME
 		const char* models[6] = { "cloud", "dragonHavard", "fireball", "explosion", "bunny_cloud", "explosion" };
 		std::map<StringID, ModelHandler> rmToRenderAPI;
-		FrameBufferHandler frameBuffers[4];
+		FrameBufferHandler frameBuffers[4]; //TODO not being used(?)
 		TextureHandler renderFrameTex[4];
 		TextureHandler renderFrameDepthTex[4];
 		TextureHandler infAreaLightTex;
@@ -126,7 +127,6 @@ namespace narvalengine {
 		int prevFrameTexBind = 3;
 		int infAreaLightTexBind = 4;
 		float time = 0;
-		int volRenderingMode = 3;
 		int currentFrame = 1;
 		float densityMc = 1;
 		int maxBounces = 1;
@@ -216,7 +216,7 @@ namespace narvalengine {
 		int numberOfBounces = 0;
 
 		//Debug shadow mapping
-		bool renderShadowMapping = true;
+		bool renderShadowMapping = false;
 
 		//Log window
 		std::string logText = "> Log begin \n";
@@ -243,6 +243,15 @@ namespace narvalengine {
 		//Volumetric Method Shaders settings
 		VMS *vms;
 
+		//Tone Mapping
+		ProgramHandler postProcessingPH;
+		UniformHandler postProcessingUni[10];
+		float gamma = 2.2;
+		float exposure = 2;
+
+		glm::vec4 defaultTexColor = glm::vec4(0 / 255.0f, -0 / 255.0f, 0 / 255.0f, 1);
+		TextureHandler defaultTex;
+
 		SceneEditor();
 
 		void init(GLint width, GLint height, RendererGL* r, Camera* c);
@@ -262,6 +271,7 @@ namespace narvalengine {
 		void cameraImGUI();
 		void lightImGui();
 		void performanceImGUI();
+		void toneMappingImGUI();
 		void renderOptionsImGUI();
 		void shootRay(int i);
 		void shootMultipleRays(int qtt);
@@ -272,6 +282,7 @@ namespace narvalengine {
 		void renderOffline();
 		void renderRealTimeShadows();
 		void renderScene(FrameBufferHandler* fbh, TextureHandler* fbhTex, int currentFrame);
+		void renderPostProcessing();
 		void renderRealTimePBR();
 		void renderRealTime();
 		void renderCompare();
@@ -282,6 +293,7 @@ namespace narvalengine {
 		void initVolumetricShader();
 		void initPhongShader();
 		void initPBR();
+		void initPostProcessingShader();
 		void initComposeShader();
 		void initMonoColorShader();
 		void initShadowShader();

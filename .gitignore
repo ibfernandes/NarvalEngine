@@ -1,5 +1,11 @@
 build/
 resources/wdas_cloud*.vdb
 resources/vdb/
+resources/fonts/
+resources/imgs/
+resources/scenes/cornell-box/
+resources/scenes/pbrt/
+resources/scenes/tests/
+tests/
 models/
 includes/

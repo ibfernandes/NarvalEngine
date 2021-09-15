@@ -68,6 +68,7 @@ int main() {
 		ResourceManager::getSelf()->loadShader("MS_rayMarching", "shaders/MS_rayMarching.vert", "shaders/MS_rayMarching.frag", "");
 		ResourceManager::getSelf()->loadShader("MS_lobeSampling", "shaders/MS_lobeSampling.vert", "shaders/MS_lobeSampling.frag", "");
 		ResourceManager::getSelf()->loadShader("MS_monteCarlo", "shaders/MS_monteCarlo.vert", "shaders/MS_monteCarlo.frag", "");
+		ResourceManager::getSelf()->loadShader("postProcessing", "shaders/postProcessing.vert", "shaders/postProcessing.frag", "");
 
 		//ResourceManager::getSelf()->loadVDBasTexture3D("cloud", "vdb/wdas_cloud_sixteenth.vdb"); //512
 		//ResourceManager::getSelf()->getTexture3D("cloud")->loadToOpenGL();

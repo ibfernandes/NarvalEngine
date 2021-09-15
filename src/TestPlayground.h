@@ -1039,6 +1039,27 @@ namespace narvalengine {
 
 		void compareEXR(std::string img1, std::string img2, std::string writeTo);
 
+		void convertVDBToFloatFile() {
+
+			SceneReader sceneReader;
+			sceneReader.loadScene("scenes/testing.json", false);
+			Scene* scene = sceneReader.getScene();
+			GridMedia* gm = (GridMedia*)scene->instancedModels.at(0)->model->materials.at(0)->medium;
+
+			std::ofstream file;
+			file.open(std::string(RESOURCES_DIR) + "vdb/cloud.json", std::ios::out | std::ios::ate | std::ios::trunc);
+			int size = gm->lbvh->gridSize.x * gm->lbvh->gridSize.y * gm->lbvh->gridSize.z;
+
+			file << "{ ";
+			file << "\"grid\": [";
+			for(int i = 0; i < size-1; i++)
+				file << gm->lbvh->grid[i] << ", ";
+			file << gm->lbvh->grid[size - 1];
+			file << "] ";
+			file << "}";
+			file.close();
+		}
+
 		TestPlayground() {
 			//testRandomGenRange();
 			//testBasisChange();
@@ -1053,7 +1074,7 @@ namespace narvalengine {
 			//glmSIMD();
 			//aabbSIMD();
 			//oidnTest();
-
+			convertVDBToFloatFile();
 			//testMSFactorapproach();
 
 			//std::string img1 = RESOURCES_DIR + std::string("scenes/tests/10000spp 1000b quarter.exr");
