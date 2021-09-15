@@ -5,7 +5,7 @@
 		{
 			"name": "emitter",
 			"type": "emitter",
-			"albedo": [200, 200, 200]
+			"albedo": [20000, 20000, 20000]
 		},
 		{
 			"name": "cloudVolMat",
@@ -14,18 +14,29 @@
 			"absorption": [0.01, 0.01, 0.01],
 			"phaseFunction": "hg",
 			"g": 0.0,
-			"path" : "vdb/wdas_cloud_sixteenth.vdb",
+			"path" : "vdb/wdas_cloud_quarter.vdb",
+			"density": 10
+		},
+		{
+			"name": "cubeVolMat",
+			"type": "volume",
+			"scattering": [1.1, 1.1, 1.1],
+			"absorption": [0.01, 0.01, 0.01],
+			"phaseFunction": "hg",
+			"g": 0.0,
+			"path" : "vdb/cubeBig.vdb",
 			"density": 10
 		}
 	],
 	
 	"primitives": [
+
 		{
 			"name": "rectLight",
 			"type": "rectangle",
 			"transform": {
-				"position": [0, 40, 0],
-				"scale": [100, 100, 1],
+				"position": [0, 180, 0],
+				"scale": [1, 1, 1],
 				"rotation": [-89, 0, 0]
 			},
 			"materialName": "emitter"
@@ -34,11 +45,21 @@
 			"name": "cloud",
 			"type": "volume",
 			"transform": {
-				"position": [0.0, 0, 0],
+				"position": [-5.0, 0, 0],
 				"scale": [15.9, 9.51, 13.5],
 				"rotation": [0, 0, 0]
 			},
 			"materialName": "cloudVolMat"
+		},
+		{
+			"name": "cubeVol",
+			"type": "volume",
+			"transform": {
+				"position": [10.0, 0, 0],
+				"scale": [4,4,4],
+				"rotation": [0, 0, 0]
+			},
+			"materialName": "cubeVolMat"
 		}
 	],
 
@@ -55,8 +76,8 @@
 	
 	"renderer": {
 		"resolution": [1200, 600],
-		"spp": 1,
-		"bounces": 3,
+		"spp": 100,
+		"bounces": 60,
 		"mode": "realtime",
 		"HDR": true,
 		"toneMapping": false

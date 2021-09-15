@@ -19,7 +19,7 @@ uniform sampler3D volume;
 uniform sampler2D background;
 uniform sampler2D backgroundDepth;
 
-vec2 uv = gl_FragCoord.xy/textureSize(background, 0);
+vec2 uv = gl_FragCoord.xy/textureSize(backgroundDepth, 0);
 
 /* Volume properties */
 uniform vec3 scattering;
@@ -39,6 +39,7 @@ uniform float stepSize = 0.1;
 uniform int numberOfSteps = 100;
 uniform int nPointsToSample = 10;
 uniform int meanPathMult = 20;
+uniform vec3 lobePoints[100];
 float seedSum = 0;
 vec3 pointsToSample[100]; //should be [nPointsToSample], points on phase function lobe
 vec3 sampledDirections[100]; //should be [nPointsToSample]
@@ -71,12 +72,16 @@ vec3 getPointAt(Ray r, float t){
 	return r.origin + t * r.direction;
 }
 
+/*
+	Returns a random number between [0,1)
+*/
 float randomUniform(vec2 uv) {
-	vec2 seed = uv + fract(time) * 0.08f + (seedSum++);
+	uv = vec2(0,0); //fixed
+	vec2 seed = uv + fract(0) * 0.08f + (seedSum++);
 	return fract(sin(dot(seed, vec2(12.9898, 78.233))) * 43758.5453);
 }
 
-vec3 sphericalToCartesianPre(float cosTheta, float sinTheta, float phi) {
+vec3 sphericalToCartesianPre(float sinTheta, float cosTheta, float phi) {
 	return vec3(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
 }
 
@@ -84,6 +89,36 @@ float distanceSquared(vec3 a, vec3 b){
 	vec3 dist = a - b;
 	return dot(dist, dist);
 }
+
+/*
+	Transforms from Local Coordinate System(LCS) where the normal vector v is "up" to World Coordinate System (WCS)
+	from PBR:
+	http://www.pbr-book.org/3ed-2018/Materials/BSDFs.html#BSDF::ss
+*/
+vec3 toWorld(vec3 v, vec3 ns, vec3 ss, vec3 ts) {
+	return vec3(
+		ss.x * v.x + ts.x * v.y + ns.x * v.z,
+		ss.y * v.x + ts.y * v.y + ns.y * v.z,
+		ss.z * v.x + ts.z * v.y + ns.z * v.z);
+}
+
+/*
+	Transforms from World Coordinate System (WCS) to Local Coordinate System(LCS) where the normal vector v is "up"
+*/
+vec3 toLCS(vec3 v, vec3 ns, vec3 ss, vec3 ts) {
+	return vec3(dot(v, ss), dot(v, ts), dot(v, ns));
+}
+
+void generateOrthonormalCS(vec3 normal, inout vec3 v, inout vec3 u) {
+	//ns, ss, ts
+	if (abs(normal.x) > abs(normal.y))
+		v = vec3(-normal.z, 0, normal.x) / sqrt(normal.x * normal.x + normal.z * normal.z);
+	else
+		v = vec3(0, normal.z, -normal.y) / sqrt(normal.y * normal.y + normal.z * normal.z);
+
+	u = normalize(cross(normal, v));
+}
+
 
 float convertAreaToSolidAngle(float pdfArea, vec3 normal, vec3 p1, vec3 p2) {
 	vec3 wi = p1 - p2;
@@ -165,8 +200,12 @@ float interpolatedDensity(vec3 gridPoint) {
 float sampleVolume(vec3 pos){
 	vec3 tex = ( invmodel * vec4(pos,1)).xyz + 0.5;
 	vec3 texGridPoint = tex * textureSize(volume, 0);
+	
+	//vec3 voxelCenter = floor(texGridPoint) + 0.5f;
+	//float dist = distanceSquared(texGridPoint, voxelCenter) * 100;
 
 	return interpolatedDensity(texGridPoint);
+	//return density(ivec3(texGridPoint));
 }
 
 vec3 evalHG(vec3 incoming, vec3 scattered) {
@@ -196,21 +235,17 @@ vec3 sampleHG(vec3 incomingDir, vec3 normal) {
 	return scattered;
 }
 
-/*
-	Transforms from World Coordinate System (WCS) to Local Coordinate System(LCS) where the normal vector v is "up"
-*/
-vec3 toLCS(vec3 v, vec3 ns, vec3 ss, vec3 ts) {
-	return vec3(dot(v, ss), dot(v, ts), dot(v, ns));
+vec3 frameZUp(vec3 scattered){
+	vec3 ss, ts;
+	vec3 normal = vec3(0,0,1);
+	generateOrthonormalCS(normal, ss, ts);
+
+	return toWorld(scattered, normal, ss, ts);
 }
 
-void generateOrthonormalCS(vec3 normal, inout vec3 v, inout vec3 u) {
-	//ns, ss, ts
-	if (abs(normal.x) > abs(normal.y))
-		v = vec3(-normal.z, 0, normal.x) / sqrt(normal.x * normal.x + normal.z * normal.z);
-	else
-		v = vec3(0, normal.z, -normal.y) / sqrt(normal.y * normal.y + normal.z * normal.z);
-
-	u = normalize(cross(normal, v));
+vec3 sampleBSDF(vec3 incoming, vec3 normal){
+	vec3 scattered = sampleHG(incoming, normal);
+	return frameZUp(scattered);
 }
 
 /*
@@ -230,29 +265,37 @@ vec3 evalBSDF(vec3 incoming, vec3 scattered, vec3 normal) {
 
 vec3 calculateTr(vec3 A, vec3 B){
 	vec3 dir = normalize(B - A);
+	float dist = length(B - A);
 	Ray r;
 	r.origin = A;
 	r.direction = dir;
 	float Tr = 1;
 	
-	for(int i = 0; i < numberOfSteps; i++){
+	vec3 absDir = abs(dir);
+	float dt = 1.0f / ( numberOfSteps * max(absDir.x, max(absDir.y, absDir.z)));
+	dt = dist / numberOfSteps;
+	
+	for(float i = 0; i < dist; i+=dt){
 		float sampledDensity = sampleVolume(r.origin);
-		Tr *= exp(-extinction.x * sampledDensity * invMaxDensity);
+		Tr *= exp(-extinction.x * densityCoef * sampledDensity * invMaxDensity);
+		if(Tr < 0.01)
+			break;
 		
-		r.origin = getPointAt(r, stepSize);
+		r.origin = getPointAt(r, dt);
 	}
 	
 	return vec3(Tr, Tr, Tr);
 }
-
 vec3 sampleLight(Ray rayOnLobeSurface, Light light){
 	vec3 Tr = calculateTr(rayOnLobeSurface.origin, light.position);
-	float lightPdf = getLightPdf(rayOnLobeSurface.origin, normalize(rayOnLobeSurface.direction), light, light.position);
+	//float lightPdf = getLightPdf(rayOnLobeSurface.origin, normalize(rayOnLobeSurface.direction), light, light.position);
+	float d = length(light.position - rayOnLobeSurface.origin);
+    return light.Li * Tr / (d*d);
 	
-	return light.Li * Tr/lightPdf;
+	//return light.Li * Tr/lightPdf;
 }
 
-bool integrate(Ray incoming, Light light, vec2 tHit, out vec3 color){
+bool integrate(Ray incoming, Light light, vec2 tHit, out vec3 avgL, out vec3 trAvg){
 	vec2 t = intersectBox(incoming.origin, incoming.direction);
 	if(t.x < 0)
 		t.x = 0;
@@ -263,18 +306,19 @@ bool integrate(Ray incoming, Light light, vec2 tHit, out vec3 color){
 	
 	incoming.origin = getPointAt(incoming, t.x);
 	
-	float avgMeanPath = 1.0f / avgExtinction;
-	int bounces = 30;
-	vec3 trAvg = vec3(0.0f);
-	vec3 avgL = vec3(0,0,0);
+	vec3 absDir = abs(incoming.direction);
+	float dt = 1.0f / ( 100 * max(absDir.x, max(absDir.y, absDir.z)));
+	float avgMeanPath = 1.0f / (avgExtinction * densityCoef);
+	trAvg = vec3(0.0f);
+	avgL = vec3(0,0,0);
 	
 	//test if we reach any volume at all (NOT IDEAL)
 	float densityBounds = 0;
-	for(int i = 0; i < numberOfSteps; i++){
-		densityBounds = sampleVolume(incoming.origin);
+	for(float x = t.x; x < t.y; x += dt){
+		densityBounds = sampleVolume(incoming.origin); //TODO i dont need trilinear interpolation here.
 		if(densityBounds > 0)
 			break;
-		incoming.origin = getPointAt(incoming, stepSize);
+		incoming.origin = getPointAt(incoming, dt);
 	}
 	
 	if(densityBounds == 0)
@@ -282,55 +326,66 @@ bool integrate(Ray incoming, Light light, vec2 tHit, out vec3 color){
 
 	//Stretch and shape the points into the lobe format
 	for(int i = 0; i < nPointsToSample; i++){
-		vec3 sampledDir  = sampleHG(incoming.direction, -incoming.direction);
+		vec3 sampledDir = frameZUp(lobePoints[i]);
 		Ray r;
 		r.origin = incoming.origin;
+		r.origin = getPointAt(incoming, avgMeanPath * meanPathMult);
 		r.direction = sampledDir;
 		
 		sampledDirections[i] = r.direction;
-		pointsToSample[i] = getPointAt(r, avgMeanPath * meanPathMult);
+		//pointsToSample[i] = getPointAt(r, avgMeanPath * meanPathMult);
+		pointsToSample[i] = getPointAt(r, 1);
 	}
 	
 	//TODO shape Lobe size to voxel NEAR AREA i.e. points of the lobe are getting outside in empty space
 	//and still being sampled...
+	for(int i = 0; i < nPointsToSample; i++){
+		float sampledDensity = sampleVolume(pointsToSample[i]);
+		float validPoint = (sampledDensity > 0)? 1 : 0; //TODO is that a good solution?
+		if(validPoint == 0){
+			//trAvg += 1;
+			//continue;
+		}
+		trAvg += calculateTr(incoming.origin, pointsToSample[i]);
+	}
+	
+	vec3 accL = vec3(0,0,0);
 	for(int l = 0; l < numberOfLights; l++ ){
 		for(int i = 0; i < nPointsToSample; i++){
 			float sampledDensity = sampleVolume(pointsToSample[i]);
 			float validPoint = (sampledDensity > 0)? 1 : 0; //TODO is that a good solution?
-
-			trAvg += calculateTr(incoming.origin, pointsToSample[i]);
+			if(validPoint == 0){
+				//continue;
+			}
 			
 			vec3 toLight = normalize(lights[l].position - pointsToSample[i]);
 			
-			avgL += evalBSDF(sampledDirections[i], toLight, -sampledDirections[i]) 
+			accL += evalBSDF(sampledDirections[i], toLight, -sampledDirections[i]) 
 					* sampleLight(Ray(pointsToSample[i], sampledDirections[i]), lights[l]);
 		}
+		avgL += (scattering /** densityCoef*/) * (accL / nPointsToSample);
+		accL = vec3(0,0,0);
 	}
 
-	//trAvg /= number of sample points P in Lobe
-	trAvg = trAvg / (numberOfLights * nPointsToSample);
-	
-	//L /= number of sample points P in Lobe * number of Lights
-	avgL = avgL / (numberOfLights * nPointsToSample);
-	
-	avgL = avgL * scattering;
-	
-	color = avgL * trAvg;
+	trAvg = trAvg / nPointsToSample;
 	
 	return true;
 }
 
-
 void main(){
-	vec4 thisColor;
+	vec4 thisColor = vec4(0,0,0,0);
 	vec3 colorResult;
 	vec4 bg = texture(background, uv);
 	float depth = texture(backgroundDepth, uv).r;
 	Ray incomingRay = {cameraPosition, normalize(rayDirection)};
 	vec2 tHit = intersectBox(incomingRay.origin, incomingRay.direction); 
-
-	if(integrate(incomingRay, lights[0], tHit, colorResult))
-		thisColor = vec4(colorResult.xyz, 1.0f);
-
+	
+	vec3 avgL;
+	vec3 avgTr;
+	if(integrate(incomingRay, lights[0], tHit, avgL, avgTr))
+		thisColor += vec4(bg.xyz * avgTr + avgL , 1.0f);
+	else
+		thisColor += vec4(bg.xyz, 1);
+	
 	color = thisColor;
 }

@@ -19,7 +19,7 @@ uniform sampler3D volume;
 uniform sampler2D background;
 uniform sampler2D backgroundDepth;
 
-vec2 uv = gl_FragCoord.xy/textureSize(background, 0);
+vec2 uv = gl_FragCoord.xy/textureSize(backgroundDepth, 0); //TODO change this textureSize here
 
 /* Volume properties */
 uniform vec3 scattering;
@@ -87,7 +87,7 @@ bool isAllOne(vec3 v) {
 	return (v.x == 1 && v.y == 1 && v.z == 1) ? true : false;
 }
 
-vec3 sphericalToCartesianPre(float cosTheta, float sinTheta, float phi) {
+vec3 sphericalToCartesianPre(float sinTheta, float cosTheta, float phi) {
 	return vec3(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
 }
 
@@ -551,7 +551,7 @@ vec4 pathTracing(vec4 bg, vec3 origin, vec3 rayDirection, float depth){
 	float e1 = randomUniform(uv) - 0.5f;
 	float e2 = randomUniform(uv) - 0.5f;
 	vec2 frag = vec2(float(gl_FragCoord.x) + e1, float(gl_FragCoord.y) + e2);
-	vec3 screenPosNDC = vec3((frag/textureSize(background, 0)), gl_FragCoord.z) * 2.0f - 1.0f;
+	vec3 screenPosNDC = vec3((frag/textureSize(backgroundDepth, 0)), gl_FragCoord.z) * 2.0f - 1.0f;
 	vec4 pixelModelCoord = vec4(screenPosNDC, 1.0f)/gl_FragCoord.w;
 	pixelModelCoord = vec4(inverse( proj * cam ) * pixelModelCoord);
 	vec3 newRay = vec3(pixelModelCoord) - origin;

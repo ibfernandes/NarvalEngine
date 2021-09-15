@@ -34,7 +34,7 @@ uniform float g;
 /* Method Params */
 uniform int numberOfSteps;
 uniform int numberOfShadowSteps;
-const float transmittanceThreshold = 0.1;
+const float transmittanceThreshold = 0.01;
 
 /* Light properties */
 // 0 = rect, 1 = infAreaLight
@@ -131,7 +131,7 @@ vec3 evalHG(vec3 incoming, vec3 scattered) {
 //geometric term
 vec3 evaluateLight(Light light, in vec3 pos){
     float d = length(light.position - pos);
-    return light.Li / d;
+    return (light.Li) / (d*d); //TODO this number 100 here is a pure gambiarra
 }
 
 vec3 volumetricShadow(in vec3 cubePos, in vec3 lightPos){
@@ -150,51 +150,44 @@ vec3 volumetricShadow(in vec3 cubePos, in vec3 lightPos){
 		
 
 		// e ^(-ext * density[i] + -ext * density[i+1] + ...)
-        transmittance *= exp(-extinction * density);
+        transmittance *= exp(-extinction * density * stepSizeShadow);
 		if(transmittance.x < transmittanceThreshold)
 			break;
     }
     return transmittance;
 }
 
-bool integrate(Ray incomingRay, Light light, vec2 tHit, out vec3 transmittance, out vec3 inScattering){
+bool integrate(Ray ray, Light light, vec2 tHit, out vec3 transmittance, out vec3 inScattering){
 	if (tHit.x > tHit.y) 
 		return false;
 
 	tHit.x = max(tHit.x, 0.0f);
-	vec3 absDir = abs(incomingRay.direction);
+	vec3 absDir = abs(ray.direction);
 	float dt = 1.0f / ( numberOfSteps * max(absDir.x, max(absDir.y, absDir.z)));
-	incomingRay.origin = getPointAt(incomingRay, tHit.x);
+	ray.origin = getPointAt(ray, tHit.x);
 	vec3 totalTr = vec3(1.0f);
-	vec3 sum = vec3(0.0f);
+	vec3 scatteredLuminance = vec3(0.0f);
 	vec3 currentTr = vec3(0);
 
 	for(float t = tHit.x; t < tHit.y; t += dt){
-		float density = sampleVolume(incomingRay.origin);
-		if(density == 0){
-			incomingRay.origin = getPointAt(incomingRay, dt);
-			continue;
-		}
+		float density = sampleVolume(ray.origin);
 		
-		//If accumulated transmittance is near zero, there's no point in continue calculating transmittance
-		if(totalTr.x > transmittanceThreshold){
-			currentTr = exp(-extinction * density);
-			totalTr *= currentTr;
-		}
-		
-		vec3 Ls = evaluateLight(light, incomingRay.origin) 
-					* volumetricShadow(incomingRay.origin, light.position) 
-					* evalHG(incomingRay.direction, normalize(light.position - incomingRay.origin));
-					
-		//Integrate Ls from 0 to d
-		Ls =  (Ls - Ls * currentTr) / extinction; 
+		vec3 S = evaluateLight(light, ray.origin) 
+				* volumetricShadow(ray.origin, light.position) 
+				* density * (scattering*densityCoef)
+				* evalHG(ray.direction, light.position - ray.origin);
+		vec3 sampleExtinction = max(vec3(0.0000000001), density * extinction * densityCoef);
+		vec3 Sint = (S - S * exp(-sampleExtinction * dt)) / sampleExtinction;
+		scatteredLuminance += totalTr * Sint;
 
-		sum += totalTr * scattering * Ls;
-		incomingRay.origin = getPointAt(incomingRay, dt);
+		// Evaluate transmittance to view independentely
+		totalTr *= exp(-sampleExtinction * dt);
+		
+		ray.origin = getPointAt(ray, dt);
 	}
 
 	transmittance = totalTr;
-	inScattering = sum;
+	inScattering = scatteredLuminance;
 	return true;
 }
 

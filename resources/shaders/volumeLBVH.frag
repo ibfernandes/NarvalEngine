@@ -665,7 +665,7 @@ bool sameHemisphere(vec3 v1, vec3 v2) {
 	return dot(v1, v2) > 0 ? true : false;
 }
 
-vec3 sphericalToCartesianPre(float cosTheta, float sinTheta, float phi) {
+vec3 sphericalToCartesianPre(float sinTheta, float cosTheta, float phi) {
 	return vec3(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
 }
 
