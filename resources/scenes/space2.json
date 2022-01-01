@@ -5,12 +5,12 @@
 		{
 			"name": "emitter",
 			"type": "emitter",
-			"albedo": [1000.0, 685.0, 539.0]
+			"albedo": [100000.0, 68500.0, 53900.0]
 		},
 		{
 			"name": "emitterRocket",
 			"type": "emitter",
-			"albedo": [10000.0, 4850.0, 1390.0]
+			"albedo": [1000.0, 485.0, 139.0]
 		},
 		{
 			"name": "cloudVolMat",
@@ -87,39 +87,39 @@
 			"radius": 0.25,
 			"materialName": "emitterRocket"
 		},	
-{
-	"name": "engine2",
-	"type": "sphere",
-	"transform": {
-		"position": [0.95, 0.34, -0.41],
-		"scale": [1, 1, 1],
-		"rotation": [0, 0, 0]
-	},
-	"radius": 0.25,
-	"materialName": "emitterRocket"
-},
-{
-	"name": "engine3",
-	"type": "sphere",
-	"transform": {
-		"position": [0.57, -0.79, 0.41],
-		"scale": [1, 1, 1],
-		"rotation": [0, 0, 0]
-	},
-	"radius": 0.25,
-	"materialName": "emitterRocket"
-},
-{
-	"name": "engine4",
-	"type": "sphere",
-	"transform": {
-		"position": [0.71, -0.53, -0.53],
-		"scale": [1, 1, 1],
-		"rotation": [0, 0, 0]
-	},
-	"radius": 0.25,
-	"materialName": "emitterRocket"
-},		
+		{
+			"name": "engine2",
+			"type": "sphere",
+			"transform": {
+				"position": [0.95, 0.34, -0.41],
+				"scale": [1, 1, 1],
+				"rotation": [0, 0, 0]
+			},
+			"radius": 0.25,
+			"materialName": "emitterRocket"
+		},
+		{
+			"name": "engine3",
+			"type": "sphere",
+			"transform": {
+				"position": [0.57, -0.79, 0.41],
+				"scale": [1, 1, 1],
+				"rotation": [0, 0, 0]
+			},
+			"radius": 0.25,
+			"materialName": "emitterRocket"
+		},
+		{
+			"name": "engine4",
+			"type": "sphere",
+			"transform": {
+				"position": [0.71, -0.53, -0.53],
+				"scale": [1, 1, 1],
+				"rotation": [0, 0, 0]
+			},
+			"radius": 0.25,
+			"materialName": "emitterRocket"
+		},		
 		{
 			"name": "rocketExplosion",
 			"type": "volume",
@@ -155,8 +155,8 @@
 	
 	"renderer": {
 		"resolution": [1200, 600],
-		"spp": 1,
-		"bounces": 3,
+		"spp": 5,
+		"bounces": 15,
 		"mode": "realtime",
 		"HDR": false,
 		"toneMapping": true

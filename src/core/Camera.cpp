@@ -8,8 +8,7 @@ namespace narvalengine {
 		this->aperture = aperture;
 		lensRadius = aperture / 2.0f;
 		this->vfov = vfov;
-		float t = glm::radians(vfov);
-		halfHeight = tan(t / 2.0f);
+		halfHeight = tan(glm::radians(vfov) / 2.0f);
 		halfWidth = aspectRatio * halfHeight;
 		this->focusDistance = focusDistance;
 
@@ -110,11 +109,6 @@ namespace narvalengine {
 
 		lookAtPoint = position + front * 1.0f;
 
-		//printVec3(front, "front ");
-		//printVec3(lookAtPoint, "lookAtPoint ");
-		//std::cout << "pitch " << pitch << std::endl;
-		//std::cout << "heading " << heading << std::endl;
-
 		cam = glm::lookAt(position, position + front, up);
 
 		lowerLeft = position - focusDistance * halfWidth * -side - focusDistance * halfHeight * this->up - focusDistance * front;
@@ -143,9 +137,9 @@ namespace narvalengine {
 		return &previousPosition;
 	}
 
-	Ray Camera::getRayPassingThrough(float s, float t) {
+	Ray Camera::getRayPassingThrough(float x, float y) {
 		glm::vec3 rd = lensRadius * randomInUnitDisk();
 		glm::vec3 offset = side * rd.x + up * rd.y;
-		return Ray(position + offset, -glm::normalize(lowerLeft + s * horizontal + t * vertical - position - offset));
+		return Ray(position + offset, -glm::normalize(lowerLeft + x * horizontal + y * vertical - position - offset));
 	}
 }

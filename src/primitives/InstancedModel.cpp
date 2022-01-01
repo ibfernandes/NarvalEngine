@@ -21,9 +21,6 @@ namespace narvalengine {
 		this->invTransformToWCS = glm::inverse(transformToWCS);
 	}
 
-	/*
-		Receives a ray in WCS, converts it to OCS and tests intersection with this model's primitives
-	*/
 	bool InstancedModel::intersect(Ray ray, RayIntersection& hit, float& tMin, float& tMax) {
 		if (!isCollisionEnabled)
 			return false;

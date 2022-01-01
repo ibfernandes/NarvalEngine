@@ -9,11 +9,12 @@
 
 namespace narvalengine {
 
-	struct Lens {
-		float mm;
-		float aperture;
-	};
-
+	/**
+	 * Class responsible for everything that is camera related. 
+	 * All angles are defined in degrees.
+	 * For an exceptional read about how cameras and lenses work visit: 
+	 * https://ciechanow.ski/cameras-and-lenses/
+	 */
 	class Camera{
 	public:
 		glm::vec3 position;
@@ -45,6 +46,17 @@ namespace narvalengine {
 	public:
 		Camera();
 		~Camera();
+		/**
+		 * Initializes the camera.
+		 *
+		 * @param lookFrom coordinates in World Coordinate System (WCS).
+		 * @param lookAt coordinates in World Coordinate System (WCS).
+		 * @param up direction vector.
+		 * @param vfov in degrees.
+		 * @param aspectRatio usually defined as WIDTH/HEIGHT.
+		 * @param aperture defined in f stops.
+		 * @param focusDistance in millimeters.
+		 */
 		Camera(glm::vec3 lookFrom, glm::vec3 lookAt, glm::vec3 up, float vfov, float aspectRatio, float aperture, float focusDistance);
 		void changeHeading(float deg);
 		void changePitch(float deg);
@@ -55,7 +67,15 @@ namespace narvalengine {
 		void setPosition(glm::vec3 pos);
 		glm::vec3 *getPosition();
 		glm::vec3 *getPreviousPosition();
-		Ray getRayPassingThrough(float s, float t);
+		/**
+		 * Calculates a ray passing thrugh the camera's near plane at x and y.
+		 * Both params must be normalized in the interval [0, 1].
+		 * 
+		 * @param x in the interval [0, 1].
+		 * @param y in the interval [0, 1].
+		 * @return ray with origin at the camera's plane and direction towards the forward vector.
+		 */
+		Ray getRayPassingThrough(float x, float y);
 	};
 
 }

@@ -1,17 +1,17 @@
 #pragma once
-#include "core/Scene.h"
+#include "core/EngineState.h"
 #include <vector>
 #include <iostream>
 
 namespace narvalengine {
-	class SceneManager {
+	class StateManager {
+	private:
+		int currentState = 0;
+		std::vector<EngineState*> states;
 	public:
-		std::vector<Scene*> scenes;
-		int currentScene = 0;
-
-		SceneManager();
-		~SceneManager();
-		void addState(Scene *scene);
+		StateManager();
+		~StateManager();
+		void addState(EngineState *state);
 		void removeState(int id);
 		void changeStateTo(int id);
 		void variableUpdate(float deltaTime);

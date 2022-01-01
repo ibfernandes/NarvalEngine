@@ -17,15 +17,12 @@ namespace narvalengine {
 	public:
 		float *vertexDataPointer = nullptr;
 		int vertexDataPointerLength;
-		int* vertexIndicesPointer = nullptr;
+		uint32_t* vertexIndicesPointer = nullptr;
 		int vertexIndicesPointerLength;
-		//std::vector<TextureInfo> textures;
-		//TextureInfo textures[TextureName::Count];
 		Material *material = nullptr;
 		int modelMaterialIndex = -1;
-		int strideLength; //TODO should be substituted by vertexLayout
+		int strideLength;
 		VertexLayout vertexLayout;
-		//TODO should have a material too?
 
 		Mesh();
 		~Mesh();

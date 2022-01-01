@@ -1,7 +1,20 @@
-#include "RendererGL.h"
+#include "renderer/RendererGL.h"
 
 namespace narvalengine {
 	RendererGL *rendererGL;
+
+	void APIENTRY
+		MessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam) {
+
+		if (type == GL_DEBUG_TYPE_ERROR) {
+			LOG(FATAL) << 
+			fprintf(stderr, "message = %s, GL CALLBACK: %s type = 0x%x, severity = 0x%x\n",
+				message,
+				(type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""),
+				type,
+				severity);
+		}
+	}
 
 	void FrameBufferGL::create(Attachment *attachments, int length) {
 		glGenFramebuffers(1, &id);
@@ -17,7 +30,6 @@ namespace narvalengine {
 			this->width = tex.width;
 			this->height = tex.height;
 
-			//TODO: include stencil only
 			if (isDepth(texLayout)) {
 				if (texLayout == TextureLayout::D24S8)
 					attachmentType = GL_DEPTH_STENCIL_ATTACHMENT;
@@ -31,6 +43,16 @@ namespace narvalengine {
 	}
 
 	void RendererGL::init() {
+		glEnable(GL_TEXTURE_2D);
+		glFrontFace(GL_CCW);
+		glCullFace(GL_BACK);
+		glEnable(GL_DEPTH_TEST);
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		glEnable(GL_DEBUG_OUTPUT);
+		glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+		glDebugMessageCallback(MessageCallback, 0);
+
 		glEnable(GL_DEPTH_TEST);
 		glGenVertexArrays(1, &vao);
 		rendererGL = this;

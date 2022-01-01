@@ -17,7 +17,7 @@ namespace narvalengine {
 		if (key<0 || key>(numberOfKeys / sizeof(uint32_t)))
 			return;
 
-		this->modifier = modifier;
+		this->currentModifier = modifier;
 		if (action == GLFW_REPEAT)
 			action = GLFW_PRESS;
 
@@ -25,19 +25,6 @@ namespace narvalengine {
 
 		if (action == GLFW_PRESS)
 			previousState[key] = GLFW_PRESS;
-
-		/*std::cout << key << std::endl;
-		if (action == GLFW_PRESS) {
-			std::cout << "currentState: GLFW_PRESS" << std::endl;
-			std::cout << "previousState: GLFW_PRESS" << std::endl;
-		}
-		else if (action == GLFW_RELEASE) {
-			std::cout << "currentState: GLFW_RELEASE" << std::endl;
-			if (previousState[key] == GLFW_PRESS)
-				std::cout << "previousState: GLFW_PRESS" << std::endl;
-			else
-				std::cout << "previousState: GLFW_RELEASE" << std::endl;
-		}*/
 	}
 
 	void InputManager::mouse_key_callback(int key, int action, int modifier) {
@@ -80,11 +67,11 @@ namespace narvalengine {
 
 	bool InputManager::keyReleasedCombo(int key) {
 		int keyWithNoMod = key & NE_INPUT_KEY_MASK;
-		if (modifier == 0 || keyWithNoMod<0 || keyWithNoMod > (numberOfKeys / sizeof(uint32_t)))
+		if (currentModifier == 0 || keyWithNoMod<0 || keyWithNoMod > (numberOfKeys / sizeof(uint32_t)))
 			return false;
 
 		bool validCombo = false;
-		if (modifier == GLFW_MOD_CONTROL && NE_INPUT_MOD_GET(key, NE_INPUT_MOD_CTRL))
+		if (currentModifier == GLFW_MOD_CONTROL && NE_INPUT_MOD_GET(key, NE_INPUT_MOD_CTRL))
 			validCombo = true;
 
 		if (currentState[keyWithNoMod] == GLFW_RELEASE && previousState[keyWithNoMod] == GLFW_PRESS) {
@@ -114,5 +101,36 @@ namespace narvalengine {
 
 	glm::vec2 InputManager::getMousePosition() {
 		return mousePosition;
+	}
+
+	bool InputManager::isCombo(int v) {
+		return NE_INPUT_MOD_GET(v, NE_INPUT_MOD_SHIFT) == 1 || NE_INPUT_MOD_GET(v, NE_INPUT_MOD_CTRL) == 1 || NE_INPUT_MOD_GET(v, NE_INPUT_MOD_ALT) == 1;
+	}
+
+	void InputManager::init() {
+		std::fill_n(previousState, numberOfKeys, GLFW_RELEASE);
+		std::fill_n(currentState, numberOfKeys, GLFW_RELEASE);
+
+		keyMapping.insert({ "MOVE_FORWARD", {KeyHolding, GLFW_KEY_W} });
+		keyMapping.insert({ "MOVE_BACKWARDS", {KeyHolding, GLFW_KEY_S} });
+		keyMapping.insert({ "MOVE_LEFT", {KeyHolding, GLFW_KEY_A} });
+		keyMapping.insert({ "MOVE_RIGHT", {KeyHolding, GLFW_KEY_D} });
+		keyMapping.insert({ "MOVE_UPWARDS", {KeyHolding, GLFW_KEY_Q} });
+		keyMapping.insert({ "MOVE_DOWNWARDS", {KeyHolding, GLFW_KEY_E} });
+
+		keyMapping.insert({ "PITCH_UP", {KeyHolding, GLFW_KEY_T} });
+		keyMapping.insert({ "PITCH_DOWN", {KeyHolding, GLFW_KEY_G} });
+		keyMapping.insert({ "YAW_RIGHT", {KeyHolding, GLFW_KEY_F} });
+		keyMapping.insert({ "YAW_LEFT", {KeyHolding, GLFW_KEY_H} });
+
+		keyMapping.insert({ "MOUSE_MOVE_CAMERA", {KeyHolding, GLFW_MOUSE_BUTTON_MIDDLE} });
+
+		keyMapping.insert({ "SELECT_OBJECT", {KeyRelease, GLFW_MOUSE_BUTTON_LEFT} });
+
+		keyMapping.insert({ "ROTATE_OBJECT", {KeyRelease, NE_INPUT_MOD_SET(GLFW_KEY_R, NE_INPUT_MOD_CTRL)} });
+		keyMapping.insert({ "SCALE_OBJECT", {KeyRelease, NE_INPUT_MOD_SET(GLFW_KEY_S, NE_INPUT_MOD_CTRL)} });
+		keyMapping.insert({ "TRANSLATE_OBJECT", {KeyRelease, NE_INPUT_MOD_SET(GLFW_KEY_T, NE_INPUT_MOD_CTRL)} });
+
+		keyMapping.insert({ "TESTING_KEY", {KeyHolding, GLFW_KEY_1} });
 	}
 }

@@ -6,8 +6,12 @@
 #include <string>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <glog/logging.h>
 
 namespace narvalengine {
+
+	void APIENTRY MessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam);
+
 	static GLenum filterFlag(uint64_t flags, uint64_t mask, uint64_t shift) {
 		return ((flags & mask) >> shift) - 1;
 	}
@@ -36,6 +40,7 @@ namespace narvalengine {
 	static const GLenum GLShaderType[] = { GL_VERTEX_SHADER, GL_FRAGMENT_SHADER, GL_GEOMETRY_SHADER };
 	static const GLenum GLTextureWrap[] = { GL_CLAMP_TO_EDGE, GL_REPEAT, GL_CLAMP_TO_BORDER };
 	static const GLenum GLTextureFilter[] = { GL_LINEAR, GL_NEAREST };
+	
 	//Must closely match TexFormat from "Texture.h"
 	static const GLTexFormatInfo GLTexFormat[] = { {}, {}, {GL_RGB32I, GL_RGB_INTEGER, GL_INT},
 		{}, {GL_R32F, GL_RED, GL_FLOAT}, {},
@@ -366,7 +371,7 @@ namespace narvalengine {
 		}
 
 		void clear(glm::vec4 color) {
-			clear(color.x, color.y, color.z, color.a);
+			clear(color.x, color.y, color.z, color.w);
 		}
 
 		void clear() {
@@ -396,6 +401,9 @@ namespace narvalengine {
 				break;
 			case UniformType::Mat4:
 				glUniformMatrix4fv(uniformLoc, 1, GL_FALSE, (float*)mem.data);
+				break;
+			case UniformType::Bool:
+				glUniform1i(uniformLoc, *(bool*)(mem.data));
 				break;
 		}
 	}

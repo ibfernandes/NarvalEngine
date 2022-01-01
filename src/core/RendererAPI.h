@@ -1,11 +1,12 @@
 #pragma once
 #include <stdint.h>
+#include "core/Settings.h"
 
-/*
-	Texture sampling flags
-	Flags layout:
-		   4096 2048 1024  512  256  128   64   32   16    8    4    2   1
-						   MAG  MAG  MIN   MIN  W    W     V    V    U   U
+/**
+*	Texture sampling flags
+*	Flags layout:
+*		   4096 2048 1024  512  256  128   64   32   16    8    4    2   1
+*						   MAG  MAG  MIN   MIN  W    W     V    V    U   U
 */
 #define NE_TEX_SAMPLER_U_CLAMP			0x00000001
 #define NE_TEX_SAMPLER_U_MIRROR			0x00000002
@@ -46,12 +47,14 @@
 #define NE_SHADER_TYPE_FRAGMENT			0x0000002
 #define NE_SHADER_TYPE_GEOMETRY			0x0000003
 
-/*
-	Stencil
+/**
+*	Stencil
 */
 #define NE_STENCIL_FUNC_MASK_SHIFT		8
 
-//Mask value vary from 0 to 255 (8 bits)
+/**
+*	Mask value vary from 0 to 255 (8 bits)
+* */
 #define NE_STENCIL_FUNC_MASK_MASK		0x0000ff00
 #define NE_STENCIL_FUNC_MASK(v) ( ((uint32_t)(v) << NE_STENCIL_FUNC_MASK_SHIFT) & NE_STENCIL_FUNC_MASK_MASK)
 
@@ -103,18 +106,17 @@
 #define NE_STENCIL_OP_PASS_Z_SHIFT		28                   
 #define NE_STENCIL_OP_PASS_Z_MASK		0xf0000000 
 
-/*
-	Clear
+/**
+*	Clear
 */
-
 #define NE_CLEAR_NONE                 0x0000
 #define NE_CLEAR_COLOR                0x0001
 #define NE_CLEAR_DEPTH                0x0002
 #define NE_CLEAR_STENCIL              0x0004
 #define NE_CLEAR_ALL	              NE_CLEAR_COLOR | NE_CLEAR_DEPTH | NE_CLEAR_STENCIL
 
-/*
-	Primitive type
+/**
+*	Primitive type
 */
 #define NE_STATE_PRIMITIVE_TYPE_TRI		      0x0001000000000000 //Triangle Strip
 #define NE_STATE_PRIMITIVE_TYPE_TRISTRIP      0x0002000000000000 //Triangle Strip
@@ -141,11 +143,16 @@
 #define NE_MAX_STAGES	8
 
 namespace narvalengine {
+	typedef uint16_t HandleID;
+
 	enum ImageFileFormat {
 		PNG,
 		EXR
 	};
 
+	/**
+	 *	Defines the interpretation given for each Vertex Attribute.
+	 */
 	struct VertexAttrib{
 		enum Enum {
 			Position,
@@ -153,6 +160,10 @@ namespace narvalengine {
 			Tangent,
 			Color0,
 			TexCoord0,
+			Slot0,
+			Slot1,
+			Slot2,
+			Slot3,
 			Count
 		};
 	};
@@ -160,6 +171,7 @@ namespace narvalengine {
 	struct VertexAttribType {
 		enum Enum {
 			Float,
+			Int,
 			Count
 		};
 	};
@@ -173,6 +185,7 @@ namespace narvalengine {
 			Vec4,
 			Float,
 			Int,
+			Bool,
 			Count
 		};
 	};
@@ -197,7 +210,13 @@ namespace narvalengine {
 		Count
 	};	
 
-	static bool isHandleValid(int handleId) {
+	/**
+	 * Checks if a handle is valid.
+	 * 
+	 * @param handleId
+	 * @return true if valid. False otherwise.
+	 */
+	static bool isHandleValid(HandleID handleId) {
 		if (handleId < 0 || handleId >= INVALID_HANDLE)
 			return false;
 		else
@@ -221,7 +240,7 @@ namespace narvalengine {
 		TEX_1 = 1 << 7,
 		TEX_2 = 1 << 8,
 		TEX_3 = 1 << 9,
-		TextureNameCount = 9 //TODO name workaround, enum class doesn't have an implicit casting, which is ridiculous
+		TextureNameCount = 9
 	};
 
 	enum TextureChannelFormat {
@@ -231,41 +250,108 @@ namespace narvalengine {
 		R_METALLIC
 	};
 
+	static const uint8_t vertexAttribTypeSizeCPU[VertexAttribType::Count][4] = {
+		{sizeof(float), sizeof(float)*2, sizeof(float)*3, sizeof(float)*4} // Float
+	};
+
 	static const uint8_t vertexAttribTypeSizeGL[VertexAttribType::Count][4] = {
 		{4, 8, 12, 16} // Float
 	};
 
 	static const uint8_t (*vertexAttribTypeSize[])[VertexAttribType::Count][4] = {
-		&vertexAttribTypeSizeGL
+		&vertexAttribTypeSizeGL,
+		& vertexAttribTypeSizeCPU
 	};
 
+	/**
+	* Struct responsible for configuring the memory layout of a Vertex Buffer.
+	* 
+	*  Example of a vertex packed with Position, composed of 3 floats, and UV coordinates, composed of 2 floats.
+	*  Assuming floats of 4 bytes.
+	* 
+	*   Total Stride: 20 bytes
+	*   |-----------------|
+	*	Offsets:
+	*	0 bytes		12 bytes
+	*	|---------| |-----|
+	*   Size in bytes:
+	*   12 bytes	8 bytes
+	*   |---------| |-----|
+	*	1.0	0.0	1.0	0.0 0.0 ...
+	*/
 	struct VertexLayout {
-		int stride; //in bytes
-		int offset[VertexAttrib::Count]; //also in bytes
-		int attributeType[VertexAttrib::Count];
-		int qtt[VertexAttrib::Count];
+		/**
+		*	Stride size defined in bytes.
+		*/
+		int stride = 0;
+		/**
+		*	Offset for each VertexAttrib type. Also defined in bytes.
+		*/
+		int offset[VertexAttrib::Count]{};
+		/**
+		*	Name of each attribute stored.
+		*/
+		int attribute[VertexAttrib::Count]{};
+		/**
+		*	Type of each attribute stored.
+		*/
+		VertexAttribType::Enum attributeType[VertexAttrib::Count]{};
+		/** 
+		*	Number of elements for this VertexAttrib with VertexAttribType per each element.
+		*/
+		int qtt[VertexAttrib::Count]{};
+		/**
+		 *	Counter of how many attributes are active.
+		 */
 		int activeAttribs = 0;
 
 		void init() {
 			stride = 0;
-			//TODO memSet all values to 0.
-			//offset = {};
-			//attributeType = {};
+			activeAttribs = 0;
+			for (int i = 0; i < VertexAttrib::Count; i++) {
+				offset[i] = 0;
+				attribute[i] = 0;
+				qtt[i] = 0;
+			}
 		}
 
-		void add(VertexAttrib::Enum vertAttrib, VertexAttribType::Enum vertAttribType, int num) {
-			qtt[vertAttrib] = num;
+		/**
+		 * Adds a vertex attribute name with type and n elements and calculates the stride and offset.
+		 * 
+		 * @param vertAttrib the vertex attribute name.
+		 * @param vertAttribType the vertex attribute type.
+		 * @param nElements number of elements of type VertexAttribType with semantic meaning of VertexAttrib.
+		 */
+		void add(VertexAttrib::Enum vertAttrib, VertexAttribType::Enum vertAttribType, int nElements) {
+			qtt[vertAttrib] = nElements;
 			offset[vertAttrib] = stride;
-			attributeType[vertAttrib] = vertAttrib;
-			stride += (*vertexAttribTypeSize[0])[vertAttribType][num-1];
-			activeAttribs++;//TODO provisory
+			attributeType[vertAttrib] = vertAttribType;
+			attribute[vertAttrib] = vertAttrib;
+			stride += (*vertexAttribTypeSize[0])[vertAttribType][nElements -1];
+			activeAttribs++;
 		}
 
+		/**
+		 * Verifies if this VertexLayout contains vertAttrib.
+		 * 
+		 * @param vertAttrib to test.
+		 * @return true if this VertexLayout contains vertAttrib. False otherwise.
+		 */
 		bool contains(VertexAttrib::Enum vertAttrib) {
 			if (qtt[vertAttrib] > 0)
 				return true;
 			else
 				return false;
+		}
+
+		/**
+		 * Returns the size in bytes of this Vertex Attribute Type.
+		 * 
+		 * @param vertAttrib
+		 * @return the size in bytes.
+		 */
+		uint8_t getVertexAttribTypeSize(VertexAttrib::Enum vertAttrib, RendererAPIName apiName) {
+			return (*vertexAttribTypeSize[apiName])[attributeType[vertAttrib]][0];
 		}
 
 		void end() {

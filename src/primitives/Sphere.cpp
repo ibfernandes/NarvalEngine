@@ -9,6 +9,10 @@ namespace narvalengine {
 	Sphere::~Sphere() {
 	}
 
+	glm::vec3 Sphere::getCenter() {
+		return glm::vec3(*vertexData[0], *(vertexData[0] + 1), *(vertexData[0] + 2));
+	}
+
 	bool Sphere::intersect(Ray r, RayIntersection &hit) {
 		glm::vec3 center = glm::vec3(*vertexData[0], *(vertexData[0] + 1), *(vertexData[0] + 2));
 		glm::vec3 oc = r.origin - center;
@@ -25,7 +29,7 @@ namespace narvalengine {
 			hit.tFar = glm::max(temp1, temp2);
 			hit.hitPoint = r.getPointAt(hit.tNear);
 			hit.normal = glm::normalize((hit.hitPoint - center) / radius);
-			hit.uv = glm::vec2(0, 0);//TODO
+			hit.uv = glm::vec2(0, 0);
 			hit.primitive = this;
 
 			return true;
@@ -55,7 +59,7 @@ namespace narvalengine {
 		//direction to x'
 		glm::vec3 nwp = glm::normalize(toWorld(glm::normalize(local), w, v, u));
 
-		return toWorld(local, w, v, u); //TODO is this that correct?
+		return toWorld(local, w, v, u);
 	}
 
 	glm::vec2 Sphere::samplePointOnTexture(glm::vec3 pointOnSurface) {

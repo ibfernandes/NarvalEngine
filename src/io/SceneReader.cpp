@@ -7,57 +7,10 @@ namespace narvalengine {
 	SceneReader::~SceneReader() {
 	}
 
-	SceneReader::SceneReader(std::string filePath, bool absolutePath) {
-		settings = new Settings();
-		mainCamera = new Camera();
-		scene = new Scene();
-
-		std::string  text = "";
-		std::string buffer;
-		std::ifstream vc;
-		if(absolutePath)
-			vc = std::ifstream(filePath);
-		else
-			vc = std::ifstream(RESOURCES_DIR + filePath);
-
-		if (!vc) {
-			std::cerr << "Couldn't read " << filePath << " JSON file." << std::endl;
-			exit(1);
-		}
-
-		while (getline(vc, buffer)) {
-			text = text + buffer + "\n";
-		};
-		vc.close();
-
-		rapidjson::Document doc;
-		doc.Parse(text.c_str());
-		assert("ERROR: invalid JSON" && doc.IsObject());
-
-		assert("ERROR: file must contain a version" && doc.HasMember("version"));
-		std::string version = doc["version"].GetString();
-
-		rapidjson::Value &materials = doc["materials"];
-		for (rapidjson::SizeType i = 0; i < materials.Size(); i++)
-			processMaterial(materials[i]);
-
-		rapidjson::Value &primitives = doc["primitives"];
-		for (rapidjson::SizeType i = 0; i < primitives.Size(); i++)
-			processPrimitives(primitives[i]);
-
-		processCameraAndRenderer(doc["camera"], doc["renderer"]);
-	}
-	
 	void SceneReader::loadScene(std::string filePath, bool absolutePath) {
-		if(settings)
-			delete settings;
-		if (mainCamera)
-			delete mainCamera;
 		if (scene)
 			delete scene;
 
-		settings = new Settings();
-		mainCamera = new Camera();
 		scene = new Scene();
 
 		std::string  text = "";
@@ -68,21 +21,23 @@ namespace narvalengine {
 		else
 			vc = std::ifstream(RESOURCES_DIR + filePath);
 
-		if (!vc) {
-			std::cerr << "Couldn't read " << filePath << " JSON file." << std::endl;
-			exit(1);
-		}
+		if (!vc) 
+			LOG(FATAL) << "Couldn't read " << filePath << ".";
 
-		while (getline(vc, buffer)) {
+		while (getline(vc, buffer)) 
 			text = text + buffer + "\n";
-		};
+	
 		vc.close();
 
 		rapidjson::Document doc;
 		doc.Parse(text.c_str());
-		assert("ERROR: invalid JSON" && doc.IsObject());
 
-		assert("ERROR: file must contain a version" && doc.HasMember("version"));
+		if(!doc.IsObject())
+			LOG(FATAL) << "Malformatted json file: " << filePath << ". Not a valid json object.";
+
+		if(!doc.HasMember("version"))
+			LOG(FATAL) << "Incomplete json file: " << filePath << ". Version is not present.";
+
 		std::string version = doc["version"].GetString();
 
 		rapidjson::Value& materials = doc["materials"];
@@ -96,6 +51,10 @@ namespace narvalengine {
 		processCameraAndRenderer(doc["camera"], doc["renderer"]);
 	}
 
+	SceneReader::SceneReader(std::string filePath, bool absolutePath) {
+		loadScene(filePath, absolutePath);
+	}
+
 	glm::vec3 SceneReader::getVec3(rapidjson::Value &v) {
 		glm::vec3 vec;
 		for (rapidjson::SizeType i = 0; i < v.Size(); i++)
@@ -104,12 +63,13 @@ namespace narvalengine {
 	}
 
 	void SceneReader::processMaterial(rapidjson::Value &material) {
-		//TODO replace asserts
-		assert("ERROR: Missing material type" && material.HasMember("type"));
-		assert("ERROR: Missing material name" && material.HasMember("name"));
-
-		std::string type = material["type"].GetString();
+		if(!material.HasMember("name"))
+			LOG(FATAL) << "Material is missing the property name.";
 		std::string name = material["name"].GetString();
+
+		if(!material.HasMember("type"))
+			LOG(FATAL) << "Material " << name << " is missing the property type.";
+		std::string type = material["type"].GetString();
 
 		if (type.compare("microfacet") == 0) {
 			std::string albedoPath = "";
@@ -122,7 +82,8 @@ namespace narvalengine {
 				albedo = getVec3(material["albedo"]);
 			
 			if(material.HasMember("normalMap"))
-				normalMap = getVec3(material["normalMap"]); //Must be already converted on range from [-1, 1] to [0, 1]
+				//Must be already converted from the range [-1, 1] to [0, 1].
+				normalMap = getVec3(material["normalMap"]); 
 
 			float roughness = material["roughness"].GetFloat();
 			float metallic = material["metallic"].GetFloat();
@@ -131,20 +92,18 @@ namespace narvalengine {
 			Texture *metallicTex;
 			metallicTex = new Texture(1, 1, R32F, flags, {(uint8_t*)&metallic, sizeof(float)});
 			metallicTex->textureName = TextureName::METALLIC;
-			//metallicTex = new Texture(TextureName::METALLIC, TextureChannelFormat::R_METALLIC, glm::ivec2(1, 1), R32F, &metallic);
 			ResourceManager::getSelf()->setTexture(name + ".metallic", metallicTex);
 
 			Texture *albedoTex = nullptr;
-			//If it should load a texture file
+			//If it should load from a texture file
 			if (material["albedo"].IsString()) {
 				ResourceManager::getSelf()->loadTexture(name + ".albedo", albedoPath);
 				albedoTex = ResourceManager::getSelf()->getTexture(name + ".albedo");
 				albedoTex->textureName = TextureName::ALBEDO;
-			}
-			else { //If it is a simple 3 float color
+			}else { 
+				//If it is a simple 3 float color
 				albedoTex = new Texture(1, 1, RGB32F, flags, { (uint8_t*)&albedo[0], sizeof(float) * 3 });
 				albedoTex->textureName = TextureName::ALBEDO;
-				//albedoTex = new Texture2D(TextureName::ALBEDO, TextureChannelFormat::RGB_ALBEDO, glm::ivec2(1, 1), RGB32F, &albedo[0]);
 				ResourceManager::getSelf()->setTexture(name + ".albedo", albedoTex);
 			}
 
@@ -166,7 +125,7 @@ namespace narvalengine {
 			mat->addTexture(TextureName::NORMAL_MAP, normalMapTex);
 
 			GGXDistribution *ggxD = new GGXDistribution();
-			ggxD->alpha = roughnessToAlpha(0.65f); //TODO double check
+			ggxD->alpha = roughnessToAlpha(roughness);
 			FresnelSchilck *fresnel = new FresnelSchilck();
 			GlossyBSDF *glossybsdf = new GlossyBSDF(ggxD, fresnel);
 
@@ -235,7 +194,7 @@ namespace narvalengine {
 					ResourceManager::getSelf()->loadVDBasTexture(name, path);
 				else if (path.find(".vol") != std::string::npos)
 					ResourceManager::getSelf()->loadVolasTexture(name, path);
-				medium = new GridMedia(scattering, absorption, name, material["density"].GetFloat());
+				medium = new GridMedia(scattering, absorption, ResourceManager::getSelf()->getTexture(name), material["density"].GetFloat());
 			} else {
 				medium = new HomogeneousMedia(scattering, absorption, material["density"].GetFloat());
 			}
@@ -246,24 +205,32 @@ namespace narvalengine {
 			mediumMaterial->bsdf = new BSDF();
 			mediumMaterial->bsdf->addBxdf(volumebsdf);
 			mediumMaterial->addTexture(TextureName::TEX_1, ResourceManager::getSelf()->getTexture(name));
-			//TODO falta definir A BSDF
 
 			ResourceManager::getSelf()->replaceMaterial(name, mediumMaterial);
-		} else {
-			assert("ERROR: material must have a valid type" && false);
-		}
+		} else 
+			LOG(FATAL) << "Invalid material type while reading scene from json file.";
 	}
 
 	void SceneReader::processPrimitives(rapidjson::Value &primitive) {
-		assert("ERROR: Missing model type" && primitive.HasMember("type"));
-		assert("ERROR: Missing model name" && primitive.HasMember("name"));
-
+		if (!primitive.HasMember("name"))
+			LOG(FATAL) << "Primitive is missing the property name.";
 		std::string name = primitive["name"].GetString();
+
+		if (!primitive.HasMember("type"))
+			LOG(FATAL) << "Primitive " << name << " is missing the property type.";
 		std::string type = primitive["type"].GetString();
+
 		glm::vec3 pos = getVec3(primitive["transform"]["position"]);
 		bool collision = true;
 		if(primitive.HasMember("collision"))
 			collision = primitive["collision"].GetBool();
+
+		Model* model;
+		std::vector<Primitive*> primitives;
+		std::vector<Primitive*> lights;
+		std::vector<Material*> materials;
+		std::vector<Mesh> meshes;
+		VertexLayout vertexLayout;
 
 		if (type.compare("obj") == 0) {
 			glm::vec3 scale = getVec3(primitive["transform"]["scale"]);
@@ -293,53 +260,56 @@ namespace narvalengine {
 			glm::vec3 scale = getVec3(primitive["transform"]["scale"]);
 			glm::vec3 rotate = getVec3(primitive["transform"]["rotation"]);
 
-			Model* model = new Model();
-			model->vertexDataLength = 1;
-			model->vertexData = new float[3];
-			model->vertexData[0] = pos[0];
-			model->vertexData[1] = pos[1];
-			model->vertexData[2] = pos[2];
+			vertexLayout.init();
+			vertexLayout.add(VertexAttrib::Position, VertexAttribType::Float, 3);
+			vertexLayout.end();
 
-			int numOfIndices = 1; // Only one vertex
-			model->faceVertexIndices = new int[numOfIndices];
-			model->faceVertexIndicesLength = numOfIndices;
-			model->faceVertexIndices[0] = 0;
+			const uint32_t vertexDataLength = 3;
+			float* vertexData = new float[vertexDataLength];
+			MemoryBuffer vertexDataMem = {(uint8_t*)vertexData, vertexDataLength * sizeof(float)};
 
-			Mesh m;
-			m.strideLength = 3;
-			m.vertexDataPointer = &model->vertexData[0];
-			m.vertexDataPointerLength = model->vertexDataLength;
-			m.vertexIndicesPointer = &model->faceVertexIndices[0];
-			m.vertexIndicesPointerLength = model->faceVertexIndicesLength;
-			m.modelMaterialIndex = 0;
+			const uint32_t indexDataLength = 1;
+			uint32_t* indexData = new uint32_t[indexDataLength];
+			MemoryBuffer indexDataMem = {(uint8_t*)indexData, indexDataLength * sizeof(uint32_t) };
 
-			m.vertexLayout.init();
-			m.vertexLayout.add(VertexAttrib::Position, VertexAttribType::Float, 3);
-			m.vertexLayout.end();
+			vertexData[0] = pos[0];
+			vertexData[1] = pos[1];
+			vertexData[2] = pos[2];
 
-			/*for (Texture* t : ResourceManager::getSelf()->getMaterial(materialName)->textures) {
-				if (t->textureName == TextureName::METALLIC) {
-					m.textures.push_back({ genStringID(materialName + ".metallic"), "material.metallic" });
-				}
-				else if (t->textureName == TextureName::ALBEDO) {
-					m.textures.push_back({ genStringID(materialName + ".albedo"), "material.diffuse" });
-				}
-			}*/
+			indexData[0] = 0;
 
-			model->meshes.push_back(m);
+			Mesh mesh;
+			mesh.strideLength = 3;
+			mesh.vertexDataPointer = &vertexData[0];
+			mesh.vertexDataPointerLength = vertexDataLength;
+			mesh.vertexIndicesPointer = &indexData[0];
+			mesh.vertexIndicesPointerLength = indexDataLength;
+			mesh.modelMaterialIndex = 0;
+			mesh.vertexLayout = vertexLayout;
+			meshes.push_back(mesh);
 
-			Point* point = new Point();
-			point->vertexData[0] = &model->vertexData[0];
+			Point* point = new Point[1];
+			point[0].vertexData[0] = &vertexData[0];
+
 			Material* material = ResourceManager::getSelf()->getMaterial(materialName);
 			if (material->light != nullptr) {
-				model->lights.push_back(point);
-				material->light->primitive = point;
-			}
-			else
-				model->primitives.push_back(point);
+				lights.push_back(&point[0]);
+				material->light->primitive = &point[0];
+			}else
+				primitives.push_back(&point[0]);
 
-			model->materials.push_back(material);
+			materials.push_back(material);
 			point->material = material;
+
+			model = new Model(vertexDataMem, indexDataMem,
+				primitives.size() > 0 ? MemoryBuffer{(uint8_t*)&point[0], sizeof(Point)} : MemoryBuffer{},
+				primitives,
+				lights.size() > 0 ? MemoryBuffer{(uint8_t*)&point[0], sizeof(Point)} : MemoryBuffer{},
+				lights,
+				materials,
+				meshes,
+				vertexLayout
+			);
 
 			StringID modelID = ResourceManager::getSelf()->replaceModel(name, model);
 			InstancedModel* instancedModel = new InstancedModel(model, modelID, getTransform(pos, rotate, scale));
@@ -352,28 +322,48 @@ namespace narvalengine {
 		else if (type.compare("sphere") == 0) {
 			float radius = primitive["radius"].GetFloat();
 			std::string materialName = primitive["materialName"].GetString();
-			Model *model = new Model();
-			model->vertexDataLength = 3;
-			model->vertexData = new float[3];
-			glm::vec3 point1(0, 0, 0);
-			model->vertexData[0] = point1[0];
-			model->vertexData[1] = point1[1];
-			model->vertexData[2] = point1[2];
-			model->centralize();
 
-			//TODO: missing mesh?
-			Sphere *sphere = new Sphere();
-			sphere->vertexData[0] = &model->vertexData[0];
-			sphere->radius = radius;
+			vertexLayout.init();
+			vertexLayout.add(VertexAttrib::Position, VertexAttribType::Float, 3);
+			vertexLayout.end();
+
+			const uint32_t vertexDataLength = 3;
+			float* vertexData = new float[vertexDataLength];
+			MemoryBuffer vertexDataMem = { (uint8_t*)vertexData, vertexDataLength * sizeof(float) };
+
+			const uint32_t indexDataLength = 1;
+			uint32_t* indexData = new uint32_t[indexDataLength];
+			MemoryBuffer indexDataMem = { (uint8_t*)indexData, indexDataLength * sizeof(uint32_t) };
+
+			vertexData[0] = 0;
+			vertexData[1] = 0;
+			vertexData[2] = 0;
+
+			indexData[0] = 0;
+
+			Sphere *sphere = new Sphere[1];
+			sphere[0].vertexData[0] = &vertexData[0];
+			sphere[0].radius = radius;
+
 			Material *material = ResourceManager::getSelf()->getMaterial(materialName);
 			if (material->light != nullptr) {
-				model->lights.push_back(sphere);
-				material->light->primitive = sphere;
+				model->lights.push_back(&sphere[0]);
+				material->light->primitive = &sphere[0];
 			} else
-				model->primitives.push_back(sphere);
+				model->primitives.push_back(&sphere[0]);
 
 			model->materials.push_back(material);
-			sphere->material = material;
+			sphere[0].material = material;
+
+			model = new Model(vertexDataMem, indexDataMem,
+				primitives.size() > 0 ? MemoryBuffer{ (uint8_t*)&sphere[0], sizeof(Sphere) } : MemoryBuffer{},
+				primitives,
+				lights.size() > 0 ? MemoryBuffer{ (uint8_t*)&sphere[0], sizeof(Sphere) } : MemoryBuffer{},
+				lights,
+				materials,
+				meshes,
+				vertexLayout
+			);
 
 			StringID modelID = ResourceManager::getSelf()->replaceModel(name, model);
 			InstancedModel *instancedModel = new InstancedModel(model, modelID, getTransform(pos, glm::vec3(0, 0, 0), glm::vec3(1, 1, 1)));
@@ -388,120 +378,125 @@ namespace narvalengine {
 			glm::vec3 scale = getVec3(primitive["transform"]["scale"]);
 			glm::vec3 rotate = getVec3(primitive["transform"]["rotation"]);
 
-			Model *model = new Model();
-			model->vertexDataLength = 4 * 3 + 4 * 3 + 4 * 3 + 4 * 2; //vert, norm, tan and UV
-			model->vertexData = new float[model->vertexDataLength];
-			glm::vec3 point1(-0.5f, -0.5f, 0); //0: bottom left
-			glm::vec3 point2(0.5f, -0.5f, 0); //1: bottom right
-			glm::vec3 point3(0.5f, 0.5f, 0);  //2: top right
-			glm::vec3 point4(-0.5f, 0.5f, 0); //3: top left
+			vertexLayout.init();
+			vertexLayout.add(VertexAttrib::Position, VertexAttribType::Float, 3);
+			vertexLayout.add(VertexAttrib::Normal, VertexAttribType::Float, 3);
+			vertexLayout.add(VertexAttrib::Tangent, VertexAttribType::Float, 3);
+			vertexLayout.add(VertexAttrib::TexCoord0, VertexAttribType::Float, 2);
+			vertexLayout.end();
+
+			//Position, Normal, Tangent and UV
+			const uint32_t vertexDataLength = 4 * 3 + 4 * 3 + 4 * 3 + 4 * 2;
+			float* vertexData = new float[vertexDataLength];
+			MemoryBuffer vertexDataMem = { (uint8_t*)vertexData, vertexDataLength * sizeof(float) };
+
+			//2 triangles, each triangle requiring 3 indices
+			const uint32_t indexDataLength = 2 * 3; 
+			uint32_t* indexData = new uint32_t[indexDataLength];
+			MemoryBuffer indexDataMem = { (uint8_t*)indexData, indexDataLength * sizeof(uint32_t) };
+
+			glm::vec3 point1(-0.5f, -0.5f, 0);	//0: bottom left
+			glm::vec3 point2(0.5f, -0.5f, 0);	//1: bottom right
+			glm::vec3 point3(0.5f, 0.5f, 0);	//2: top right
+			glm::vec3 point4(-0.5f, 0.5f, 0);	//3: top left
 			glm::vec2 uv1(0, 0);
 			glm::vec2 uv2(1, 0);
 			glm::vec2 uv3(1, 1);
 			glm::vec2 uv4(0, 1);
 			glm::vec3 normal(0, 0, -1.0f);
 			glm::vec3 tan(1.0f, 0, 0);
-			model->vertexData[0] = point1[0];
-			model->vertexData[1] = point1[1];
-			model->vertexData[2] = point1[2];
-			model->vertexData[3] = normal[0];
-			model->vertexData[4] = normal[1];
-			model->vertexData[5] = normal[2];
-			model->vertexData[6] = tan[0];
-			model->vertexData[7] = tan[1];
-			model->vertexData[8] = tan[2];
-			model->vertexData[9] = uv1[0];
-			model->vertexData[10] = uv1[1];
-			model->vertexData[11] = point2[0];
-			model->vertexData[12] = point2[1];
-			model->vertexData[13] = point2[2];
-			model->vertexData[14] = normal[0];
-			model->vertexData[15] = normal[1];
-			model->vertexData[16] = normal[2];
-			model->vertexData[17] = tan[0];
-			model->vertexData[18] = tan[1];
-			model->vertexData[19] = tan[2];
-			model->vertexData[20] = uv2[0];
-			model->vertexData[21] = uv2[1];
-			model->vertexData[22] = point3[0];
-			model->vertexData[23] = point3[1];
-			model->vertexData[24] = point3[2];
-			model->vertexData[25] = normal[0];
-			model->vertexData[26] = normal[1];
-			model->vertexData[27] = normal[2];
-			model->vertexData[28] = tan[0];
-			model->vertexData[29] = tan[1];
-			model->vertexData[30] = tan[2];
-			model->vertexData[31] = uv3[0];
-			model->vertexData[32] = uv3[1];
-			model->vertexData[33] = point4[0];
-			model->vertexData[34] = point4[1];
-			model->vertexData[35] = point4[2];
-			model->vertexData[36] = normal[0];
-			model->vertexData[37] = normal[1];
-			model->vertexData[38] = normal[2];
-			model->vertexData[39] = tan[0];
-			model->vertexData[40] = tan[1];
-			model->vertexData[41] = tan[2];
-			model->vertexData[42] = uv4[0];
-			model->vertexData[43] = uv4[1];
-			//model->centralize();
 
-			int numOfIndices = 1 * 2 * 3; // 1 face comprised of 2 triangles, each triangle needs 3 indices
-			model->faceVertexIndices = new int[numOfIndices];
-			model->faceVertexIndicesLength = numOfIndices;
-			model->faceVertexIndices[0] = 0;
-			model->faceVertexIndices[1] = 1;
-			model->faceVertexIndices[2] = 2;
-			model->faceVertexIndices[3] = 0;
-			model->faceVertexIndices[4] = 2;
-			model->faceVertexIndices[5] = 3;
+			vertexData[0] = point1[0];
+			vertexData[1] = point1[1];
+			vertexData[2] = point1[2];
+			vertexData[3] = normal[0];
+			vertexData[4] = normal[1];
+			vertexData[5] = normal[2];
+			vertexData[6] = tan[0];
+			vertexData[7] = tan[1];
+			vertexData[8] = tan[2];
+			vertexData[9] = uv1[0];
+			vertexData[10] = uv1[1];
+			vertexData[11] = point2[0];
+			vertexData[12] = point2[1];
+			vertexData[13] = point2[2];
+			vertexData[14] = normal[0];
+			vertexData[15] = normal[1];
+			vertexData[16] = normal[2];
+			vertexData[17] = tan[0];
+			vertexData[18] = tan[1];
+			vertexData[19] = tan[2];
+			vertexData[20] = uv2[0];
+			vertexData[21] = uv2[1];
+			vertexData[22] = point3[0];
+			vertexData[23] = point3[1];
+			vertexData[24] = point3[2];
+			vertexData[25] = normal[0];
+			vertexData[26] = normal[1];
+			vertexData[27] = normal[2];
+			vertexData[28] = tan[0];
+			vertexData[29] = tan[1];
+			vertexData[30] = tan[2];
+			vertexData[31] = uv3[0];
+			vertexData[32] = uv3[1];
+			vertexData[33] = point4[0];
+			vertexData[34] = point4[1];
+			vertexData[35] = point4[2];
+			vertexData[36] = normal[0];
+			vertexData[37] = normal[1];
+			vertexData[38] = normal[2];
+			vertexData[39] = tan[0];
+			vertexData[40] = tan[1];
+			vertexData[41] = tan[2];
+			vertexData[42] = uv4[0];
+			vertexData[43] = uv4[1];
 
-			Mesh m;
-			m.strideLength = 11;
-			m.vertexDataPointer = &model->vertexData[0];
-			m.vertexDataPointerLength = model->vertexDataLength;
-			m.vertexIndicesPointer = &model->faceVertexIndices[0];
-			m.vertexIndicesPointerLength = model->faceVertexIndicesLength;
-			m.modelMaterialIndex = 0;
+			indexData[0] = 0;
+			indexData[1] = 1;
+			indexData[2] = 2;
+			indexData[3] = 0;
+			indexData[4] = 2;
+			indexData[5] = 3;
 
-			m.vertexLayout.init();
-			m.vertexLayout.add(VertexAttrib::Position, VertexAttribType::Float, 3);
-			m.vertexLayout.add(VertexAttrib::Normal, VertexAttribType::Float, 3);
-			m.vertexLayout.add(VertexAttrib::Tangent, VertexAttribType::Float, 3);
-			m.vertexLayout.add(VertexAttrib::TexCoord0, VertexAttribType::Float, 2);
-			m.vertexLayout.end();
+			Mesh mesh;
+			mesh.strideLength = 11;
+			mesh.vertexDataPointer = &vertexData[0];
+			mesh.vertexDataPointerLength = vertexDataLength;
+			mesh.vertexIndicesPointer = &indexData[0];
+			mesh.vertexIndicesPointerLength = indexDataLength;
+			mesh.modelMaterialIndex = 0;
+			mesh.vertexLayout = vertexLayout;
 
-			m.material = ResourceManager::getSelf()->getMaterial(materialName);
-			/*for (Texture *t : ResourceManager::getSelf()->getMaterial(materialName)->textures) {
-				if (t->textureName == TextureName::METALLIC) {
-					m.textures.push_back({ genStringID(materialName + ".metallic"), "material.metallic" });
-				}else if (t->textureName == TextureName::ALBEDO) {
-					m.textures.push_back({ genStringID(materialName + ".albedo"), "material.diffuse"});
-				}
-			}*/
+			Rectangle *rectangle = new Rectangle[1];
+			rectangle[0].vertexLayout = &vertexLayout;
+			rectangle[0].vertexData[0] = &vertexData[0];
+			rectangle[0].vertexData[1] = &vertexData[mesh.strideLength * 2];
+			rectangle[0].normal = normal;
 
-			model->meshes.push_back(m);
-
-			Rectangle *rectangle = new Rectangle();
-			rectangle->vertexLayout = &model->meshes.at(0).vertexLayout;
-			rectangle->vertexData[0] = &model->vertexData[0];
-			rectangle->vertexData[1] = &model->vertexData[m.strideLength * 2];
-			rectangle->normal = normal;
 			Material *material = ResourceManager::getSelf()->getMaterial(materialName);
-			if (material->light != nullptr) {
-				model->lights.push_back(rectangle);
-				material->light->primitive = rectangle;
-			} else
-				model->primitives.push_back(rectangle);
-
-			model->materials.push_back(material);
+			mesh.material = material;
 			rectangle->material = material;
+			if (material->light != nullptr) {
+				lights.push_back(&rectangle[0]);
+				material->light->primitive = &rectangle[0];
+			} else
+				primitives.push_back(&rectangle[0]);
+
+			materials.push_back(material);
+			meshes.push_back(mesh);
+
+			model = new Model(vertexDataMem, indexDataMem,
+				primitives.size() > 0 ? MemoryBuffer{ (uint8_t*)&rectangle[0], sizeof(Rectangle) } : MemoryBuffer{},
+				primitives,
+				lights.size() > 0 ? MemoryBuffer{ (uint8_t*)&rectangle[0], sizeof(Rectangle) } : MemoryBuffer{},
+				lights,
+				materials,
+				meshes,
+				vertexLayout
+			);
 
 			StringID modelID = ResourceManager::getSelf()->replaceModel(name, model);
-
 			InstancedModel *instancedModel = new InstancedModel(model, modelID, getTransform(pos, rotate, scale));
-			
 			if (material->light != nullptr)
 				scene->lights.push_back(instancedModel);
 			else
@@ -513,120 +508,134 @@ namespace narvalengine {
 			glm::vec3 scale = getVec3(primitive["transform"]["scale"]);
 			glm::vec3 rotate = getVec3(primitive["transform"]["rotation"]);
 
-			//TODO Not the best solution.
+			VertexLayout vertexLayout;
+			vertexLayout.init();
+			vertexLayout.add(VertexAttrib::Position, VertexAttribType::Float, 3);
+			vertexLayout.end();
+
+			//8 Vertices of glm::vec3
+			const uint32_t vertexDataLength = 8 * 3;
+			float* vertexData = new float[vertexDataLength];
+			MemoryBuffer vertexDataMem = { (uint8_t*)vertexData, vertexDataLength * sizeof(float) };
+
+			// 6 faces comprised of 2 triangles each, each triangle needs 3 indices
+			const uint32_t indexDataLength = 6 * 2 * 3;
+			uint32_t* indexData = new uint32_t[indexDataLength];
+			MemoryBuffer indexDataMem = { (uint8_t*)indexData, indexDataLength * sizeof(uint32_t) };
+
 			Material *material = ResourceManager::getSelf()->getMaterial(materialName);
 			if (GridMedia *gridMedia = dynamic_cast<GridMedia *>(material->medium)) {
-				gridMedia->lbvh->scale = scale;
-				gridMedia->lbvh->translate = pos - scale / 2.0f; //centers
+				//gridMedia->lbvh->scale = scale;
+				//gridMedia->lbvh->translate = pos - scale / 2.0f; //centralizes the LBVH
 			}
 
-			Model *model = new Model();
-			model->vertexDataLength = 8 * 3; // 8 points of 3 coordinates each
-			model->vertexData = new float[8 * 3];
-			glm::vec3 point1f(-0.5f); //0: bottom left
-			glm::vec3 point2f(0.5f, point1f.y, point1f.z); //1: bottom right
-			glm::vec3 point3f(0.5f, 0.5f, point1f.z); //2: top right
-			glm::vec3 point4f(point1f.x, 0.5f, point1f.z); //3: top left
-			glm::vec3 point1b(0.5f); //4: top right
+			glm::vec3 point1f(-0.5f);						//0: bottom left
+			glm::vec3 point2f(0.5f, point1f.y, point1f.z);	//1: bottom right
+			glm::vec3 point3f(0.5f, 0.5f, point1f.z);		//2: top right
+			glm::vec3 point4f(point1f.x, 0.5f, point1f.z);	//3: top left
+			glm::vec3 point1b(0.5f);						//4: top right
 			glm::vec3 point2b(-0.5f, point1b.y, point1b.z); //5: top left
-			glm::vec3 point3b(-0.5f, -0.5f, point1b.z); //6: bottom left
-			glm::vec3 point4b(point1b.x, -0.5f, point1b.z); //7: bottom right
-			//front points						 back points
-			model->vertexData[0] = point1f[0];	 model->vertexData[12] = point1b[0];
-			model->vertexData[1] = point1f[1];	 model->vertexData[13] = point1b[1];
-			model->vertexData[2] = point1f[2];	 model->vertexData[14] = point1b[2];
-			model->vertexData[3] = point2f[0];	 model->vertexData[15] = point2b[0];
-			model->vertexData[4] = point2f[1];	 model->vertexData[16] = point2b[1];
-			model->vertexData[5] = point2f[2];	 model->vertexData[17] = point2b[2];
-			model->vertexData[6] = point3f[0];	 model->vertexData[18] = point3b[0];
-			model->vertexData[7] = point3f[1];	 model->vertexData[19] = point3b[1];
-			model->vertexData[8] = point3f[2];	 model->vertexData[20] = point3b[2];
-			model->vertexData[9] = point4f[0];	 model->vertexData[21] = point4b[0];
-			model->vertexData[10] = point4f[1];	 model->vertexData[22] = point4b[1];
-			model->vertexData[11] = point4f[2];	 model->vertexData[23] = point4b[2];
+			glm::vec3 point3b(-0.5f, -0.5f, point1b.z);		//6: bottom left
+			glm::vec3 point4b(point1b.x, -0.5f, point1b.z);	//7: bottom right
 
-			int numOfIndices = 6 * 2 * 3; // 6 faces comprised of 2 triangles each, each triangle needs 3 indices
-			model->faceVertexIndices = new int[numOfIndices];
-			model->faceVertexIndicesLength = numOfIndices;
+			//front points				  back points
+			vertexData[0] = point1f[0];	  vertexData[12] = point1b[0];
+			vertexData[1] = point1f[1];	  vertexData[13] = point1b[1];
+			vertexData[2] = point1f[2];	  vertexData[14] = point1b[2];
+			vertexData[3] = point2f[0];	  vertexData[15] = point2b[0];
+			vertexData[4] = point2f[1];	  vertexData[16] = point2b[1];
+			vertexData[5] = point2f[2];	  vertexData[17] = point2b[2];
+			vertexData[6] = point3f[0];	  vertexData[18] = point3b[0];
+			vertexData[7] = point3f[1];	  vertexData[19] = point3b[1];
+			vertexData[8] = point3f[2];	  vertexData[20] = point3b[2];
+			vertexData[9] = point4f[0];	  vertexData[21] = point4b[0];
+			vertexData[10] = point4f[1];  vertexData[22] = point4b[1];
+			vertexData[11] = point4f[2];  vertexData[23] = point4b[2];
+
 			//front face
-			model->faceVertexIndices[0] = 0;
-			model->faceVertexIndices[1] = 1;
-			model->faceVertexIndices[2] = 3;
-			model->faceVertexIndices[3] = 1;
-			model->faceVertexIndices[4] = 2;
-			model->faceVertexIndices[5] = 3;
+			indexData[0] = 0;
+			indexData[1] = 1;
+			indexData[2] = 3;
+			indexData[3] = 1;
+			indexData[4] = 2;
+			indexData[5] = 3;
 
 			//right face
-			model->faceVertexIndices[6] = 1;
-			model->faceVertexIndices[7] = 2;
-			model->faceVertexIndices[8] = 4;
-			model->faceVertexIndices[9] = 4;
-			model->faceVertexIndices[10] = 1;
-			model->faceVertexIndices[11] = 7;
+			indexData[6] = 1;
+			indexData[7] = 2;
+			indexData[8] = 4;
+			indexData[9] = 4;
+			indexData[10] = 1;
+			indexData[11] = 7;
 
 			//back face
-			model->faceVertexIndices[12] = 6;
-			model->faceVertexIndices[13] = 7;
-			model->faceVertexIndices[14] = 5;
-			model->faceVertexIndices[15] = 5;
-			model->faceVertexIndices[16] = 4;
-			model->faceVertexIndices[17] = 7;
+			indexData[12] = 6;
+			indexData[13] = 7;
+			indexData[14] = 5;
+			indexData[15] = 5;
+			indexData[16] = 4;
+			indexData[17] = 7;
 
 			//left face
-			model->faceVertexIndices[18] = 0;
-			model->faceVertexIndices[19] = 3;
-			model->faceVertexIndices[20] = 6;
-			model->faceVertexIndices[21] = 3;
-			model->faceVertexIndices[22] = 5;
-			model->faceVertexIndices[23] = 6;
+			indexData[18] = 0;
+			indexData[19] = 3;
+			indexData[20] = 6;
+			indexData[21] = 3;
+			indexData[22] = 5;
+			indexData[23] = 6;
 
 			//top face
-			model->faceVertexIndices[24] = 3;
-			model->faceVertexIndices[25] = 5;
-			model->faceVertexIndices[26] = 2;
-			model->faceVertexIndices[27] = 2;
-			model->faceVertexIndices[28] = 5;
-			model->faceVertexIndices[29] = 4;
+			indexData[24] = 3;
+			indexData[25] = 5;
+			indexData[26] = 2;
+			indexData[27] = 2;
+			indexData[28] = 5;
+			indexData[29] = 4;
 
 			//bottom face
-			model->faceVertexIndices[30] = 0;
-			model->faceVertexIndices[31] = 6;
-			model->faceVertexIndices[32] = 1;
-			model->faceVertexIndices[33] = 1;
-			model->faceVertexIndices[34] = 7;
-			model->faceVertexIndices[35] = 6;
+			indexData[30] = 0;
+			indexData[31] = 6;
+			indexData[32] = 1;
+			indexData[33] = 1;
+			indexData[34] = 7;
+			indexData[35] = 6;
 
-			AABB *aabb = new AABB();
-			aabb->vertexData[0] = &model->vertexData[0];
-			aabb->vertexData[1] = &model->vertexData[12];
+			AABB *aabb = new AABB[1];
+			aabb[0].vertexData[0] = &vertexData[0];
+			aabb[0].vertexData[1] = &vertexData[12];
+			aabb[0].material = material;
 
-			model->materials.push_back(material);
-			aabb->material = material;
-			model->primitives.push_back(aabb);
+			materials.push_back(material);
+			primitives.push_back(&aabb[0]);
 
-			Mesh m;
-			m.strideLength = 3;
-			m.vertexDataPointer = &model->vertexData[0];
-			m.vertexDataPointerLength = model->vertexDataLength;
-			m.vertexIndicesPointer = &model->faceVertexIndices[0];
-			m.vertexIndicesPointerLength = model->faceVertexIndicesLength;
-			m.modelMaterialIndex = 0;
+			Mesh mesh;
+			mesh.strideLength = 3;
+			mesh.vertexDataPointer = &vertexData[0];
+			mesh.vertexDataPointerLength = vertexDataLength;
+			mesh.vertexIndicesPointer = &indexData[0];
+			mesh.vertexIndicesPointerLength = indexDataLength;
+			mesh.modelMaterialIndex = 0;
+			mesh.vertexLayout = vertexLayout;
+			mesh.material = material;
 
-			m.vertexLayout.init();
-			m.vertexLayout.add(VertexAttrib::Position, VertexAttribType::Float, 3);
-			m.vertexLayout.end();
-			m.material = material;
-			//m.textures.push_back({genStringID(materialName), "volume"});
+			meshes.push_back(mesh);
 
-			model->meshes.push_back(m);
+			model = new Model(vertexDataMem, indexDataMem,
+				MemoryBuffer{ (uint8_t*)&aabb[0], sizeof(AABB) },
+				primitives,
+				MemoryBuffer{},
+				lights,
+				materials,
+				meshes,
+				vertexLayout
+			);
 			
 			StringID modelID = ResourceManager::getSelf()->replaceModel(name, model);
 			InstancedModel *instancedModel = new InstancedModel(model, modelID, getTransform(pos, rotate, scale));
 			scene->instancedModels.push_back(instancedModel);
 
-		} else {
-			assert("ERROR: primitive must have a valid type");
-		}
+		} else
+			LOG(FATAL) << "Invalid primitive type while reading scene from json file.";
 	}
 
 	void SceneReader::processCameraAndRenderer(rapidjson::Value &camera, rapidjson::Value &renderer) {
@@ -647,28 +656,24 @@ namespace narvalengine {
 		} else
 			focus = camera["focus"].GetFloat();
 
-		mainCamera = new Camera(position, lookAt, glm::vec3(0, 1, 0), vfov, float(resolution.x) / float(resolution.y), 0.0001f, focus);
-		settings->resolution = resolution;
-		settings->spp = renderer["spp"].GetInt();
-		settings->bounces = renderer["bounces"].GetInt();
-		settings->hdr = renderer["HDR"].GetBool();
+		mainCamera = Camera(position, lookAt, glm::vec3(0, 1, 0), vfov, float(resolution.x) / float(resolution.y), 0.0001f, focus);
+		settings.resolution = resolution;
+		settings.spp = renderer["spp"].GetInt();
+		settings.bounces = renderer["bounces"].GetInt();
+		settings.hdr = renderer["HDR"].GetBool();
 		std::string mode = renderer["mode"].GetString();
-		if (mode.compare("offline") == 0)
-			settings->renderMode = OFFLINE_RENDERING_MODE;
-		else if (mode.compare("realtime") == 0)
-			settings->renderMode = REALTIME_RENDERING_MODE;
-		scene->settings = *settings; //TODO this here is being a source of confusion and problem.
+		scene->settings = settings;
 	}
 
 	Scene *SceneReader::getScene() {
 		return scene;
 	}
 
-	Camera *SceneReader::getMainCamera() {
+	Camera SceneReader::getMainCamera() {
 		return mainCamera;
 	}
 
-	Settings *SceneReader::getSettings() {
+	SceneSettings SceneReader::getSettings() {
 		return settings;
 	}
 }

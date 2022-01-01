@@ -1,20 +1,23 @@
 #include "utils/StringID.h"
 
 namespace narvalengine {
-	StringID genStringID(const char* str, int len) {
+	StringID genStringID(const char* str, const int len) {
 		StringID id = gStrIDMurmurHasher.hash(str, len);
-		if (gStringIDTable.count(id) != 0)
-			return id;
 
-		char *ss = new char[len + 1];
-		std::memcpy(ss, str, (len + 1)* sizeof(char));
+		//We only map the hash to a string in debug mode.
+		#ifdef NE_DEBUG_MODE
+			if (gStringIDTable.count(id) != 0)
+				return id;
 
-		gStringIDTable.insert({ id, ss });
+			char* ss = new char[len + 1];
+			std::memcpy(ss, str, (len + 1) * sizeof(char));
+			gStringIDTable.insert({ id, ss });
+		#endif
 
 		return id;
 	}
 
-	StringID genStringID(std::string str) {
-		return genStringID(str.c_str(), str.length());
+	StringID genStringID(const char* str) {
+		return genStringID(str, strlen(str));
 	}
 }

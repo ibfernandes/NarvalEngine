@@ -8,9 +8,12 @@
 #include <iostream>
 #include <glm/glm.hpp>
 #include <sstream>
-#define DEBUG_LBTBVH false
+#include <glog/logging.h>
 
 namespace narvalengine {
+	/**
+	 * Implementation from the paper "A Bucket LBVH Construction and Traversal Algorithm for Volumetric Sparse Data" from Igor Batista Fernandes et al.
+	 */
 	class BucketLBVH {
 	public:
 		glm::vec3 size;
@@ -24,100 +27,160 @@ namespace narvalengine {
 		glm::vec3 scale = glm::vec3(1.0f);
 		glm::vec3 translate = glm::vec3(0.0f);
 
-		//total of levels (NOT counted as indices, but as quantity)
+		//Total of levels (NOT counted as indices, but as quantity).
 		int levels;
 		int numberOfNodes;
 
-		//node
+		//Node
 		int *mortonCodes;
-		//Node contains min and max on a layout of min, max, min, max...
+		//Node contains min and max on a layout of [min, max, min, max ...].
 		int *node;
 		int nodesSize;
 		int *offsets;
 		int amountOfBuckets;
 
 		int intersectionsCount = 0;
-		int const offsetMinMax = 2;
+		const int offsetMinMax = 2;
 
 		int *sumOfBaseNTable;
 		int numberOfEmptyNodes = 0;
 
 		float maxDensity = 0;
 
-		enum TREEDIMENSION { BINARYTREE, QUADTREE, OCTREE };
-		TREEDIMENSION treeMode = BINARYTREE;
+		enum TREEDIMENSION { BINARYTREE, OCTREE };
+		const TREEDIMENSION treeMode = OCTREE;
 
-		glm::vec3 toGCS(float x, float y, float z) {
-			return ((glm::vec3(x, y, z) - translate) / scale) * gridSize;
-		}
-
-		//from object coordinate space to grid coordinate space
+		/**
+		 * Converts from Object Coordinate System (OCS) to Grid Coordinate System (GCS).
+		 * Note that for easy of implementation the OCS is assumed to be an AABB centered at origin with width = 1.
+		 * Hence, the OCS must be in between [-0.5, -0.5, -0.5] and [0.5, 0.5, 0.5].
+		 * 
+		 * @param x in Object Coordinate System (OCS). 
+		 * @param y in Object Coordinate System (OCS).
+		 * @param z in Object Coordinate System (OCS).
+		 * @return the coordinates in GCS, varying from [0, 0, 0] and [width, height, depth].
+		 */
 		glm::vec3 fromOCStoGCS(float x, float y, float z) {
 			return (glm::vec3(x, y, z) + glm::vec3(0.5)) * gridSize;
 		}
 
-		//Convert from local grid CS (0) to (gridSize) to OCS.
-		//Centered AABB with width 1. Corners from (-0.5) to (0.5).
-		glm::vec4 getOCS(float x, float y, float z) {
-			//return (glm::vec4(x, y, z, 0.0f) / glm::vec4(gridSize, 1.0f)) - glm::vec4(0.5f, 0.5f, 0.5f, 0.0f);
+		/**
+		 * Converts from Grid Coordinate System (GCS) to Object Coordinate System (OCS).
+		 * Note that for easy of implementation the OCS is assumed to be an AABB centered at origin with width = 1.
+		 * The GCS must be in between [0, 0, 0] and [width, height, depth].
+		 * 
+		 * @param x in Grid Coordinate System (GCS). 
+		 * @param y in Grid Coordinate System (GCS). 
+		 * @param z in Grid Coordinate System (GCS). 
+		 * @return the coordinates in OCS, varying from [-0.5, -0.5, -0.5] and [0.5, 0.5, 0.5].
+		 */
+		glm::vec4 fromGCStoOCS(float x, float y, float z) {
 			return glm::vec4(x * invGridSize.x - 0.5f, y * invGridSize.y - 0.5f, z * invGridSize.z - 0.5f, 0);
 		}
 
-		glm::vec4 getOCS(glm::vec3 v) {
-			return getOCS(v.x, v.y, v.z);
+		/**
+		 * Converts from Grid Coordinate System (GCS) to Object Coordinate System (OCS).
+		 * Note that for easy of implementation the OCS is assumed to be an AABB centered at origin with width = 1.
+		 * The GCS must be in between [0, 0, 0] and [width, height, depth].
+		 * 
+		 * @param v in Grid Coordinate System (GCS). 
+		 * @return the coordinates in OCS, varying from [-0.5, -0.5, -0.5] and [0.5, 0.5, 0.5].
+		 */
+		glm::vec4 fromGCStoOCS(glm::vec3 v) {
+			return fromGCStoOCS(v.x, v.y, v.z);
 		}
 
-		glm::vec4 getOCS(int mortonCode) {
+		/**
+		 * Decodes the Morton code {@code mortoncode} and then converts from Grid Coordinate System (GCS) to Object Coordinate System (OCS).
+		 * Note that for easy of implementation the OCS is assumed to be an AABB centered at origin with width = 1.
+		 * The GCS must be in between [0, 0, 0] and [width, height, depth].
+		 * 
+		 * @param mortonCode to be decoded and converted to OCS.
+		 * @return the coordinates in OCS, varying from [-0.5, -0.5, -0.5] and [0.5, 0.5, 0.5].
+		 */
+		glm::vec4 fromGCStoOCS(int mortonCode) {
 			int x, y, z;
 			decodeSimple3D(mortonCode, x, y, z);
-			return getOCS(x, y, z);
+			return fromGCStoOCS(x, y, z);
 		}
 
-		glm::vec3 getWCS(float x, float y, float z) {
-			//return glm::vec3(x, y, z);
-			return (glm::vec3(x, y, z) / gridSize) * scale + translate;
-		}
-
-		glm::vec3 getWCS(glm::vec3 v) {
-			return getWCS(v.x, v.y, v.z);
-		}
-
-		glm::vec3 getWCS(int mortonCode) {
-			int x, y, z;
-			decodeSimple3D(mortonCode, x, y, z);
-			return getWCS(x, y, z);
-		}
-
-		int getLeftmostChild(int node, int leftmost, int rightmost) {
+		/**
+		 * Returns the index of the left child of {@code node}.
+		 * 
+		 * Example:									  
+		 *												o
+		 * 
+		 *							o									 o
+		 *						 /     \						      /     \	
+		 *    leftmost >o				node >o					o		rightmost >o
+		 *			/      \			  /       \			 /     \			/     \	
+		 *		   o		o	returns >o		   o		o		o		   o       o
+		 * 
+		 * @param node index in the range [1, 2^levels].
+		 * @param leftmost index of the leftmost node at the same level of {@code node}.
+		 * @param rightmost index of the rightmost node at the same level of {@code node}.
+		 * @return index of the left child of {@code node}.
+		 */
+		int getLeftChild(int node, int leftmost, int rightmost) {
 			if (treeMode == BINARYTREE)
 				return node + (rightmost - node) + 2 * (node - leftmost) + 1;
 			else if (treeMode == OCTREE)
 				return node + (rightmost - node) + 8 * (node - leftmost) + 1;
 		}
-
-		int getRightmostChild(int node, int leftmost, int rightmost) {
+		
+		/**
+		 * Returns the index of the right child of {@code node}.
+		 *
+		 * Example:
+		 *											   o
+		 *							o									 o
+		 *						 /     \						      /     \
+		 *    leftmost >o				node >o					o		rightmost >o
+		 *			/      \			  /        \			 /     \			/     \
+		 *		   o		o	        o  returns >o		o		o		   o       o
+		 *
+		 * @param node index in the range [1, 2^levels].
+		 * @param leftmost index of the leftmost node at the same level of {@code node}.
+		 * @param rightmost index of the rightmost node at the same level of {@code node}.
+		 * @return index of the right child of {@code node}.
+		 */
+		int getRightChild(int node, int leftmost, int rightmost) {
 			if (treeMode == BINARYTREE)
-				return getLeftmostChild(node, leftmost, rightmost) + 1;
+				return getLeftChild(node, leftmost, rightmost) + 1;
 			else if (treeMode == OCTREE)
-				return getLeftmostChild(node, leftmost, rightmost) + 7;
+				return getLeftChild(node, leftmost, rightmost) + 7;
 		}
 
-		int getLeftmosChild(int node, int lvl) {
+		/**
+		 * Returns the index of the left child of {@code node}.
+		 * 
+		 * @param node index in the range [1, 2^({@code levels}-1)].
+		 * @param level in the range [0, {@code levels}-1].
+		 * @return index of the left child of {@code node}.
+		 */
+		int getLeftChild(int node, int level) {
 			int leftmost;
 			if (treeMode == BINARYTREE)
-				leftmost = sumOfBaseNTable[lvl] - powBase2(lvl) + 1;
+				leftmost = sumOfBaseNTable[level] - powBase2(level) + 1;
 			else if (treeMode == OCTREE)
-				leftmost = sumOfBaseNTable[lvl] - powBase8(lvl) + 1;
+				leftmost = sumOfBaseNTable[level] - powBase8(level) + 1;
 
-			int rightmost = sumOfBaseNTable[lvl];
-			return getLeftmostChild(node, leftmost, rightmost);
+			int rightmost = sumOfBaseNTable[level];
+			return getLeftChild(node, leftmost, rightmost);
 		}
 
-		int getRightmostChild(int node, int lvl) {
+		/**
+		 * Returns the index of the right child of {@code node}.
+		 * 
+		 * @param node index in the range [1, 2^({@code levels}-1)].
+		 * @param level in the range [0, {@code levels}-1].
+		 * @return index of the right child of {@code node}.
+		 */
+		int getRightChild(int node, int level) {
 			if (treeMode == BINARYTREE)
-				return getLeftmosChild(node, lvl) + 1;
+				return getLeftChild(node, level) + 1;
 			else if (treeMode == OCTREE)
-				return getLeftmosChild(node, lvl) + 7;
+				return getLeftChild(node, level) + 7;
 		}
 
 		int powBase8(int exponent) {
@@ -128,7 +191,12 @@ namespace narvalengine {
 			return 1 << (exponent);
 		}
 
-		//TODO: maybe generate a table or there is a way to do this without using a for loop
+		/**
+		 * Sums all power of two values up to the exponent.
+		 * 
+		 * @param exponent in the range [0, n].
+		 * @return \sum_{i=0}^{n} 2^i.
+		 */
 		int sumOfBase2(int exponent) {
 			int sum = 1;
 			for (int i = 1; i <= exponent; i++)
@@ -136,6 +204,12 @@ namespace narvalengine {
 			return sum;
 		}
 
+		/**
+		 * Calculates the parent index of {@code node}.
+		 * 
+		 * @param node index in the range [1, 2^({@code levels}-1)].
+		 * @return the parent index of {@code node}.
+		 */
 		int getParent(int node) {
 			float div;
 			float res;
@@ -145,35 +219,43 @@ namespace narvalengine {
 				res = std::floor(div);
 			} else if (treeMode == OCTREE) {
 				div = node / 8.0f;
-				res = std::ceil(div - 0.125);
+				res = std::ceil(div - 0.125); // 1/8 = 0.125
 			}
 			return res;
 		}
 
-		glm::vec2 intersectOuterAABB(Ray r) {
-			return intersectBox(r, getWCS(node[1]), getWCS(node[2]));
-		}
-
+		/**
+		 * Samples the volume density at {@code gridPoint}.
+		 * 
+		 * @param gridPoint in Grid Coordinate System (GCS).
+		 * @return sampled density.
+		 */
 		float density(glm::vec3 gridPoint) {
-			if (gridPoint.x >= gridSize.x || gridPoint.y >= gridSize.y || gridPoint.z >= gridSize.z)
-				return 0.0f;
+
+			//If out of bounds, the density is simply 0.
+			if (gridPoint.x > gridSize.x || gridPoint.y > gridSize.y || gridPoint.z > gridSize.z)
+				return 0;
 			if (gridPoint.x < 0 || gridPoint.y < 0 || gridPoint.z < 0)
-				return 0.0f;
+				LOG(FATAL) << "Grid point was negative. Value was: " << toString(gridPoint) << ".";
 
 			return grid[to1D(gridSize.x, gridSize.y, gridPoint.x, gridPoint.y, gridPoint.z)];
 		}
 
-		//Based on PBRT
+		/**
+		 *  Samples the volume density at {@code gridPoint} using trilinear interpolation.
+		 * 
+		 * @param gridPoint in Grid Coordinate System (GCS).
+		 * @return sampled density.
+		 */
 		float interpolatedDensity(glm::vec3 gridPoint) {
-			glm::vec3 pSamples(gridPoint.x - .5f, gridPoint.y - .5f, gridPoint.z - .5f);
-			glm::ivec3 pi = glm::ivec3(glm::floor(pSamples.x), glm::floor(pSamples.y), glm::floor(pSamples.z));
-			glm::vec3 d = pSamples - glm::vec3(pi);
+			glm::ivec3 gridPointInt = glm::ivec3(glm::floor(gridPoint.x), glm::floor(gridPoint.y), glm::floor(gridPoint.z));
+			glm::vec3 d = gridPoint - glm::vec3(gridPointInt);
 
 			// Trilinearly interpolate density values to compute local density
-			float d00 = glm::lerp(density(pi), density(pi + glm::ivec3(1, 0, 0)), d.x);
-			float d10 = glm::lerp(density(pi + glm::ivec3(0, 1, 0)), density(pi + glm::ivec3(1, 1, 0)), d.x);
-			float d01 = glm::lerp(density(pi + glm::ivec3(0, 0, 1)), density(pi + glm::ivec3(1, 0, 1)), d.x);
-			float d11 = glm::lerp(density(pi + glm::ivec3(0, 1, 1)), density(pi + glm::ivec3(1, 1, 1)), d.x);
+			float d00 = glm::lerp(density(gridPointInt), density(gridPointInt + glm::ivec3(1, 0, 0)), d.x);
+			float d10 = glm::lerp(density(gridPointInt + glm::ivec3(0, 1, 0)), density(gridPointInt + glm::ivec3(1, 1, 0)), d.x);
+			float d01 = glm::lerp(density(gridPointInt + glm::ivec3(0, 0, 1)), density(gridPointInt + glm::ivec3(1, 0, 1)), d.x);
+			float d11 = glm::lerp(density(gridPointInt + glm::ivec3(0, 1, 1)), density(gridPointInt + glm::ivec3(1, 1, 1)), d.x);
 			float d0 = glm::lerp(d00, d10, d.y);
 			float d1 = glm::lerp(d01, d11, d.y);
 			return glm::lerp(d0, d1, d.z);
@@ -183,32 +265,32 @@ namespace narvalengine {
 			glm::vec3 gridPoint = r.getPointAt(depth);
 			int currentNode = 1;
 			int currentLevel = 0;
-			intersectionsCount = 1;
 
-			glm::vec3 bbMin = getOCS(node[currentNode * offsetMinMax - 1]);
-			glm::vec3 bbMax = getOCS(node[currentNode * offsetMinMax]);
-
-
-			//glm::vec3 bbMinWCS = toGCS(-0.73, 0.78, -1.22);
-			//glm::vec3 bbMaxWCS = toGCS(0.75, 2.25, 0.25);
+			glm::vec3 bbMin = fromGCStoOCS(node[currentNode * offsetMinMax - 1]);
+			glm::vec3 bbMax = fromGCStoOCS(node[currentNode * offsetMinMax]);
 
 			glm::vec2 t = intersectBox(r, bbMin, bbMax);
 
 			if (t.x > t.y)
 				return 0.0f;
 
-			gridPoint = fromOCStoGCS(gridPoint.x, gridPoint.y, gridPoint.z);
-
-			return interpolatedDensity(gridPoint);
+			return interpolatedDensity(fromOCStoGCS(gridPoint.x, gridPoint.y, gridPoint.z));
 		}
 
-		//TODO: density sum should be dist * dens + dist * dens...
-		// Ray must be in OCS!!
+		/**
+		 * Traverses the tree until reaching the distance {@code depth}.
+		 * 
+		 * @param r in Object Coordinate System (OCS).
+		 * @param depth maximum distance t in which to traverse the tree.
+		 * @return accumulated density.
+		 */
 		glm::vec3 traverseTreeUntil(Ray &r, float depth) {
 
 			int currentNode = 1;
 			int currentLevel = 0;
-			intersectionsCount = 1;
+			#ifdef NE_DEBUG_MODE
+				intersectionsCount = 1;
+			#endif
 
 			glm::vec3 invDir = 1.0f / r.direction;
 			glm::vec4 ro4 = glm::vec4(r.o, 0);
@@ -219,8 +301,8 @@ namespace narvalengine {
 			invDirSIMD = _mm_load_ps(&rd4[0]);
 
 
-			glm::vec3 bbMin = getOCS(node[currentNode * offsetMinMax - 1]);
-			glm::vec3 bbMax = getOCS(node[currentNode * offsetMinMax]);
+			glm::vec3 bbMin = fromGCStoOCS(node[currentNode * offsetMinMax - 1]);
+			glm::vec3 bbMax = fromGCStoOCS(node[currentNode * offsetMinMax]);
 
 			glm::vec2 t = intersectBox(r, bbMin, bbMax);
 			glm::vec2 finalt = glm::vec2(std::numeric_limits<float>::max(), std::numeric_limits<float>::min());
@@ -240,46 +322,31 @@ namespace narvalengine {
 			while (currentNode != numberOfNodes + 1) {
 				bool miss = false;
 
-				//If current node is empty, automatically misses
+				//If current node is empty, automatically misses.
 				if (isEmpty(node[currentNode * offsetMinMax]))
 					miss = true;
 				else {
-					//t = intersectBox(r, getOCS(node[currentNode * offsetMinMax - 1]), getOCS(node[currentNode * offsetMinMax]));
-					t = intersectBoxSIMD(orSIMD, invDirSIMD, getOCS(node[currentNode * offsetMinMax - 1]), getOCS(node[currentNode * offsetMinMax]));
-					intersectionsCount++;
+					t = intersectBoxSIMD(orSIMD, invDirSIMD, fromGCStoOCS(node[currentNode * offsetMinMax - 1]), fromGCStoOCS(node[currentNode * offsetMinMax]));
+					#ifdef NE_DEBUG_MODE
+						intersectionsCount++;
+					#endif
 					if (t.x > t.y)
 						miss = true;
 				}
 
-				//if (DEBUG_LBTBVH) {
-				//	std::cout << "currentNode " << currentNode << std::endl;
-				//	std::cout << "currentLevel " << currentLevel << std::endl;
-				//}
-
-				//if miss
 				if (miss) {
 
-					if (DEBUG_LBTBVH) {
-						std::cout << "Missed node: " << currentNode << std::endl;
-						glm::vec3 min = decodeSimple3D(node[currentNode * offsetMinMax - 1]);
-						glm::vec3 max = decodeSimple3D(node[currentNode * offsetMinMax]);
-
-						std::cout << "min: " << min.x << ", " << min.y << ", " << min.z << std::endl;
-						std::cout << "max: " << max.x << ", " << max.y << ", " << max.z << std::endl << std::endl;
-					}
-
-					//If it's the rightmost node current level, end
+					//If it's the rightmost node current level, finish.
 					if (currentNode == sumOfBaseNTable[currentLevel])
 						break;
 
-
-					//if this node is the rightmost child of its parent
+					//If this node is the right child of its parent.
 					int parent = getParent(currentNode);
-					int rightmostChild = getRightmostChild(parent, currentLevel - 1);
+					int rightmostChild = getRightChild(parent, currentLevel - 1);
 					if (rightmostChild == currentNode) {
 						currentNode = getParent(currentNode) + 1;
 						currentLevel--;
-					} else if (getRightmostChild(currentNode, currentLevel) == currentNode) {
+					} else if (getRightChild(currentNode, currentLevel) == currentNode) {
 						currentNode = getParent(currentNode) + 1;
 						currentLevel--;
 					} else {
@@ -289,7 +356,7 @@ namespace narvalengine {
 					continue;
 				}
 
-				//If we are checking a leaf node
+				//If we are checking a leaf node.
 				if (currentNode >= firstNodeAtDeepestLevel) {
 
 					int offsetsPosition = currentNode - firstNodeAtDeepestLevel;
@@ -304,35 +371,35 @@ namespace narvalengine {
 						elementsOnThisBucket = offsets[offsetsPosition] - offsets[offsetsPosition - 1];
 					}
 
-					if (DEBUG_LBTBVH)
-						std::cout << "elements on node bucket " << currentNode << ": " << elementsOnThisBucket << std::endl << std::endl;
-
-					//for each voxel on this bucket (leaf node), check which ones does in fact intersect this ray.
-					// here we check only mortonCodes that represent non-empty voxels
+					//For each voxel on this bucket (leaf node), check which ones does in fact intersect this ray.
+					//Here we check only Morton codes that represent non-empty voxels.
 					for (int i = 0; i < elementsOnThisBucket; i++) {
 						int morton = mortonCodes[startingIndex + i];
 						glm::vec3 min, max;
 						min = decodeMorton3D(morton);
 						max = min + 1.0f;
 
-						//glm::vec2 t2 = intersectBox(r, getOCS(min), getOCS(max));
-						glm::vec2 t2 = intersectBoxSIMD(orSIMD, invDirSIMD, getOCS(min), getOCS(max));
-						//if t.x is negative, this voxel is behind the ray
-						if (t2.x < 0 && t2.y < 0) //TODO: not that efficient, should this on all other intersections too
+						glm::vec2 t2 = intersectBoxSIMD(orSIMD, invDirSIMD, fromGCStoOCS(min), fromGCStoOCS(max));
+						
+						//If t.x is negative, this voxel is behind the ray.
+						if (t2.x < 0 && t2.y < 0)
 							continue;
-						if (t2.x < 0 && t2.y > 0) //if we are inside this voxel, let the nearest be the current point.
+
+						//If we are inside this voxel, let the nearest be the current point.
+						if (t2.x < 0 && t2.y > 0)
 							t2.x = 0;
-						intersectionsCount++;
 
-						//if intersects this voxel at current bucket, accumulate density and update intersection t's
+						#ifdef NE_DEBUG_MODE
+							intersectionsCount++;
+						#endif
+
+						//If intersects this voxel at current bucket, accumulate density and update intersection t's.
 						if (t2.x <= t2.y) {
-
 							accumulated += grid[to1D(gridSize.x, gridSize.y, min.x, min.y, min.z)];
 							if (t2.x < finalt.x)
 								finalt.x = t2.x;
 							if (t2.y >= finalt.y)
 								finalt.y = t2.y;
-							//intersectedMorton.push_back(morton);
 							float distance = finalt.y - glm::max(0.0f, finalt.x);
 							if (distance > depth)
 								return glm::vec3(glm::vec2(glm::max(0.0f, finalt.x), finalt.y), accumulated);
@@ -342,26 +409,23 @@ namespace narvalengine {
 					if (currentNode == numberOfNodes + 1)
 						break;
 
-					if (getRightmostChild(getParent(currentNode), currentLevel - 1) == currentNode) {
+					if (getRightChild(getParent(currentNode), currentLevel - 1) == currentNode) {
 						currentNode = getParent(currentNode) + 1;
 						currentLevel--;
 					} else {
 						currentNode = currentNode + 1;
 					}
 				} else {
-					currentNode = getLeftmosChild(currentNode, currentLevel);
+					currentNode = getLeftChild(currentNode, currentLevel);
 					currentLevel++;
 				}
 			}
 
-			///if (DEBUG_LBVH2)
-			for (int i : intersectedMorton)
-				std::cout << i << std::endl;
 			return glm::vec3(glm::vec2(glm::max(0.0f, finalt.x), finalt.y), accumulated);
 		}
 
 		glm::vec3 traverse(Ray &r) {
-			return traverseTreeUntil(r, 99999.0f);
+			return traverseTreeUntil(r, INFINITY);
 		}
 
 		//returns true if fitted succesfully
@@ -461,7 +525,7 @@ namespace narvalengine {
 
 					bool emptyCheck = true;
 					int children[8];
-					children[0] = getLeftmostChild(currentNode, leftmost, rightmost);
+					children[0] = getLeftChild(currentNode, leftmost, rightmost);
 					emptyCheck = emptyCheck && isEmpty(node[children[0] * offsetMinMax]);
 
 					for (int c = 1; c < numberOfChildren; c++) {
@@ -476,15 +540,6 @@ namespace narvalengine {
 						currentNode--;
 						continue;
 					}
-
-					//if all children maxs are empty
-					/*if (isEmpty(node[children[0] * offsetMinMax]) && isEmpty(node[children[1] * offsetMinMax])) {
-						node[currentNode * offsetMinMax - 1] = setEmptyBit(0);
-						node[currentNode * offsetMinMax] = setEmptyBit(0);
-						numberOfEmptyNodes++;
-						currentNode--;
-						continue;
-					}*/
 
 					glm::ivec3 min = glm::vec3(99999, 99999, 99999);
 					glm::ivec3 max = glm::vec3(-99999, -99999, -99999);
@@ -574,7 +629,7 @@ namespace narvalengine {
 
 		}
 
-		std::string getStatus() {
+		std::string toStringStatus() {
 			std::stringstream ss;
 			ss << "Size: [" << size.x << ", " << size.y << ", " << size.z << "]" << std::endl;
 			ss << "Depth: " << levels << std::endl;
@@ -583,24 +638,6 @@ namespace narvalengine {
 			ss << "% of non-empty nodes: " << (1.0f - (numberOfEmptyNodes / (float)numberOfNodes)) * 100 << "%" << std::endl;
 			ss << "Bucket size: " << bucketSize << std::endl;
 			return ss.str();
-		}
-
-		void testGrid() {
-			std::cout << "STARTING DIAGNOSIS TEST" << std::endl;
-			std::cout << "grid Res: " << std::endl;
-			printVec3(gridSize);
-			for (int x = 0; x < gridSize.x; x++) {
-				float sum = 0;
-				for (int y = 0; y < gridSize.y; y++) {
-					glm::vec3 normCoord = (glm::vec3(x, y, 0)/gridSize)* scale + translate;
-					glm::vec3 hit = traverseTreeUntil(Ray(normCoord, glm::vec3(0, 0, 1)), 99999);
-
-					if(hit.x <= hit.y)
-						sum += hit.z;
-				}
-
-				std::cout << "x " << x << ": " << sum << std::endl;
-			}
 		}
 
 		BucketLBVH(float *grid, glm::vec3 size) {

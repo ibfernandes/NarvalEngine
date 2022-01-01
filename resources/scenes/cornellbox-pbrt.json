@@ -128,6 +128,16 @@
 				"rotation": [0, 90, 0]
 			},
 			"materialName": "greenMat"
+		},
+		{
+			"name": "spider",
+			"type": "obj",
+			"transform": {
+				"position": [1.44, 0.27, 1],
+				"scale": [0.01, 0.01, 0.01],
+				"rotation": [0, 0, 0]
+			},
+			"path" : "models/spider/spider.obj"
 		}
 	],
 
@@ -144,7 +154,7 @@
 	},
 	
 	"renderer": {
-		"resolution": [1200, 600],
+		"resolution": [480, 240],
 		"spp": 10,
 		"bounces": 6,
 		"mode": "realtime",

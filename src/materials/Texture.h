@@ -6,9 +6,17 @@
 #include "stb_image_write.h"
 #include "tinyexr.h"
 #include "utils/Math.h"
+#include <glog/logging.h>
+#include <magic_enum.hpp>
 
 namespace narvalengine {
-	inline static int getNumberOfChannels(TextureLayout texFormat) {
+	/**
+	 * Returns the number of channels in a given {@code TextureLayout}.
+	 * 
+	 * @param texFormat.
+	 * @return number of channels in {@param texFormat}. Returns 0 if the current {@code TextureLayout} has not been mapped yet.
+	 */
+	inline static uint8_t getNumberOfChannels(TextureLayout texFormat) {
 		if (texFormat == R32I || texFormat == R32F || texFormat == R8) {
 			return 1;
 		} else if (texFormat == RG32I || texFormat == RG32F || texFormat == RG8) {
@@ -22,10 +30,19 @@ namespace narvalengine {
 		}
 	};
 
-	//TODO: properly verify formats and data types
+	/**
+	 * Saves the image at {@code mem} to {@code path}. Currently supports EXR and PNG file formats.
+	 * 
+	 * @param mem
+	 * @param width
+	 * @param height
+	 * @param format
+	 * @param fileFormat
+	 * @param path
+	 */
 	inline void saveImage(MemoryBuffer mem, int width, int height, TextureLayout format, ImageFileFormat fileFormat, const char* path) {
 		int channels = getNumberOfChannels(format);
-		const char* err = NULL;
+		const char* err = nullptr;
 
 		if (fileFormat == ImageFileFormat::PNG) {
 			if (format == TextureLayout::RGB32F) {
@@ -36,124 +53,60 @@ namespace narvalengine {
 				for (int i = 0; i < width * height * channels; i++) {
 					float v = startPoint[i];
 					v = glm::clamp(v, 0.0f, 1.0f);
-					converted.data[i] = (uint8_t)(v * 255);
+					((uint8_t*)(converted.data))[i] = (uint8_t)(v * 255);
 				}
 
 				stbi_write_png(path, width, height, channels, converted.data, width * channels);
 				memBufferFree(&converted);
-			}
+			}else 
+				DLOG(WARNING) << "The TextureLayout " << magic_enum::enum_name(format) << " has no mapping for the ImageFileFormat " << magic_enum::enum_name(fileFormat) << ". No Operation was performed when trying to save the image " << std::string(path) << ".";
+			
 		}else if (fileFormat == ImageFileFormat::EXR) {
 			int r = SaveEXR((float*)mem.data, width, height, channels, 0, path, &err);
 			if (r != TINYEXR_SUCCESS) {
 				if (err) {
-					fprintf(stderr, "ERR : %s\n", err);
-					FreeEXRErrorMessage(err); // release memory of error message.
+					LOG(ERROR) << std::string(err);
+					FreeEXRErrorMessage(err);
 				}
 			}
-		}
+		}else 
+			DLOG(WARNING) << "The ImageFileFormat " << magic_enum::enum_name(fileFormat) << " has no mapping. No Operation was performed when trying to save the image " << std::string(path) << ".";
 	}
 
 	class Texture {
 	public:
-		int width = 0, height = 0, depth = 0;
+		uint32_t width = 0, height = 0, depth = 0;
+		/**
+		 * nPixels = width * height * depth.
+		 */
+		int nPixels = 0;
 		TextureLayout texFormat;
 		TextureName textureName;
 		TextureChannelFormat textureChannelFormat;
 		int samplerFlags;
 		MemoryBuffer mem;
 
-		Texture() {};
+		Texture();
+		Texture(int width, int height, TextureLayout texFormat, int samplerFlags, MemoryBuffer memBuffer);
+		Texture(int width, int height, int depth, TextureLayout texFormat, int samplerFlags, MemoryBuffer memBuffer);
+		glm::ivec3 getResolution();
 
-		Texture(int width, int height, TextureLayout texFormat, int samplerFlags, MemoryBuffer memBuffer) {
-			this->width = width;
-			this->height = height;
-			this->texFormat = texFormat;
-			this->samplerFlags = samplerFlags;
-			
-			mem.data = new uint8_t[memBuffer.size];
-			mem.size = memBuffer.size;
-			memCopy(&mem, memBuffer.data, memBuffer.size);
-		}
-
-		Texture(int width, int height, int depth, TextureLayout texFormat, int samplerFlags, MemoryBuffer memBuffer) {
-			this->width = width;
-			this->height = height;
-			this->depth = depth;
-			this->texFormat = texFormat;
-			this->samplerFlags = samplerFlags;
-
-			mem.data = new uint8_t[memBuffer.size];
-			mem.size = memBuffer.size;
-			memCopy(&mem, memBuffer.data, memBuffer.size);
-		}
-
-		glm::ivec3 getResolution() {
-			return glm::ivec3(width, height, depth);
-		}
+		/**
+		 * Samples directly at the {@code index}.
+		 * 
+		 * @param index in the range [0, {@code width*height*depth}].
+		 * @return sampled color;
+		 */
+		glm::vec4 sampleAtIndex(uint32_t index);
 		
-		// (x, y) must be normalized between [0, 1)
-		glm::vec4 sample(float x, float y) {
-			glm::vec4 res = glm::vec4(0, 0, 0, 0);
-			glm::ivec2 pos;
-			pos.x = x * this->width;
-			pos.y = y * this->height;
-			//image ranges from [0, width -1], so we must treat the border cases
-			if (x == 1)
-				pos.x--;
-			if (y == 1)
-				pos.y--;
-
-			if (texFormat == R32F || texFormat == RG32F || texFormat == RGB32F || texFormat == RGBA32F) {
-				float* p = (float*)mem.data;
-				int pos1d = to1D(this->width, this->height, pos);
-
-				switch (texFormat) {
-					case R32F:
-						pos1d *= 4;
-						p = p + pos1d;
-						res.x = p[0]; 
-						break;
-					case RG32F:
-						pos1d *= 4;
-						p = p + pos1d;
-						res.x = p[0]; 
-						res.y = p[1];
-						break;
-					case RGB32F:
-						pos1d *= 4;
-						p = p + pos1d;
-						res.x = p[0];
-						res.y = p[1];
-						res.z = p[2];
-						break;
-					case RGBA32F:
-						pos1d *= 4;
-						p = p + pos1d;
-						res.x = p[0];
-						res.y = p[1];
-						res.z = p[2];
-						res.a = p[3];
-						break;
-				}
-			}
-
-			if (texFormat == RGBA8) {
-				uint8_t* p = (uint8_t*)mem.data;
-				int pos1d = to1D(this->width, this->height, pos);
-
-				switch (texFormat) {
-					case RGBA8:
-						pos1d *= 4;
-						p = p + pos1d;
-						res.x = p[0] / 255.0f;
-						res.y = p[1] / 255.0f;
-						res.z = p[2] / 255.0f;
-						res.a = p[3] / 255.0f;
-						break;
-				}
-			}
-
-			return res;
-		}
+		/**
+		 * Samples a pixel from this texture using the UVW texture coordinates {@code u}, {@code v} and {@code w}.
+		 * 
+		 * @param u must be in the interval [0, 1].
+		 * @param v must be in the interval [0, 1].
+		 * @param w must be in the interval [0, 1].
+		 * @return sampled color.
+		 */
+		glm::vec4 sample(float u, float v = 0, float w = 0);
 	};
 }

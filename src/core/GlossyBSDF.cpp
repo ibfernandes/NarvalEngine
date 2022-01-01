@@ -7,9 +7,6 @@ namespace narvalengine {
 		bxdftype = BxDFType(BxDF_GLOSSY | BxDF_DIFFUSE);
 	}
 
-	/*
-		Samples scattered direction in Spherical Coordinates
-	*/
 	glm::vec3 GlossyBSDF::sample(glm::vec3 incoming, glm::vec3 normal) {
 		return distribution->sample(incoming, normal);
 	}
@@ -19,9 +16,6 @@ namespace narvalengine {
 		return distribution->pdf(scattered, microfacetNormal);
 	}
 
-	// V = w_i = incoming
-	// L = w_o = scattered
-	//both in Spherical Coordinates (?)
 	glm::vec3 GlossyBSDF::eval(glm::vec3 incoming, glm::vec3 scattered, RayIntersection ri) {
 		glm::vec3 H = glm::normalize(-incoming + scattered);
 		float HdotV = glm::dot(-incoming, H);

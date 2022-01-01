@@ -16,10 +16,6 @@ namespace narvalengine {
 
 		glm::vec3 Tr(Ray incoming, RayIntersection ri);
 		glm::vec3 Tr(float distance);
-
-		/*
-			intersection must be inside the volume
-		*/
 		glm::vec3 sample(Ray incoming, Ray &scattered, RayIntersection intersection);
 	};
 }

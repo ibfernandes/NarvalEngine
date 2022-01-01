@@ -16,14 +16,9 @@
 #include <sstream>
 //#include <openvdb/openvdb.h>
 //#include <openvdb/tools/Dense.h>
-#include <nanovdb/util/OpenToNanoVDB.h> // converter from OpenVDB to NanoVDB (includes NanoVDB.h and GridManager.h)
-#include <nanovdb/util/IO.h>
+//#include "util/NanoToOpenVDB.h" // converter from OpenVDB to NanoVDB (includes NanoVDB.h and GridManager.h)
+//#include "util/IO.h"
 #include "utils/Timer.h"
-
-#include "oidn/include/OpenImageDenoise/oidn.hpp"
-
-#include "oidn/include/OpenImageDenoise/oidn.hpp"
-//#include <OpenImageDenoise/oidn.hpp>
 
 namespace narvalengine {
 	class TestPlayground {
@@ -102,7 +97,9 @@ namespace narvalengine {
 				ggx->alpha = 0.95;
 				//Microfacet in SCS, tested and validated on a SCILAB plot
 				//SCS has the z axis pointing up
-				glm::vec3 microfacet = ggx->sampleMicrofacet();
+				// METHOD IS NOW PRIVATE
+				//glm::vec3 microfacet = ggx->sampleMicrofacet();
+				glm::vec3 microfacet = glm::vec3(0,0,0);
 
 				glm::vec3 up = glm::vec3(0, 0, 1);
 				glm::vec3 forward = glm::vec3(0, 1, 0);
@@ -230,7 +227,7 @@ namespace narvalengine {
 		}
 
 		void genRectangle(Scene *scene) {
-			std::string materialName = "checkboard";
+			/*std::string materialName = "checkboard";
 			std::string name = "texTest";
 			std::string type = "rectangle";
 			glm::vec3 pos = glm::vec3(0,0,0);
@@ -271,21 +268,21 @@ namespace narvalengine {
 			//model->centralize();
 
 			int numOfIndices = 1 * 2 * 3; // 1 face comprised of 2 triangles, each triangle needs 3 indices
-			model->faceVertexIndices = new int[numOfIndices];
-			model->faceVertexIndicesLength = numOfIndices;
-			model->faceVertexIndices[0] = 0;
-			model->faceVertexIndices[1] = 1;
-			model->faceVertexIndices[2] = 2;
-			model->faceVertexIndices[3] = 0;
-			model->faceVertexIndices[4] = 2;
-			model->faceVertexIndices[5] = 3;
+			model->indexData = new uint32_t[numOfIndices];
+			model->indexDataLength = numOfIndices;
+			model->indexData[0] = 0;
+			model->indexData[1] = 1;
+			model->indexData[2] = 2;
+			model->indexData[3] = 0;
+			model->indexData[4] = 2;
+			model->indexData[5] = 3;
 
 			Mesh m;
 			m.strideLength = 5;
 			m.vertexDataPointer = &model->vertexData[0];
 			m.vertexDataPointerLength = model->vertexDataLength;
-			m.vertexIndicesPointer = &model->faceVertexIndices[0];
-			m.vertexIndicesPointerLength = model->faceVertexIndicesLength;
+			m.vertexIndicesPointer = &model->indexData[0];
+			m.vertexIndicesPointerLength = model->indexDataLength;
 
 			m.vertexLayout.init();
 			m.vertexLayout.add(VertexAttrib::Position, VertexAttribType::Float, 3);
@@ -325,7 +322,7 @@ namespace narvalengine {
 			if (material->light != nullptr)
 				scene->lights.push_back(instancedModel);
 			else
-				scene->instancedModels.push_back(instancedModel);
+				scene->instancedModels.push_back(instancedModel);*/
 		}
 
 		void testUVSampling() {
@@ -366,7 +363,7 @@ namespace narvalengine {
 		}
 
 		void convertToNanoVDB() {
-			try {
+			/*try {
 				openvdb::io::File file(RESOURCES_DIR + std::string("vdb/cube.vdb"));
 				openvdb::GridBase::Ptr baseGrid;
 				file.open();
@@ -393,7 +390,7 @@ namespace narvalengine {
 				nanovdb::io::writeGrid(RESOURCES_DIR + std::string("scenes/pbrt/cube.nvdb"), handle); // Write the NanoVDB grid to file and throw if writing fails
 			}catch (const std::exception& e) {
 				std::cerr << "An exception occurred: \"" << e.what() << "\"" << std::endl;
-			}
+			}*/
 		}
 
 		void generateCubeVDB() {
@@ -471,10 +468,11 @@ namespace narvalengine {
 			std::cout << "glm_vec4 glm_vec4_dot" << std::endl;
 			t.startTimer();
 			for (int i = 0; i < ops; i++) {
-				glm_vec4 t1 = { 1,1,1,1 };
-				glm_vec4 t2 = { 2,2,2,2 };
+				//broke after add_compile_definitions(GLM_FORCE_XYZW_ONLY)
+				//glm_vec4 t1 = { 1,1,1,1 };
+			//	glm_vec4 t2 = { 2,2,2,2 };
 
-				glm_vec4 k = glm_vec4_dot(t1, t2);
+				//glm_vec4 k = glm_vec4_dot(t1, t2);
 			}
 			t.endTimer();
 			t.printlnNanoSeconds();
@@ -785,7 +783,7 @@ namespace narvalengine {
 
 				for (int b = 0; b < maxBouncesToTest; b++) {
 					for (int i = 0; i < samples; i++) {
-						m->t = 0;
+						//m->t = 0;
 						Ray incoming = r;
 
 						for (int k = 0; k < b+1; k++) {
@@ -800,7 +798,7 @@ namespace narvalengine {
 							incoming = scattered;
 						}
 
-						avgPathDepth[b] += m->t;
+						//avgPathDepth[b] += m->t;
 					}
 
 					avgPathDepth[b] /= samples;
@@ -823,7 +821,7 @@ namespace narvalengine {
 
 				for (int b = 0; b < maxBouncesToTest; b++) {
 					for (int i = 0; i < samples; i++) {
-						m->tr = glm::vec3(1);
+						//m->tr = glm::vec3(1);
 						Ray incoming = r;
 
 						for (int k = 0; k < b + 1; k++) {
@@ -838,7 +836,7 @@ namespace narvalengine {
 							incoming = scattered;
 						}
 
-						avgTr[b] += m->tr;
+						//avgTr[b] += m->tr;
 					}
 
 					avgTr[b] /= samples;
@@ -879,7 +877,7 @@ namespace narvalengine {
 						hg->g = g;
 
 						m->sample(incoming, scattered, ri);
-						avgTheta[i] += hg->theta;
+						//avgTheta[i] += hg->theta;
 
 						incoming = scattered;
 					}
@@ -985,8 +983,8 @@ namespace narvalengine {
 
 							glm::vec3 lightSample = volPath->uniformSampleOneLight(scattered, ri, scene);
 
-							theta[pos] = hg->theta;
-							phi[pos] = hg->phi;
+							//theta[pos] = hg->theta;
+							//phi[pos] = hg->phi;
 							bsdfValue[pos] += (fr.x/pdf);
 							tr[pos] *= sampledTransmittance.x;
 							Li[pos] += tr[pos] * lightSample;
@@ -1040,7 +1038,7 @@ namespace narvalengine {
 		void compareEXR(std::string img1, std::string img2, std::string writeTo);
 
 		void convertVDBToFloatFile() {
-
+		/*
 			SceneReader sceneReader;
 			sceneReader.loadScene("scenes/testing.json", false);
 			Scene* scene = sceneReader.getScene();
@@ -1051,13 +1049,14 @@ namespace narvalengine {
 			int size = gm->lbvh->gridSize.x * gm->lbvh->gridSize.y * gm->lbvh->gridSize.z;
 
 			file << "{ ";
+			file << "\"resolution\": " << toString(gm->lbvh->gridSize) << ", ";
 			file << "\"grid\": [";
 			for(int i = 0; i < size-1; i++)
 				file << gm->lbvh->grid[i] << ", ";
 			file << gm->lbvh->grid[size - 1];
 			file << "] ";
 			file << "}";
-			file.close();
+			file.close();*/
 		}
 
 		TestPlayground() {
@@ -1067,7 +1066,7 @@ namespace narvalengine {
 			//testMicrofacetBSDF();
 			//testUVSampling();
 			//testDot();
-			generateCubeVDB();
+			//generateCubeVDB();
 			//convertToNanoVDB();
 			//floatRoundError();
 			//testEXR();
@@ -1077,10 +1076,10 @@ namespace narvalengine {
 			convertVDBToFloatFile();
 			//testMSFactorapproach();
 
-			//std::string img1 = RESOURCES_DIR + std::string("scenes/tests/10000spp 1000b quarter.exr");
-			//std::string img2 = RESOURCES_DIR + std::string("scenes/tests/10000spp 35b quarter.exr");
-			//std::string writeTo = RESOURCES_DIR + std::string("scenes/tests/RED1000bVS35b.exr");
-			//compareEXR(img1, img2, writeTo);
+			std::string img1 = RESOURCES_DIR + std::string("scenes/tests/vs realtime/100000spp.exr");
+			std::string img2 = RESOURCES_DIR + std::string("scenes/tests/vs realtime/lobe.exr");
+			std::string writeTo = RESOURCES_DIR + std::string("scenes/tests/vs realtime/res2.exr");
+			compareEXR(img1, img2, writeTo);
 
 			float t = 0;
 		}

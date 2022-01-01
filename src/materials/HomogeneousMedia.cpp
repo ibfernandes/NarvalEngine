@@ -21,9 +21,6 @@ namespace narvalengine {
 		return Tr(ri.tFar - ri.tNear);
 	}
 
-	/*
-		intersection must be inside or at the boundary of the volume
-	*/
 	glm::vec3 HomogeneousMedia::sample(Ray incoming, Ray &scattered, RayIntersection intersection) {
 		float t = -std::log(1 - random()) / avg(extinction);
 		float distInsideVolume = intersection.tFar - intersection.tNear;
@@ -39,8 +36,6 @@ namespace narvalengine {
 		} else {
 			scattered.o = incoming.getPointAt(distInsideVolume + 0.001f);
 			scattered.d = incoming.d;
-
-			//return glm::vec3(0, 1, 0);
 		}
 
 		glm::vec3 Tr = this->Tr(t);

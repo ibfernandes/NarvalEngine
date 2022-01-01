@@ -1,122 +1,91 @@
 #pragma once
 #include "primitives/BucketLBVH.h"
 #include "materials/Texture.h"
-#include "utils/Math.h"
 #include "materials/Medium.h"
 #include "primitives/Ray.h"
 #include "primitives/Primitive.h"
+#include "primitives/InstancedModel.h"
 #include "core/BSDF.h"
 #include <vector>
 #include <math.h>
 
 namespace narvalengine {
+
 	class GridMedia : public Medium {
+	private:
+		float calculateMaxDensity() {
+			float max = 0;
+			for (int i = 0; i < grid->depth * grid->height * grid->width; i++)
+				max = glm::max(max , grid->sampleAtIndex(i).x);
+			return max;
+		}
+
+		/**
+		 * Converts from Object Coordinate System (OCS) to Grid Coordinate System (GCS).
+		 * Note that for easy of implementation the OCS is assumed to be an AABB centered at origin with width = 1.
+		 * Hence, the OCS must be in between [-0.5, -0.5, -0.5] and [0.5, 0.5, 0.5].
+		 *
+		 * @param x in Object Coordinate System (OCS).
+		 * @param y in Object Coordinate System (OCS).
+		 * @param z in Object Coordinate System (OCS).
+		 * @return the coordinates in GCS, varying from [0, 0, 0] and [width, height, depth].
+		 */
+		glm::vec3 fromOCStoGCS(float x, float y, float z) {
+			return (glm::vec3(x, y, z) + glm::vec3(0.5)) * resolution;
+		}
+
+		/**
+		 * Samples density in this Grid Media at {@code ray.getPointAt(depth)}.
+		 * 
+		 * @param ray in Object Coordinate System (OCS).
+		 * @param depth distance t.
+		 * @return sampled density.
+		 */
+		float sampleAt(Ray &ray, float depth);
+
+		/**
+		 * Samples the volume density at {@code gridPoint}.
+		 *
+		 * @param gridPoint in Grid Coordinate System (GCS) ranging from [0,0,0] to [width, height, depth].
+		 * @return sampled density.
+		 */
+		float density(glm::vec3 gridPoint);
+
+		/**
+		 *  Samples the volume density at {@code gridPoint} using trilinear interpolation.
+		 *
+		 * @param gridPoint in Grid Coordinate System (GCS) ranging from [0,0,0] to [width, height, depth].
+		 * @return sampled density.
+		 */
+		float interpolatedDensity(glm::vec3 gridPoint);
 	public:
 		glm::vec3 absorption;
 		glm::vec3 scattering;
 		glm::vec3 extinction;
-		BucketLBVH *lbvh;
-		float density =  1.0f;
+		glm::vec3 resolution;
+		Texture *grid;
+		float densityMultiplier =  1.0f;
 		float invMaxDensity = 1;
-		float t = 0;
-		glm::vec3 tr = glm::vec3(1);
 
-		GridMedia(glm::vec3 scattering, glm::vec3 absorption, std::string material, float density) {
-			this->scattering = scattering;
-			this->absorption = absorption;
-			this->extinction = this->absorption + this->scattering;
-			this->density = density;
+		GridMedia(glm::vec3 scattering, glm::vec3 absorption, Texture *tex, float density);
 
-			Texture* tex = ResourceManager::getSelf()->getTexture(material);
+		/**
+		 * Perform Ratio Tracking to estimate the transmittance value between {@code intersection.tNear} and {@code intersection.tFar}.
+		 * 
+		 * @param incoming ray in World Coordinate Space (WCS).
+		 * @param intersection.
+		 * @return 
+		 */
+		glm::vec3 Tr(Ray incoming, RayIntersection intersection);
 
-			lbvh = new BucketLBVH((float*)tex->mem.data, tex->getResolution());
-			invMaxDensity = 1.0f / (lbvh->maxDensity /* * density*/);
-		}
-
-		glm::vec3 Tr(float d) {
-			//glm::vec3 v = extinction * d * densityMultiplier;
-			glm::vec3 v = extinction * d ;
-			return exp(-v);
-		}
-
-		/*
-			Incoming Ray must be in OCS.
-		*/
-		glm::vec3 Tr(Ray incoming, RayIntersection ri) {
-			//glm::vec3 hit = lbvh->traverseTreeUntil(incoming, 99999);
-			//if (hit.x > hit.y) {
-			//	return glm::vec3(1.0f);
-			//}
-
-			//incoming.o = incoming.getPointAt(hit.x);
-			//ri.tFar = hit.y - hit.x;
-			//ri.tNear = 0;
-
-			incoming.o = incoming.getPointAt(ri.tNear);
-			ri.tFar = ri.tFar - ri.tNear;
-			ri.tNear = 0;
-
-			// Perform ratio tracking to estimate the transmittance value
-			//pbrt requires a spectrally uniform attenuation coeff , thus why extinction.x
-			float Tr = 1, t = ri.tNear;
-			//std::cout << "before ratio " << Tr << std::endl;
-			while (true) {
-				t -= std::log(1 - random()) * invMaxDensity / avg(extinction * density);
-				if (t >= ri.tFar) break;
-				float density = lbvh->sampleAt(incoming, t);
-				Tr *= 1 - std::max(0.0f, density * invMaxDensity);
-				const float rrThreshold = .1;
-				if (Tr < rrThreshold) {
-					float q = std::max(0.05f, 1.0f - Tr);
-					if (random() < q) return glm::vec3(0.0f);
-					Tr /= 1 - q;
-				}
-			}
-
-			//std::cout << "after ratio " << Tr << std::endl;
-			return glm::vec3(Tr);
-		}
-
-		//delta tracking
-		glm::vec3 sample(Ray incoming, Ray& scattered, RayIntersection intersection) {
-			scattered.o = incoming.o;
-			scattered.d = incoming.d;
-
-			//travverse now uses OCS
-			/*glm::vec3 hit = lbvh->traverseTreeUntil(incoming, 99999);
-			//if the ray doesn't collide with any voxel within the tree, there is no scattering.
-			if (hit.x > hit.y) {
-				float distAABB = intersection.tFar - intersection.tNear;
-				scattered.o = incoming.getPointAt(distAABB + 0.001f);
-				scattered.d = incoming.d;
-				return glm::vec3(1.0f,0,0);
-			}*/
-
-			// Run delta-tracking iterations to sample a medium interaction
-			//float t = hit.x;
-			float t = intersection.tNear;
-			//float dist = hit.y - hit.x;
-			while (true) {
-				float r = random();
-				float sampledDist = std::log(1 - r) * invMaxDensity / avg(extinction * density);
-				t -= sampledDist;
-				if (t >= intersection.tFar) {
-					scattered.o = incoming.getPointAt(intersection.tFar + 0.0001f);
-					break;
-				}
-				this->t -= sampledDist;
-
-				float density = lbvh->sampleAt(incoming, t);
-				float ra = random();
-				if (density * invMaxDensity > ra) {
-					scattered.o = incoming.getPointAt(t);
-					scattered.d = intersection.primitive->material->bsdf->sample(incoming.d, glm::vec3(0,0,1)); //-incoming.d
-					tr *= scattering / extinction;
-					return scattering / extinction;
-				}
-			}
-
-			return glm::vec3(1.0f);
-		}
+		/**
+		 * Samples the transmittance and scattered event using Delta Tracking.
+		 * 
+		 * @param incoming ray in World Coordinate Space (WCS).
+		 * @param scattered ray in World Coordinate Space (WCS) where scattered.origin is the point in which the scattering event occured and scattered.direction the sampled direction using the current phase function.
+		 * @param intersection inside or at this volume's border.
+		 * @return calculated transmittance.
+		 */
+		glm::vec3 sample(Ray incoming, Ray& scattered, RayIntersection intersection);
 	};
 }

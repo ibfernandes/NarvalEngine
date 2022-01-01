@@ -2,6 +2,18 @@
 #include <glm/glm.hpp>
 
 namespace narvalengine {
+	class Primitive;
+	class InstancedModel;
+
+	struct RayIntersection {
+		glm::vec3 hitPoint;
+		glm::vec3 normal;
+		glm::vec2 uv;
+		float tNear, tFar;
+		InstancedModel* instancedModel;
+		Primitive* primitive;
+	};
+
 	class Ray {
 	public:
 		union { glm::vec3 o, origin; };

@@ -255,7 +255,7 @@ namespace narvalengine {
 
 			scattering = &gm->scattering; //TODO  divide by gm->densityMultiplier
 			absorption = &gm->absorption;
-			density = &gm->density;
+			density = &gm->densityMultiplier;
 
 			renderCtx->updateUniform(mcUniforms[8], { (uint8_t*)scattering, sizeof(glm::vec3) });
 			renderCtx->updateUniform(mcUniforms[9], { (uint8_t*)absorption, sizeof(glm::vec3) });
@@ -308,7 +308,7 @@ namespace narvalengine {
 			VolumeBSDF* volbsdf = (VolumeBSDF*)im->model->materials.at(0)->bsdf->bxdf[0];
 			HG* hg = (HG*)volbsdf->phaseFunction;
 			g = &hg->g;
-			avgMeanPath = 1.0f / (avg(gm->extinction) * gm->density);
+			avgMeanPath = 1.0f / (avg(gm->extinction) * gm->densityMultiplier);
 			
 			if (InputManager::getSelf()->eventTriggered("TESTING_KEY"))
 				lshasPointsBeenGenerated = false;
@@ -323,7 +323,7 @@ namespace narvalengine {
 
 			scattering = &gm->scattering; //TODO  divide by gm->densityMultiplier
 			absorption = &gm->absorption;
-			density = &gm->density;
+			density = &gm->densityMultiplier;
 
 			renderCtx->updateUniform(lsUniforms[8], { (uint8_t*)scattering, sizeof(glm::vec3) });
 			renderCtx->updateUniform(lsUniforms[9], { (uint8_t*)absorption, sizeof(glm::vec3) });
@@ -371,7 +371,7 @@ namespace narvalengine {
 
 			scattering = &gm->scattering; //TODO  divide by gm->densityMultiplier
 			absorption = &gm->absorption;
-			density = &gm->density;
+			density = &gm->densityMultiplier;
 
 			renderCtx->updateUniform(rmUniforms[8], { (uint8_t*)scattering, sizeof(glm::vec3) });
 			renderCtx->updateUniform(rmUniforms[9], { (uint8_t*)absorption, sizeof(glm::vec3) });

@@ -1,4 +1,4 @@
-#include "Rectangle.h"
+#include "primitives/Rectangle.h"
 
 namespace narvalengine {
 	Rectangle::Rectangle() {
@@ -20,13 +20,10 @@ namespace narvalengine {
 	}
 
 	glm::vec3 Rectangle::getCenter() {
-
 		//Assumes that v[1] is the Rectangle's max
 		return getVertex(1) - getSize() / 2.0f;
 	}
 
-	//TODO: check same hemisphere (rectangle one sided)
-	//TODO: I could strictly define the plane on a xy axis since the ray must be in OCS
 	bool Rectangle::containsPoint(glm::vec3 point) {
 		glm::vec3 planeVertex1 = glm::vec3(*vertexData[0], *(vertexData[0] + 1), *(vertexData[0] + 2));
 		glm::vec3 planeVertex2 = glm::vec3(*vertexData[1], *(vertexData[1] + 1), *(vertexData[1] + 2));
@@ -45,12 +42,7 @@ namespace narvalengine {
 		return true;
 	}
 
-	/*
-		Checks if Ray r intesercts this primitive. If true, stores its values on hit.
-		Ray must be in OCS.
-	*/
 	bool Rectangle::intersect(Ray r, RayIntersection &hit) {
-		//glm::vec3 planeVertex = getCenter();
 		glm::vec3 planeVertex = getVertex(1);
 
 		float denom = glm::dot(normal, r.direction);
@@ -78,7 +70,6 @@ namespace narvalengine {
 		return false;
 	}
 
-	//TODO abs of width of both vertices
 	glm::vec3 Rectangle::samplePointOnSurface(RayIntersection interaction, glm::mat4 transformToWCS) {
 		glm::vec3 e(random(), random(), random());
 		glm::vec3 v0 = getVertex(0);
@@ -87,11 +78,9 @@ namespace narvalengine {
 
 		pointOnSurface = transformToWCS * glm::vec4(pointOnSurface, 1.0f);
 
-		//TODO barycentric or something more elegant than this 
 		return pointOnSurface;
 	}
 
-	//TODO not the most eficient/elegant solution (?)
 	glm::vec4 Rectangle::barycentricCoordinates(glm::vec3 p, glm::vec3 a, glm::vec3 b, glm::vec3 c, glm::vec3 d) {
 		glm::vec3 uvwT1;
 		glm::vec3 uvwT2;
@@ -124,7 +113,6 @@ namespace narvalengine {
 			return glm::vec4(uvwT1, 0);
 	}
 
-	//Given a hit point on surface, convert it to texture coordinates
 	glm::vec2 Rectangle::samplePointOnTexture(glm::vec3 pointOnSurface) {
 		if(vertexLayout == nullptr || !vertexLayout->contains(VertexAttrib::TexCoord0))
 			return glm::vec3(0);
@@ -164,7 +152,6 @@ namespace narvalengine {
 
 	float Rectangle::pdf(RayIntersection interaction, glm::mat4 transformToWCS) {
 		glm::vec3 sizeWCS = glm::vec3(transformToWCS[0][0], transformToWCS[1][1], transformToWCS[2][2]) * getSize();
-		//TODO confirm this math here
 
 		float area = 1;
 
@@ -172,9 +159,6 @@ namespace narvalengine {
 			if (sizeWCS[i] != 0)
 				area = area * sizeWCS[i];
 
-		// 1 / area
-		//return 1.0f / area;
-		//TODO delegate solid angle conversion to Primitive maybe?
 		return convertAreaToSolidAngle(1.0f / area, interaction.normal, interaction.hitPoint, samplePointOnSurface(interaction, transformToWCS));
 	}
 }

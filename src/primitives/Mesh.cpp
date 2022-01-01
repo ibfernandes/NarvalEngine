@@ -1,7 +1,6 @@
-#include "Mesh.h"
+#include "primitives/Mesh.h"
 
 namespace narvalengine {
-
 	Mesh::Mesh() {
 	}
 

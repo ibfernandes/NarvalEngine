@@ -22,6 +22,6 @@ namespace narvalengine {
 	}
 
 	float Point::pdf(RayIntersection interaction, glm::mat4 transformToWCS) {
-		return 1; //or 0?
+		return 1;
 	}
 }

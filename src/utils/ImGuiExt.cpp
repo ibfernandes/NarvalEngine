@@ -22,13 +22,11 @@ namespace ImGuiExt {
         bool value_changed = false;
         ImGuiListClipper clipper(items_count, ImGui::GetTextLineHeightWithSpacing()); // We know exactly our line height here so we pass it as a minor optimization, but generally you don't need to.
         while (clipper.Step())
-            for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++)
-            {
+            for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++){
                 const bool item_selected = (i == *current_item);
                 const char* item_text;
                 if (!items_getter(data, i, &item_text))
                     item_text = "*Unknown item*";
-                    
 
                 ImGui::PushID(i);
                 if (item_selected)
@@ -75,5 +73,9 @@ namespace ImGuiExt {
         ImGui::Text(name.c_str());
         ImGui::SameLine();
         ImGui::Text("(%.1f, %.1f, %.1f)", v.x, v.y, v.z);
+    }
+
+    ImVec4 add(ImVec4 vec4, float v) {
+        return ImVec4(vec4.x + v, vec4.y + v, vec4.y + v, vec4.z + v);
     }
 };

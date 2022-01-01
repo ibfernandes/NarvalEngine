@@ -14,6 +14,9 @@
 #define NE_INPUT_MOD_GET(v, shift) ((v >> shift) & 1)
 
 namespace narvalengine {
+	/**
+	 * Singleton responsible for managing inputs.
+	 */
 	class InputManager {
 	public:
 		enum EventType {
@@ -48,51 +51,10 @@ namespace narvalengine {
 		static const int numberOfKeys = 512;
 		int previousState[numberOfKeys];
 		int currentState[numberOfKeys];
-		int modifier = 0;
+		int currentModifier = 0;
 		glm::vec2 mousePosition;
 
-		bool isCombo(int v) {
-			return NE_INPUT_MOD_GET(v, NE_INPUT_MOD_SHIFT) == 1 || NE_INPUT_MOD_GET(v, NE_INPUT_MOD_CTRL) == 1 || NE_INPUT_MOD_GET(v, NE_INPUT_MOD_ALT) == 1;
-		}
-
-		void init() {
-			std::fill_n(previousState, numberOfKeys, GLFW_RELEASE);
-			std::fill_n(currentState, numberOfKeys, GLFW_RELEASE);
-
-			//TODO: implement combos (ALT+R etc...)
-			keyMapping.insert({ "MOVE_FORWARD", {KeyHolding, GLFW_KEY_W} });
-			keyMapping.insert({ "MOVE_BACKWARDS", {KeyHolding, GLFW_KEY_S} });
-			keyMapping.insert({ "MOVE_LEFT", {KeyHolding, GLFW_KEY_A} });
-			keyMapping.insert({ "MOVE_RIGHT", {KeyHolding, GLFW_KEY_D} });
-			keyMapping.insert({ "MOVE_UPWARDS", {KeyHolding, GLFW_KEY_Q} });
-			keyMapping.insert({ "MOVE_DOWNWARDS", {KeyHolding, GLFW_KEY_E} });
-
-			//keyMapping.insert({ "PITCH_UP", {KeyHolding, GLFW_KEY_KP_8} });
-			keyMapping.insert({ "PITCH_UP", {KeyHolding, GLFW_KEY_T} });
-			//keyMapping.insert({ "PITCH_UP", {KeyHolding, GLFW_KEY_UP} });
-
-			//keyMapping.insert({ "PITCH_DOWN", {KeyHolding, GLFW_KEY_KP_2} });
-			keyMapping.insert({ "PITCH_DOWN", {KeyHolding, GLFW_KEY_G} });
-			//keyMapping.insert({ "PITCH_DOWN", {KeyHolding, GLFW_KEY_DOWN} });
-
-			//keyMapping.insert({ "YAW_RIGHT", {KeyHolding, GLFW_KEY_KP_6} });
-			keyMapping.insert({ "YAW_RIGHT", {KeyHolding, GLFW_KEY_F} });
-			//keyMapping.insert({ "YAW_RIGHT", {KeyHolding, GLFW_KEY_RIGHT} });
-
-			//keyMapping.insert({ "YAW_LEFT", {KeyHolding, GLFW_KEY_KP_4} });
-			keyMapping.insert({ "YAW_LEFT", {KeyHolding, GLFW_KEY_H} });
-			//keyMapping.insert({ "YAW_LEFT", {KeyHolding, GLFW_KEY_LEFT} });
-
-			keyMapping.insert({ "MOUSE_MOVE_CAMERA", {KeyHolding, GLFW_MOUSE_BUTTON_MIDDLE} });
-
-			keyMapping.insert({ "SELECT_OBJECT", {KeyRelease, GLFW_MOUSE_BUTTON_LEFT} });
-
-			keyMapping.insert({ "ROTATE_OBJECT", {KeyRelease, NE_INPUT_MOD_SET(GLFW_KEY_R, NE_INPUT_MOD_CTRL)} });
-			keyMapping.insert({ "SCALE_OBJECT", {KeyRelease, NE_INPUT_MOD_SET(GLFW_KEY_S, NE_INPUT_MOD_CTRL)} });
-			keyMapping.insert({ "TRANSLATE_OBJECT", {KeyRelease, NE_INPUT_MOD_SET(GLFW_KEY_T, NE_INPUT_MOD_CTRL)} });
-
-			keyMapping.insert({ "TESTING_KEY", {KeyHolding, GLFW_KEY_1} });
-		}
-
+		void init();
+		bool isCombo(int v);
 	};
 }

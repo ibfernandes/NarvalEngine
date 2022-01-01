@@ -2,6 +2,9 @@
 #include "imgui.h"
 
 namespace narvalengine {
+	/**
+	 * Palette of colors defining the overall feel and aesthetic of the user interface (UI).
+	 */
 	struct Palette {
 		const ImVec4 text = ImVec4(53 / 255.0f, 53 / 255.0f, 53 / 255.0f, 1.0f);
 		const ImVec4 textLight = ImVec4(73 / 255.0f, 73 / 255.0f, 73 / 255.0f, 1.0f);

@@ -5,6 +5,9 @@
 #include "utils/MurmurHash3.h"
 
 namespace narvalengine {
+	/**
+	 * Struct responsible for allocating handles. Used for managing renderer resources.
+	 */
 	struct HandleAllocator {
 
 		HandleAllocator() {};
@@ -74,39 +77,58 @@ namespace narvalengine {
 	};
 
 	struct MemoryBuffer {
-		uint8_t* data;
-		uint32_t size;
+		void* data = nullptr;
+		uint32_t size = 0;
 	};
 
+	/**
+	 * Creates a Handle Allocator at the specified {@code mem} address.
+	 * 
+	 * @param mem in which to allocate this HandleAllocator.
+	 * @param maxHandles maximum capacity of handlers permitted by this allocator.
+	 * @return pointer to this allocator.
+	 */
 	static HandleAllocator* createHandleAllocator(uint8_t* mem, uint16_t maxHandles) {
 		 return new (mem) HandleAllocator(maxHandles);
 	}
 
-	/*
-		Creates a MemoryBuffer with size N in bytes.
-	*/
+	/**
+	 * Creates a MemoryBuffer with size N in bytes.
+	 * 
+	 * @param size in bytes.
+	 * @return allocated memor
+	 */
 	static uint8_t* memAlloc(uint32_t size) {
 		return new uint8_t[size];
 	}
 
-	/*
-		Creates a MemoryBuffer with size N in bytes.
-	*/
+	/**
+	 * Creates a MemoryBuffer with size n in bytes.
+	 * 
+	 * @param size in bytes.
+	 * @return memoryBuffer created.
+	 */
 	static MemoryBuffer* memBufferAlloc(uint32_t size) {
 		return new MemoryBuffer{new uint8_t[size], size};
 	}
 
-	/*
-		Frees a MemoryBuffer data
-	*/
+	/**
+	 * Frees {@code mem.data}
+	 * 
+	 * @param mem
+	 */
 	static void memBufferFree(MemoryBuffer *mem) {
 		mem->size = -1;
 		free(mem->data);
 	}
 
-	/*
-		Copies to destination from source with size N in bytes.
-	*/
+	/**
+	 * Copies to {@code destination.data} from {@code source} with size in bytes.
+	 *
+	 * @param destination destination data.
+	 * @param source data.
+	 * @param size of {@code source} in bytes.
+	 */
 	template <typename T>
 	static void memCopy(MemoryBuffer* destination, T *source, int size){
 		//assert(size < destination->size / sizeof(T));

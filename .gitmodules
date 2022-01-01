@@ -16,3 +16,18 @@
 [submodule "includes/rapidjson"]
 	path = includes/rapidjson
 	url = https://github.com/Tencent/rapidjson.git
+[submodule "includes/googletest"]
+	path = includes/googletest
+	url = https://github.com/google/googletest.git
+[submodule "includes/googlelog"]
+	path = includes/googlelog
+	url = https://github.com/google/glog.git
+[submodule "includes/magic_enum"]
+	path = includes/magic_enum
+	url = https://github.com/Neargye/magic_enum.git
+[submodule "includes/optick"]
+	path = includes/optick
+	url = https://github.com/bombomby/optick.git
+[submodule "includes/tinyfiledialogs"]
+	path = includes/tinyfiledialogs
+	url = https://github.com/native-toolkit/tinyfiledialogs.git

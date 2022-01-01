@@ -15,15 +15,22 @@
 #include "core/Shader.h"
 #include "materials/Texture.h"
 #include "utils/StringID.h"
+#include <glog/logging.h>
 
 namespace narvalengine {
 	class Model;
 	class Material;
 
+	/**
+	 * Singleton responsible for loading, storing and managing all resources throught the application.
+	 */
 	class ResourceManager {
 	private:
 		ResourceManager();
 		static ResourceManager* self;
+		/**
+		*	All resources are stored in a hashmap using the SringID generated from the name given to the resource.
+		*/
 		std::unordered_map<StringID, Shader*> shaders;
 		std::unordered_map<StringID, Model*> models;
 		std::unordered_map<StringID, Material*> materials;
@@ -49,6 +56,16 @@ namespace narvalengine {
 		StringID replaceTexture(std::string name, Texture* t);
 		StringID loadVDBasTexture(std::string name, std::string path);
 		StringID loadVolasTexture(std::string name, std::string path);
+		/**
+		 *	Loads a texture with {@code name} at {@code path}.
+		 *	Supports only:
+		 *	- JPEG baseline & progressive (12 bpc/arithmetic not supported, same as stock IJG lib)
+		 *	- PNG 1/2/4/8/16-bit-per-channel
+		 * 
+		 * @param name
+		 * @param path
+		 * @return 
+		 */
 		StringID loadTexture(std::string name, std::string path);
 		Texture* getTexture(std::string name);
 		Texture* getTexture(StringID id);

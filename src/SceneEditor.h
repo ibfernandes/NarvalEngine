@@ -1,11 +1,12 @@
 #pragma once
 #include "core/Scene.h"
+#include "core/Engine3D.h"
+#include "core/EngineState.h"
 #include "core/OfflineEngine.h"
 #include "io/SceneReader.h"
 #include "core/Camera.h"
 #include "materials/Texture.h"
 #include "core/Renderer.h"
-#include "renderer/RendererGL.h"
 #include "imgui.h"
 #include "utils/ImGuiExt.h"
 #include "utils/IconsFontAwesome5.h"
@@ -20,14 +21,61 @@
 #include <sstream>
 
 namespace narvalengine {
-	class SceneEditor : public Scene {
+
+	enum RenderingMode {
+		OFFLINE_RENDERING_MODE,
+		REALTIME_RENDERING_MODE
+	};
+
+	/**
+	 * A complete SceneEditor with User Interface.
+	 */
+	class SceneEditor : public EngineState {
+	private:
+		bool sceneChanged();
+		void updateUI();
+		void startOffEngine();
+		void renderImGUI();
+		int getSelectedIMListPos(InstancedModel* im);
+		InstancedModel* getSelectedIMfromListPos(int pos);
+		void generateSceneImList();
+		void sceneListImGUI();
+		void selectedModelImGUI();
+		void selectedMaterialImGUI();
+		void cameraImGUI();
+		void lightImGui();
+		void performanceImGUI();
+		void toneMappingImGUI();
+		void renderOptionsImGUI();
+		void shootRay(int i);
+		void shootMultipleRays(int qtt);
+		void shootRayImGUI();
+		void shadowMappingImGUI();
+		void newVolRenderImGUI();
+		void renderShadowMappingDebug();
+		void renderOffline();
+		void renderRealTimeShadows();
+		void renderScene(FrameBufferHandler* fbh, TextureHandler* fbhTex, int currentFrame);
+		void renderPostProcessing();
+		void renderRealTimePBR();
+
+		void reloadScene();
+		void initVolumetricShader();
+		void initPBR();
+		void initPostProcessingShader();
+		void initComposeShader();
+		void initMonoColorShader();
+		void initShadowShader();
+		void initImageDifferenceShader();
+		void initRenderAPI();
+		void hoverObject();
 	public:
 		GLint WIDTH, HEIGHT;
 		float aspectRatio;
 		std::string selectedFilePath = "";
 		SceneReader sceneReader;
-		Settings settings;
-		Scene scene;
+		SceneSettings settings;
+		Scene *scene;
 		Camera camera;
 
 		OfflineEngine *offEngine;
@@ -37,13 +85,13 @@ namespace narvalengine {
 		float farPlane = 60000;
 		float projAngle = 45;
 		glm::mat4 proj;
+		glm::mat4 invProj;
 		glm::mat4 staticCam;
 		glm::mat4 cam;
 		glm::mat4 orthoProj;
 		glm::mat4 model = glm::mat4(1);
 		glm::mat4 identity = glm::mat4(1);
-		RendererContext renderCtx;
-		RendererGL *renderer;
+		RendererContext *renderCtx;
 		bool doneRendering = false;
 		glm::vec2 renderSize;
 		bool didSceneChange = false;
@@ -93,27 +141,17 @@ namespace narvalengine {
 		glm::mat4 lightView[10] = { glm::mat4(1) , glm::mat4(1) }; //one for each light source
 		glm::mat4 lightProjection = glm::mat4(1);
 
-		//REAL TIME - Phong
-		ProgramHandler phongProgramHandler;
-		UniformHandler phongUniforms[100];
-		UniformHandler lightUniforms[100];
-		glm::vec3 lightPos[10];
-		int phongLightsOffset = 7;
-		int phongDiffTex = 0;
-		int phongSpecTex = 1;
-		int phongNormTex = 2;
-		int phongShadowMapTex = 3;
-		int phongRenderingMode = 0;
-		int normalMapping = 1;
-		glm::vec4 lightTexColor = glm::vec4(252/255.0f, 186/255.0f, 3/255.0f, 1);
-		TextureHandler lightTexColorH;
-
 		//REAL TIME - PBR
 		ProgramHandler pbrProgramHandler;
-		UniformHandler pbrUniforms[100];
-		UniformHandler pbrLightUniforms[100];
+		static const int maxPBRUniforms = 100;
+		UniformHandler pbrUniforms[maxPBRUniforms];
+		UniformHandler pbrLightUniforms[maxPBRUniforms];
+		glm::vec3 lightPos[10];
+		bool isMaterialSet[6]{};
 		int texIds[7] = { 0, 1, 2, 3, 4, 5, 7 };
 		int pbrLightsOffset = 2;
+		TextureHandler lightTexColorH;
+		glm::vec4 defaultLightColor = glm::vec4(252 / 255.0f, 186 / 255.0f, 3 / 255.0f, 1);
 
 		//REAL TIME - Volume
 		ProgramHandler volProgramHandler;
@@ -190,8 +228,8 @@ namespace narvalengine {
 		ImVec4 listHoverColor = ImVec4(66/255.0f, 77/255.0f, 194/255.0f, 1.0f);
 		ImVec4 darkBlue = ImVec4(12/255.0f, 45/255.0f, 72/255.0f, 1.0f);
 		ImVec4 yellowvivid = ImVec4(215/255.0f, 207/255.0f, 7/255.0f, 1.0f);
-		char* imNames[100] = { "Cube", "Plane", "Hexa" };
-		char* imIcons[100] = { "ICONCube", "ICONPlane", "ICONHexa" };
+		std::string imNames[100] = { "Cube", "Plane", "Hexa" };
+		std::string imIcons[100] = { "ICONCube", "ICONPlane", "ICONHexa" };
 		int imNamesCurrentLength = 3;
 		int currentIMListIndex = 0;
 		int selectedImList = -1;
@@ -247,59 +285,17 @@ namespace narvalengine {
 		ProgramHandler postProcessingPH;
 		UniformHandler postProcessingUni[10];
 		float gamma = 2.2;
-		float exposure = 2;
+		float exposure = 0.3;
 
 		glm::vec4 defaultTexColor = glm::vec4(0 / 255.0f, -0 / 255.0f, 0 / 255.0f, 1);
 		TextureHandler defaultTex;
 
 		SceneEditor();
-
-		void init(GLint width, GLint height, RendererGL* r, Camera* c);
+		void init();
 		void load();
-		bool sceneChanged();
-		void updateUI();
+		void render();
 		void update(float deltaTime);
 		void variableUpdate(float deltaTime);
-		void startOffEngine();
-		void renderImGUI();
-		int getSelectedIMListPos(InstancedModel* im);
-		InstancedModel *getSelectedIMfromListPos(int pos);
-		void generateSceneImList();
-		void sceneListImGUI();
-		void selectedModelImGUI();
-		void selectedMaterialImGUI();
-		void cameraImGUI();
-		void lightImGui();
-		void performanceImGUI();
-		void toneMappingImGUI();
-		void renderOptionsImGUI();
-		void shootRay(int i);
-		void shootMultipleRays(int qtt);
-		void shootRayImGUI();
-		void shadowMappingImGUI();
-		void newVolRenderImGUI();
-		void renderShadowMappingDebug();
-		void renderOffline();
-		void renderRealTimeShadows();
-		void renderScene(FrameBufferHandler* fbh, TextureHandler* fbhTex, int currentFrame);
-		void renderPostProcessing();
-		void renderRealTimePBR();
-		void renderRealTime();
-		void renderCompare();
-		void renderCompareRealTime();
-		void render();
-		void reloadScene();
-		void compareScene(int mode);
-		void initVolumetricShader();
-		void initPhongShader();
-		void initPBR();
-		void initPostProcessingShader();
-		void initComposeShader();
-		void initMonoColorShader();
-		void initShadowShader();
-		void initImageDifferenceShader();
-		void initRenderAPI();
-		void hoverObject();
 	};
 }
 

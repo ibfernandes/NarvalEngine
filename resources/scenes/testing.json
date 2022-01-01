@@ -14,7 +14,7 @@
 			"absorption": [0.01, 0.01, 0.01],
 			"phaseFunction": "hg",
 			"g": 0.0,
-			"path" : "vdb/wdas_cloud_quarter.vdb",
+			"path" : "vdb/wdas_cloud_sixteenth.vdb",
 			"density": 10
 		},
 		{

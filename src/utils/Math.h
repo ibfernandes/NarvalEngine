@@ -1,4 +1,5 @@
 #pragma once
+#define NOMINMAX
 #include <glm/glm.hpp>
 #include <glm/ext.hpp>
 #include <glm/gtx/norm.hpp>
@@ -12,6 +13,8 @@
 #include <cmath>
 #include <random>
 #include <sstream>
+#include <assert.h>
+#include "defines.h"
 #define EPSILON3  0.001
 #define EPSILON5  0.00001
 #define EPSILON	  0.0000000001
@@ -21,9 +24,10 @@
 #define INV2PI 0.15915494309189533577
 #define INV4PI float(0.07957747154594766788)
 #define TWO_PI 6.283185307179586476925286766559
+#define FOUR_PI 12.566370614359172953850573533118
 #define PI_OVER_2 1.57079632679489661923
 #define PI_OVER_4 0.78539816339744830961
-#define INFINITY 9999999.0
+#define INFINITY std::numeric_limits<float>::infinity()
 
 namespace narvalengine {
 	//from pbrt Managing Error chapter
@@ -44,45 +48,86 @@ namespace narvalengine {
 		return glm::ivec3(v.x % m, v.y % m, v.z % m);
 	};
 
-	inline std::random_device rd;
-	inline std::mt19937 mt(rd());
+	//Fixed seed in order to have a deterministic result.
+	inline std::mt19937 mt(123);
 	inline std::uniform_real_distribution<float> dist(0.0, 1.0);
 
+	/**
+	 * Samples an uniform random number generator.
+	 * 
+	 * @return an uniform random number between [0, 1).
+	 */
 	inline float random() {
-		//On some very rare instances the returned random is equal the upper bound due to floating point issues
-		//TODO possible better solution for it? https://stackoverflow.com/questions/25668600/is-1-0-a-valid-output-from-stdgenerate-canonical
 		float r = dist(mt);
+		//In some very rare instances, dist(mt) returns values >= 1.0f
 		if (r >= 1.0f)
 			r = 0.999999;
 
 		return r;
 	}
 
-	/*
-	Converts 2D point to 1D index in YX order.
-	*/
-	inline int to1D(int width, int height, int x, int y) {
+	/**
+	 * Converts a 2D point to 1D index in YX order.
+	 * 
+	 * @param width
+	 * @param height
+	 * @param x
+	 * @param y
+	 * @return 1D coordinate
+	 */
+	inline uint32_t to1D(int width, int height, int x, int y) {
 		return width * y + x;
 	}
 
-	inline int to1D(int width, int height, glm::vec2 vec) {
+	/**
+	 * Converts a 2D point to 1D index in YX order.
+	 *
+	 * @param width
+	 * @param height
+	 * @param x
+	 * @param y
+	 * @return 1D coordinate.
+	 */
+	inline uint32_t to1D(int width, int height, glm::vec2 vec) {
 		return to1D(width, height, vec.x, vec.y);
 	}
 
-	/*
-	Converts 3D point to 1D index in ZYX order.
-	*/
-	inline int to1D(int width, int height, int x, int y, int z) {
+	/**
+	 * Converts a 3D point to 1D index in ZYX order.
+	 * 
+	 * @param width
+	 * @param height
+	 * @param x coordinate to convert.
+	 * @param y coordinate to convert.
+	 * @param z coordinate to convert.
+	 * @return 1D coordinate.
+	 */
+	inline uint32_t to1D(int width, int height, int x, int y, int z) {
 		return height * width * z + width * y + x;
 	}
 
-	inline int to1D(int width, int height, glm::vec3 vec) {
+	/**
+	 * Converts a 3D point to 1D index in ZYX order.
+	 * 
+	 * @param width
+	 * @param height
+	 * @param vec  coordinates to convert.
+	 * @return 1D coordinate.
+	 */
+	inline uint32_t to1D(int width, int height, glm::vec3 vec) {
 		return to1D(width, height, vec.x, vec.y, vec.z);
 	}
 
-	/*
-		Converts 1D index in ZYX order to 3D point.
-	*/
+	/**
+	 * Converts 1D index in ZYX order to 3D point.
+	 * 
+	 * @param index to be converted.
+	 * @param width
+	 * @param height
+	 * @param x coordinate where the result will be stored.
+	 * @param y coordinate where the result will be stored.
+	 * @param z coordinate where the result will be stored.
+	 */
 	inline void to3D(int index, int width, int height, int &x, int &y, int &z) {
 		z = index / (width * height);
 		index -= (z * width * height);
@@ -90,18 +135,34 @@ namespace narvalengine {
 		x = index % width;
 	}
 
+	/**
+	 * Converts 1D index in ZYX order to 3D point.
+	 * 
+	 * @param index
+	 * @param width
+	 * @param height
+	 * @param vec coordinates where the result will be stored.
+	 */
 	inline void to3D(int index, int width, int height, glm::ivec3 &vec) {
 		return to3D(index, width, height, vec.x, vec.y, vec.z);
 	}
 
+	/**
+	 * Saturate implementation from HLSL.
+	 * 
+	 * @param x
+	 * @return the value x campled in the interval [0, 1].
+	 */
 	inline float saturate(float x) {
 		return glm::clamp(x, 0.0f, 1.0f);
 	}
 
-
-	/*
-		Receives an integer with a max value of 10 bits (1024) and interleaves it by 3.
-	*/
+	/**
+	 * Receives an integer with a max value of 10 bits (1024) and interleaves it by 3 bits.
+	 * 
+	 * @param x
+	 * @return interleaved x.
+	 */
 	inline int interleaveBits(int x) {
 		if (x == (1 << 10)) --x;
 		x = (x | (x << 16)) & 0b00000011000000000000000011111111;
@@ -112,20 +173,37 @@ namespace narvalengine {
 		return x;
 	}
 
-	/*
-		Encodes 3D point to morton code using 10bits for each axis in ZYX order.
-	*/
+
+	/**
+	 * Encodes a 3D point to Morton code using 10bits for each axis in ZYX order.
+	 * 
+	 * @param x coordinate to be encoded.
+	 * @param y coordinate to be encoded.
+	 * @param z coordinate to be encoded.
+	 * @return encoded Morton.
+	 */
 	inline int encodeMorton3D(int x, int y, int z) {
 		return (interleaveBits(z) << 2) | (interleaveBits(y) << 1) | interleaveBits(x);
 	}
 
+	/**
+	 * Encodes a 3D point to Morton code using 10bits for each axis in ZYX order.
+	 * 
+	 * @param v coordinates to be encoded.
+	 * @return encoded Morton.
+	 */
 	inline int encodeMorton3D(glm::ivec3 v) {
 		return (interleaveBits(v.z) << 2) | (interleaveBits(v.y) << 1) | interleaveBits(v.x);
 	}
 
-	/*
-		Decodes morton code to 3D point. Assumes ZYX order.
-	*/
+	/**
+	 * Decodes morton code in {@code value} to a 3D point. Assumes ZYX order.
+	 * 
+	 * @param value to be decoded.
+	 * @param x coordinate where the result will be stored.
+	 * @param y coordinate where the result will be stored.
+	 * @param z coordinate where the result will be stored.
+	 */
 	inline void decodeMorton3D(int value, int &x, int&y, int &z) {
 		z = value >> 2;
 		z = z & 0b00001001001001001001001001001001;
@@ -149,12 +227,26 @@ namespace narvalengine {
 		x = (x | (x >> 16)) & 0b00000000000000000000001111111111;
 	}
 
+	/**
+	 * Decodes morton code in {@code value} to a 3D point. Assumes ZYX order.
+	 * 
+	 * @param value to be decoded.
+	 * @return vec3 with decoded value.
+	 */
 	inline glm::ivec3 decodeMorton3D(int value) {
 		glm::ivec3 res;
 		decodeMorton3D(value, res.x, res.y, res.z);
 		return res;
 	}
 
+	/**
+	 * Simple encoder where the bits are shifted by 10 bits in each axis. Encodes in ZYX order.
+	 * 
+	 * @param x coordinate to be encoded.
+	 * @param y coordinate to be encoded.
+	 * @param z coordinate to be encoded.
+	 * @return encoded value.
+	 */
 	inline int encodeSimple3D(int x, int y, int z) {
 		int res = 0;
 		res = z << 20;
@@ -163,14 +255,25 @@ namespace narvalengine {
 		return res;
 	}
 
+	/**
+	 * Simple encoder where the bits are shifted by 10 bits in each axis. Encodes in ZYX order.
+	 * 
+	 * @param v coordinates to be encoded.
+	 * @return encoded value.
+	 */
 	inline int encodeSimple3D(glm::ivec3 v) {
 		return encodeSimple3D(v.x, v.y, v.z);
 	}
 
+	/**
+	 * Decodes the simple encoder. Assumes ZYX order.
+	 * 
+	 * @param value to be decoded.
+	 * @return decoded value.
+	 */
 	inline glm::ivec3 decodeSimple3D(int value) {
 		glm::ivec3 res;
-		//If not unsigned right shift was filling with 1's
-		//TODO:remove first two bits
+		//If we do not use unsigned type the right shift was filling with 1's
 		value = value & 0b00111111111111111111111111111111;
 		unsigned int v = value;
 		res.z = v >> 20;
@@ -179,8 +282,16 @@ namespace narvalengine {
 		return res;
 	}
 
+	/**
+	 * Decodes the simple encoder. Assumes ZYX order.
+	 * 
+	 * @param value to be decoded.
+	 * @param x coordinate where the result will be stored.
+	 * @param y coordinate where the result will be stored.
+	 * @param z coordinate where the result will be stored.
+	 */
 	inline void decodeSimple3D(int value, int &x, int &y, int &z) {
-		//If not unsigned right shift was filling with 1's
+		//If we do not use unsigned type the right shift was filling with 1's
 		value = value & 0b00111111111111111111111111111111;
 		unsigned int v = value;
 		z = v >> 20;
@@ -188,6 +299,12 @@ namespace narvalengine {
 		x = (v << 22) >> 22;
 	}
 
+	/**
+	 * Decodes the simple encoder. Assumes ZYX order.
+	 * 
+	 * @param value to be decoded.
+	 * @param vec coordinates where the result will be stored.
+	 */
 	inline void decodeSimple3D(int value, glm::ivec3 &vec) {
 		//If not unsigned right shift was filling with 1's
 		value = value & 0b00111111111111111111111111111111;
@@ -197,6 +314,16 @@ namespace narvalengine {
 		vec.x = (v << 22) >> 22;
 	}
 
+	/**
+	 * Tests if a box centered at origin with point {@code bbmin} as min and {@code bbmax} as max
+	 * is intersected by a ray with {@code origin} and {@code invDir} using SIMD (Single Instruction, Multiple Data).
+	 * 
+	 * @param origin ray origin.
+	 * @param invDir ray inversed direction, i.e. 1/direction.
+	 * @param bbmin min point of this AABB.
+	 * @param bbmax max point of this AABB.
+	 * @return vector containing (tmin, tmax).
+	 */
 	inline glm::vec2 intersectBoxSIMD(__m128 origin, __m128 invDir, __m128 bbmin, __m128 bbmax) {
 		__m128 t1 = _mm_mul_ps(_mm_sub_ps(bbmin, origin), invDir);
 		__m128 t2 = _mm_mul_ps(_mm_sub_ps(bbmax, origin), invDir);
@@ -204,13 +331,22 @@ namespace narvalengine {
 		__m128 vmin4 = _mm_min_ps(t1, t2);
 		float* vmax = (float*)&vmax4;
 		float* vmin = (float*)&vmin4;
-		//TODO could also optimize this min and max here
 		float tmax = glm::min(vmax[0], glm::min(vmax[1], vmax[2]));
 		float tmin = glm::max(vmin[0], glm::max(vmin[1], vmin[2]));
 
 		return glm::vec2(tmin, tmax);
 	}
 
+	/**
+	 * Tests if a box centered at origin with point {@code bmin} as min and {@code bmax} as max
+	 * is intersected by a ray with {@code origin} and {@code invDir} using SIMD (Single Instruction, Multiple Data).
+	 * 
+	 * @param origin ray origin.
+	 * @param invDir ray inversed direction, i.e. 1/direction.
+	 * @param bmin min point of this AABB.
+	 * @param bmax max point of this AABB.
+	 * @return vector containing (tmin, tmax).
+	 */
 	inline glm::vec2 intersectBoxSIMD(__m128 origin, __m128 invDir, glm::vec4 bmin, glm::vec4 bmax) {
 		__m128 bminSIMD;
 		__m128 bmaxSIMD;
@@ -291,13 +427,31 @@ namespace narvalengine {
 		std::copy(gridVec.begin(), gridVec.end(), grid);
 	}
 
+	/**
+	*	Samples a direction vector in the unit sphere using Spherical Coordinates.
+	*				 z
+	*				 |
+	*				 |
+	*	phi [0, PI] (|_____ x
+	*				  \) theta [0, 2PI]
+	*				   \ 
+	*					\ y
+	*	@param	e1			multiplies the theta/azimuthal angle. Must be in the interval [0,1).
+	*	@param	e2			mulitplies the phi/polar angle. Must be in the interval [0,1).
+	*	@return	glm::vec3	in Cartesian Coordinates.
+	*/
 	inline glm::vec3 sampleUnitSphere(float e1, float e2) {
-		//Varies from		0 rad <= x <= 2PI rad
-		//					0 deg <= x <= 360 deg
+		#ifdef NE_DEBUG_MODE
+			assert(e1 >= 0.0f && e1 <=1);
+			assert(e2 >= 0.0f && e2 <=1);
+		#endif
+		
+		//Theta varies from		0 rad <= x <= 2PI rad
+		//						0 deg <= x <= 360 deg
 		float theta = TWO_PI * e1;
 
-		//Varies from	     -1 <= x <= 1 
-		//				180 deg <= x <= 0 deg
+		//Phi varies from	     -1 <= x <= 1 
+		//						180 deg <= x <= 0 deg
 		float phi = acos(1.0f - 2.0f * e2);
 
 		return glm::vec3(sin(phi) * cos(theta), sin(phi) * sin(theta), cos(phi));
@@ -307,18 +461,33 @@ namespace narvalengine {
 		return sampleUnitSphere(random(), random());
 	}
 
-	inline glm::vec3 sampleUnitSphere(float cosTheta, float sintTheta, float phi) {
-		return glm::vec3(sin(phi) * cosTheta, sin(phi) * sintTheta, cos(phi));
+	/**
+	*	Samples a direction vector in the unit sphere using Spherical Coordinates.
+	*				 z
+	*				 |
+	*				 |
+	*	phi [0, PI] (|_____ x
+	*				  \) theta [0, 2PI]
+	*				   \
+	*					\ y
+	*	@param	cosTheta	
+	*	@param	sinTheta	
+	*	@param	phi			in radians. Must be in the interval [-1, 1].
+	*	@return	glm::vec3	in Cartesian Coordinates.
+	*/
+	inline glm::vec3 sampleUnitSphere(float cosTheta, float sinTheta, float phi) {
+		return glm::vec3(sin(phi) * cosTheta, sin(phi) * sinTheta, cos(phi));
 	}
 
-	/*
-		Generates a random direction vector on the cartesian unit hemisphere
-		using spherical coordinates
-		where theta varies from 0 to 90 degrees
-		and phi from 0 to 360 degrees
-	*/
-	inline glm::vec3 sampleUnitHemisphere() {
-		float e1 = random();
+	/**
+	 * Generates a random direction vector on the cartesian unit hemisphere using spherical coordinates
+	 * where theta varies from 0 to 90 degrees and phi from 0 to 360 degrees.
+	 * 
+	 * @param e1 in the interval [0, 1].
+	 * @param e2 in the interval [0, 1].
+	 * @return direction sampled in this hemisphere in Spherical Coordinate System (SCS).
+	 */
+	inline glm::vec3 sampleUnitHemisphere(float e1, float e2) {
 
 		//Varies from	0 <= x <= 1
 		//since sin(0 deg) = 0 and sin(90 deg) = 1, we can simply generate a random number r on [0, 1] without need
@@ -327,7 +496,7 @@ namespace narvalengine {
 
 		//Varies from     0 <= x <= 2PI
 		//			  0 deg <= x <= 360 deg
-		float phi = TWO_PI * random();
+		float phi = TWO_PI * e2;
 		return glm::vec3(sinTheta * cos(phi), sinTheta * sin(phi), e1);
 	}
 
@@ -359,11 +528,22 @@ namespace narvalengine {
 		return r * glm::vec2(std::cos(theta), std::sin(theta));
 	}
 
+	/**
+	 * Returns the signal multiplier of x.
+	 * 
+	 * @param x
+	 * @return 1 if positive, -1 otherwise.
+	 */
 	inline int sign(float x) {
 		return x >= 0 ? 1 : -1;
 	}
 
-	//count leading zeroes
+	/**
+	 * Counts the leading zeroes in an unsigned integer.
+	 * 
+	 * @param x
+	 * @return 
+	 */
 	inline int clz(unsigned int x) {
 		// Keep shifting x by one until leftmost bit does not become 1. 
 		int totalBits = sizeof(x) * 8;
@@ -376,7 +556,12 @@ namespace narvalengine {
 		return res;
 	}
 
-	//count trailing zeroes
+	/**
+	 * Counts the leading zeroes in an unsigned integer.
+	 * 
+	 * @param x
+	 * @return 
+	 */
 	inline int ctz(unsigned int x) {
 		// Keep shifting x by one until leftmost bit does not become 1. 
 		int totalBits = sizeof(x) * 8;
@@ -388,7 +573,22 @@ namespace narvalengine {
 
 		return 32 - res - 1;
 	}
-
+	
+	/**
+	 *	Generates an orthonormal coordinate system w.r.t. the given normal.
+	 * 
+	 * 	normal
+	 *	|
+	 *	| 90°
+	 *	|)____ v
+	 *	 \) 90°
+	 *	  \
+	 *	   \ u
+	 * 
+	 * @param normal
+	 * @param v
+	 * @param u
+	 */
 	inline void generateOrthonormalCS(glm::vec3 normal, glm::vec3 &v, glm::vec3 &u) {
 		//ns, ss, ts
 		if (std::abs(normal.x) > std::abs(normal.y))
@@ -399,11 +599,17 @@ namespace narvalengine {
 		u = glm::normalize(glm::cross(normal, v));
 	}
 
-	/*
-		Transforms from Local Coordinate System(LCS) where the normal vector v is "up" to World Coordinate System (WCS)
-		from PBR:
-		http://www.pbr-book.org/3ed-2018/Materials/BSDFs.html#BSDF::ss
-	*/
+	/**
+	 *	Transforms from Local Coordinate System (LCS) where the normal vector v is "up" to World Coordinate System (WCS), where z is up.
+	 *	from pbrt:
+	 *	http://www.pbr-book.org/3ed-2018/Materials/BSDFs.html#BSDF::ss
+	 * 
+	 * @param v
+	 * @param ns
+	 * @param ss
+	 * @param ts
+	 * @return 
+	 */
 	inline glm::vec3 toWorld(glm::vec3 v, glm::vec3 ns, glm::vec3 ss, glm::vec3 ts) {
 		return glm::vec3(
 			ss.x * v.x + ts.x * v.y + ns.x * v.z,
@@ -411,9 +617,16 @@ namespace narvalengine {
 			ss.z * v.x + ts.z * v.y + ns.z * v.z);
 	}
 
-	/*
-		Transforms from World Coordinate System (WCS) to Local Coordinate System(LCS) where the normal vector v is "up"
-	*/
+	/**
+	 * Transforms from World Coordinate System (WCS) to Local Coordinate System (LCS) where the normal vector v is "up".
+	 *	ns, ss and ts define the LCS axis system
+	 * 
+	 * @param v
+	 * @param ns
+	 * @param ss
+	 * @param ts
+	 * @return 
+	 */
 	inline glm::vec3 toLCS(glm::vec3 v, glm::vec3 ns, glm::vec3 ss, glm::vec3 ts) {
 		return glm::vec3(glm::dot(v, ss), glm::dot(v, ts), glm::dot(v, ns));
 	}
@@ -426,15 +639,15 @@ namespace narvalengine {
 		return r * glm::vec3(std::cos(phi) * std::sin(theta), std::sin(phi) * std::sin(theta), std::cos(theta));
 	}
 
-	inline bool isAllZero(glm::vec3 v) {
+	inline bool areAllZero(glm::vec3 v) {
 		return (v.x == 0 && v.y == 0 && v.z == 0) ? true : false;
 	}
 
 	inline bool isBlack(glm::vec3 v) {
-		return isAllZero(v);
+		return areAllZero(v);
 	}
 
-	inline bool isAllOne(glm::vec3 v) {
+	inline bool areAllOne(glm::vec3 v) {
 		return (v.x == 1 && v.y == 1 && v.z == 1) ? true : false;
 	}
 
@@ -467,19 +680,27 @@ namespace narvalengine {
 		std::cout << label << "[" << v.x << ", " << v.y << ", " << v.z << "]" << std::endl;
 	}
 
-	inline std::string toString(glm::vec3 v, std::string label = "") {
+	inline std::string toString(glm::vec4 v, std::string label = "", int precision = 3) {
 		std::stringstream ss;
-		ss.precision(3);
+		ss.precision(precision);
+		ss << std::fixed << label << "[" << v.x << ", " << v.y << ", " << v.z << ", " << v.w << "]";
+		return ss.str();
+	}
+
+	inline std::string toString(glm::vec3 v, std::string label = "", int precision = 3) {
+		std::stringstream ss;
+		ss.precision(precision);
 		ss << std::fixed << label << "[" << v.x << ", " << v.y << ", " << v.z << "]";
 		return ss.str();
 	}
 
-	inline std::string toString(glm::vec2 v, std::string label = "") {
+	inline std::string toString(glm::vec2 v, std::string label = "", int precision = 3) {
 		std::stringstream ss;
-		ss.precision(3);
+		ss.precision(precision);
 		ss << std::fixed << label << "[" << v.x << ", " << v.y << "]";
 		return ss.str();
 	}
+
 
 	inline void printMat4(glm::mat4 m, int precision = 1) {
 		std::stringstream ss;
@@ -521,14 +742,28 @@ namespace narvalengine {
 		return numWithCommas;
 	}
 
+	/**
+	 * Power Heuristic commonly utilized when importance sampling.
+	 * 
+	 * @param pdf0
+	 * @param pdf1
+	 * @return 
+	 */
 	inline float powerHeuristic(float pdf0, float pdf1) {
 		return (pdf0*pdf0) / (pdf0*pdf0 + pdf1 * pdf1);
 	}
 
-	/*
-		Trigonometric functions based on pbrt
-		Each function is calculated having the z axis (0, 0, 1) as the up vector (Analog to the spherical coordinates system). Vector w must be in this coordinate space
+	/**
+	*	Trigonometric functions based on pbrt.
+	*	Each function is calculated having the z axis (0, 0, 1) as the up vector, analog to the Spherical Coordinate System (SCS). The vector w must be in SCS.
 	*/
+
+	/**
+	 * Calculates the cos(theta) of {@code w} and (0, 0, 1).
+	 * 
+	 * @param w in Spherical Coordinate System (SCS).
+	 * @return cos(theta).
+	 */
 	inline float cosTheta(const glm::vec3 w) {
 		return w.z;
 	}
@@ -605,45 +840,34 @@ namespace narvalengine {
 			0.0, 0.0, 0.0, 1.0);
 	}
 
+	/**
+	 * Creates the rotation matrix given the Euler {@code angles}.
+	 * 
+	 * @param angles in degrees.
+	 * @return euler matrix for rotation in XYZ order.
+	 */
 	inline glm::mat4 rotate(glm::vec3 angles) {
-		glm::vec3 output;
 		return glm::eulerAngleXYZ(glm::radians(angles.x), glm::radians(angles.y), glm::radians(angles.z));
-		//return rotateAxis(glm::vec3(1, 0, 0), angles.x) * rotateAxis(glm::vec3(0, 1, 0), angles.y) * rotateAxis(glm::vec3(0, 0, 1), angles.z);
 	}
 
 	inline glm::mat4 getTransform(glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale) {
 		glm::mat4 model(1.0f);
 		model = glm::translate(model, translation);
-		//model = model * glm::eulerAngleXYZ(glm::radians(rotation.x), glm::radians(rotation.y), glm::radians(rotation.z));
 		model = model * rotate(rotation);
 		model = glm::scale(model, scale);
-
-		float* modelPointer = &model[0][0];
-		for (int i = 0; i < 4 * 4; i++) {
-			modelPointer[i] = ((int)(modelPointer[i] / EPSILON3) * EPSILON3); //to avoid rounding errors, ignore decimals after 3 places
-			modelPointer[i] = (modelPointer[i] == 0) ? 0 : modelPointer[i]; //to avoid negative zeroes that affect atan2 rotation angles
-		}
 
 		return model;
 	};
 
+	/**
+	 * Extracts the Euler angles in XYZ order from the matrix {@code t}.
+	 * 
+	 * @param t matrix to extract Euler angles from.
+	 * @return euler angles in degrees.
+	 */
 	inline glm::vec3 getRotation(glm::mat4 t) {
-		//Pitch, Yaw, Roll
 		glm::vec3 rotation;
-		
-		/*float T1 = atan2(t[2][1], t[2][2]);
-		float C2 = glm::sqrt(t[0][0] * t[0][0] + t[1][0] * t[1][0]);
-		float T2 = atan2(-t[2][0], C2);
-		float S1 = glm::sin(T1);
-		float C1 = glm::cos(T1);
-		float T3 = atan2(S1 * t[0][2] - C1 * t[0][1], C1 * t[1][1] - S1 * t[1][2]);
-
-		rotation.x = -T1;
-		rotation.y = -T2;
-		rotation.z = -T3;*/
-
 		glm::extractEulerAngleXYZ(t, rotation.x, rotation.y, rotation.z);
-
 		rotation = glm::degrees(rotation);
 		return rotation;
 	}
@@ -708,15 +932,19 @@ namespace narvalengine {
 		return (v.x + v.y + v.z) / 3.0f;
 	}
 
-	/*
-		Converts ray from World Coordinate System(WCS) to Object Coordinate System(OCS)
-	*/
+	/**
+	 * Converts {@code ray} from World Coordinate System (WCS) to Object Coordinate System (OCS).
+	 * The returned ray direction is not normalized.
+	 * 
+	 * @param ray in WCS.
+	 * @param invTransformToWCS matrix from the object to which convert to.
+	 * @return ray in this object OCS.
+	 */
 	inline Ray transformRay(Ray ray, glm::mat4 invTransformToWCS) {
 		Ray r;
 		r.o = invTransformToWCS * glm::vec4(ray.o, 1.0f);
-		r.d = invTransformToWCS * glm::vec4(ray.d, 0); //TODO: How to transform direction? should remove scale too should normalize
-		//for now it is not normalized to preserve the real WCS distance of tNear and tFar
-
+		//Direction is not normalized in order to preserve the WCS distances of tNear and tFar. 
+		r.d = invTransformToWCS * glm::vec4(ray.d, 0);
 		return r;
 	}
 
@@ -927,12 +1155,19 @@ namespace narvalengine {
 		return std::acos(glm::clamp(v.z, -1.0f, 1.0f));
 	}
 
+	/**
+	 * Computes the Root Mean Square Error (RMSE) between two vectors.
+	 * 
+	 * @param c1
+	 * @param c2
+	 * @return the RMSE of c1 and c2.
+	 */
 	inline glm::vec3 computeRMSE(glm::vec3 c1, glm::vec3 c2) {
-		float r = c1.r - c2.r;
+		float r = c1.x - c2.x;
 		r *= r;
-		float g = c1.g - c2.g;
+		float g = c1.y - c2.y;
 		g *= g;
-		float b = c1.b - c2.b;
+		float b = c1.z - c2.z;
 		b *= b;
 
 		float dist = sqrt((r + g + b) / 3.0f);

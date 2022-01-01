@@ -8,49 +8,48 @@
 namespace narvalengine {
 
 	struct FrameBufferHandler {
-		uint16_t id;
+		HandleID id = INVALID_HANDLE;
 	};
 
 	struct UniformHandler {
-		uint16_t id = INVALID_HANDLE;
+		HandleID id = INVALID_HANDLE;
 	};
 
 	struct ShaderHandler {
-		uint16_t id;
+		HandleID id = INVALID_HANDLE;
 	};
 
 	struct ProgramHandler {
-		uint16_t id;
+		HandleID id = INVALID_HANDLE;
 	};
 
 	struct IndexBufferHandler {
-		uint16_t id;
+		HandleID id = INVALID_HANDLE;
 	};
 
 	struct VertexBufferHandler {
-		uint16_t id;
+		HandleID id = INVALID_HANDLE;
 	};
 
 	struct TextureHandler {
-		uint16_t id = INVALID_HANDLE;
+		HandleID id = INVALID_HANDLE;
 	};
 
 	struct MaterialHandler {
-		uint16_t id;
+		HandleID id = INVALID_HANDLE;
 		TextureHandler textures[TextureName::TextureNameCount] = {
 			INVALID_HANDLE, INVALID_HANDLE, INVALID_HANDLE, INVALID_HANDLE, INVALID_HANDLE , INVALID_HANDLE, INVALID_HANDLE, INVALID_HANDLE, INVALID_HANDLE };
 	};
 
 	struct MeshHandler {
-		uint16_t id;
+		HandleID id = INVALID_HANDLE;
 		VertexBufferHandler vertexBuffer;
 		IndexBufferHandler indexBuffer;
 		MaterialHandler material;
-		//std::vector<TextureHandler> textures;
 	};
 
 	struct ModelHandler {
-		uint16_t id;
+		HandleID id = INVALID_HANDLE;
 		std::vector<MaterialHandler> materials;
 		std::vector<MeshHandler> meshes;
 	};
@@ -60,8 +59,8 @@ namespace narvalengine {
 			Texture
 		};
 
-		uint16_t texID;
-		uint16_t uniformID;
+		HandleID texID;
+		HandleID uniformID;
 	};
 
 	struct Attachment {
@@ -157,6 +156,7 @@ namespace narvalengine {
 
 	class RendererInterface {
 	public:
+		virtual void init() = 0;
 		virtual void createIndexBuffer(IndexBufferHandler ibh, MemoryBuffer mem, VertexLayout vertexLayout) = 0;
 		virtual void createVertexBuffer(VertexBufferHandler vbh, MemoryBuffer mem, VertexLayout vertexLayout) = 0;
 		virtual void createUniform(UniformHandler uh, const char* name, MemoryBuffer memBuffer, UniformType::Enum type, int flags) = 0;
@@ -171,6 +171,9 @@ namespace narvalengine {
 		virtual void render(ProgramHandler program, RenderState *renderState) = 0;
 	};
 
+	/**
+	 * Handles the current Renderer Context, i.e., all the currently allocated handlers and which API is in use.
+	 */
 	class RendererContext {
 		public:
 			HandleAllocator *vertexBufferHandleAllocator;
@@ -183,36 +186,20 @@ namespace narvalengine {
 			HandleAllocator *uniformHandleAllocator;
 			HandleAllocator *meshHandleAllocator;
 			HandleAllocator *modelHandleAllocator;
-			//Maps a hash code to a handleAllocatorID
-			//TODO: proper hashmap to handle collisions
 			MurmurHash3 hasher;
 			std::map <uint32_t, uint16_t> uniformMap;
+			/**
+			 * Pointer to an instance of the current selected API for rendering.
+			 */
 			RendererInterface* renderer;
 			RenderState renderState;
 
-			RendererContext() {
-				uint8_t *vbAlloc = memAlloc(sizeof(HandleAllocator) + 2 * NE_MAX_VERTEX_BUFFERS * sizeof(uint16_t));
-				uint8_t *ibAlloc = memAlloc(sizeof(HandleAllocator) + 2 * NE_MAX_INDEX_BUFFERS * sizeof(uint16_t));
-				uint8_t *framebufferAlloc = memAlloc(sizeof(HandleAllocator) + 2 * NE_MAX_FRAMEBUFFERS * sizeof(uint16_t));
-				uint8_t *texAlloc = memAlloc(sizeof(HandleAllocator) + 2 * NE_MAX_TEXTURES * sizeof(uint16_t));
-				uint8_t *shaderAlloc = memAlloc(sizeof(HandleAllocator) + 2 * NE_MAX_SHADERS * sizeof(uint16_t));
-				uint8_t *programAlloc = memAlloc(sizeof(HandleAllocator) + 2 * NE_MAX_PROGRAMS * sizeof(uint16_t));
-				uint8_t *uniformAlloc = memAlloc(sizeof(HandleAllocator) + 2 * NE_MAX_UNIFORMS * sizeof(uint16_t));
-				uint8_t *meshAlloc = memAlloc(sizeof(HandleAllocator) + 2 * NE_MAX_MESHS * sizeof(uint16_t));
-				uint8_t *modelAlloc = memAlloc(sizeof(HandleAllocator) + 2 * NE_MAX_MODELS * sizeof(uint16_t));
-				uint8_t *materialAlloc = memAlloc(sizeof(HandleAllocator) + 2 * NE_MAX_MATERIALS * sizeof(uint16_t));
-
-				vertexBufferHandleAllocator = createHandleAllocator(vbAlloc, NE_MAX_VERTEX_BUFFERS);
-				indexBufferHandleAllocator = createHandleAllocator(ibAlloc, NE_MAX_INDEX_BUFFERS);
-				textureHandleAllocator = createHandleAllocator(texAlloc, NE_MAX_TEXTURES);
-				frameBufferHandleAllocator = createHandleAllocator(framebufferAlloc, NE_MAX_FRAMEBUFFERS);
-				shaderHandleAllocator = createHandleAllocator(shaderAlloc, NE_MAX_SHADERS);
-				programHandleAllocator = createHandleAllocator(programAlloc, NE_MAX_PROGRAMS);
-				uniformHandleAllocator = createHandleAllocator(uniformAlloc, NE_MAX_UNIFORMS);
-				meshHandleAllocator = createHandleAllocator(meshAlloc, NE_MAX_MESHS);
-				modelHandleAllocator = createHandleAllocator(modelAlloc, NE_MAX_MODELS);
-				materialHandleAllocator = createHandleAllocator(materialAlloc, NE_MAX_MATERIALS);
+			void setRenderer(RendererInterface* renderer) {
+				this->renderer = renderer;
 			}
+
+			~RendererContext();
+			RendererContext();
 
 			IndexBufferHandler createIndexBuffer(MemoryBuffer mem, VertexLayout vertexLayout) {
 				IndexBufferHandler ibh = { indexBufferHandleAllocator->alloc() };
@@ -234,7 +221,6 @@ namespace narvalengine {
 				UniformHandler uh = { uniformHandleAllocator->alloc() };
 
 				uint32_t hash = hasher.hash(name, std::string(name).length());
-				//uniformMap.insert({hash, uh.id});
 
 				renderer->createUniform(uh, name, memBuffer, type, flags);
 
@@ -267,7 +253,6 @@ namespace narvalengine {
 				TextureHandler th = createTexture(width, height, 0, texFormat, texData, 0);
 				Attachment tex = {th};
 
-				//renderer->createFrameBuffer(fbh, width, height, texFormat, depthFormat);
 				renderer->createFrameBuffer(fbh, 1, &tex);
 				return fbh;
 			}
@@ -295,11 +280,11 @@ namespace narvalengine {
 
 				MemoryBuffer memvb;
 				memvb.data = (uint8_t*)(mesh->vertexDataPointer);
-				memvb.size = mesh->vertexDataPointerLength * 4; //TODO 4 bytes for a float ( should Enum this)
+				memvb.size = mesh->vertexDataPointerLength * sizeof(float);
 
 				MemoryBuffer memib;
 				memib.data = (uint8_t*)(mesh->vertexIndicesPointer);
-				memib.size = mesh->vertexIndicesPointerLength * 4; //TODO 4 bytes for a float ( should Enum this)
+				memib.size = mesh->vertexIndicesPointerLength * sizeof(float);
 
 				meshHandler.vertexBuffer = createVertexBuffer(memvb, mesh->vertexLayout);
 				meshHandler.indexBuffer = createIndexBuffer(memib, mesh->vertexLayout);
@@ -309,13 +294,6 @@ namespace narvalengine {
 				else {
 					//no material associated with this mesh.
 				}
-
-				/*for (TextureInfo ti : mesh->textures) {
-					Texture* t = ResourceManager::getSelf()->getTexture(ti.texID);
-					if (t == nullptr)
-						continue;
-					meshHandler.textures.push_back(createTexture(t));
-				}*/
 
 				return meshHandler;
 			}

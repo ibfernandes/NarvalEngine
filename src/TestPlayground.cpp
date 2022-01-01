@@ -130,7 +130,7 @@ namespace narvalengine {
 	}
 
 	void TestPlayground::oidnTest() {
-		int width, height, channels;
+		/*int width, height, channels;
 		unsigned char* data = stbi_load((RESOURCES_DIR + std::string("imgs/cloud.png")).c_str(), &width, &height, &channels, STBI_rgb);
 		float* fdata = new float[width * height * channels];
 		float* outdata = new float[width * height * channels];
@@ -159,7 +159,7 @@ namespace narvalengine {
 			std::cout << "Error: " << errorMessage << std::endl;
 
 		std::string outputPath = RESOURCES_DIR + std::string("imgs/test.exr");
-		SaveEXR(outdata, width, height, channels , 0, outputPath.c_str(), &errorMessage);
+		SaveEXR(outdata, width, height, channels , 0, outputPath.c_str(), &errorMessage);*/
 
 	}
 

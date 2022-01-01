@@ -2,7 +2,7 @@
 #include "primitives/Model.h"
 
 namespace narvalengine {
-	ResourceManager *ResourceManager::self = 0;
+	ResourceManager *ResourceManager::self = nullptr;
 
 	ResourceManager* ResourceManager::getSelf() {
 		if (self == 0) {
@@ -22,10 +22,12 @@ namespace narvalengine {
 
 
 	StringID ResourceManager::setModel(std::string name, Model *model) {
-		StringID id = genStringID(name);
+		StringID id = genStringID(name.c_str());
 
-		if (models.count(id) > 0)
-			throw "Model with this name already exists";
+		if (models.count(id) > 0) {
+			LOG(INFO) << "Model with name " << name << " was already set. Ignoring new insertion and returning previous ID.";
+			return id;
+		}
 
 		models.insert({ id, model });
 
@@ -33,7 +35,7 @@ namespace narvalengine {
 	}
 
 	StringID ResourceManager::replaceModel(std::string name, Model* model) {
-		StringID id = genStringID(name);
+		StringID id = genStringID(name.c_str());
 
 		if (models.count(id) > 0)
 			models[id] = model;
@@ -44,70 +46,72 @@ namespace narvalengine {
 	}
 
 	StringID ResourceManager::loadModel(std::string name, std::string path, std::string fileName) {
-		StringID id = genStringID(name);
+		StringID id = genStringID(name.c_str());
 
-		Model *model = new Model();
+		if (models.count(id) > 0) {
+			LOG(WARNING) << "Model with name " << name << " was already loaded. Ignoring loading again and returning previous ID.";
+			return id;
+		}
+
 		std::string finalPath = RESOURCES_DIR + path + fileName;
 		Assimp::Importer importer;
 		const aiScene *scene = importer.ReadFile(finalPath, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_CalcTangentSpace | aiProcess_GenNormals);
 
 		if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
-			std::cout << "Error loadModel ASSIMP" << importer.GetErrorString() << std::endl;
+			LOG(ERROR) << "ASSIMP couldn't load the model " << name << "." << importer.GetErrorString();
+			return NE_INVALID_STRING_ID;
 		}
 
-		model->processScene(scene, path, "");
-		if (models.count(id) > 0)
-			throw "Model with this name already exists";
-
+		Model* model = new Model(scene, path, "");
 		models.insert({ id, model });
 		return id;
 	}
 
 	StringID ResourceManager::loadModel(std::string name, std::string path, std::string fileName, std::string materialName) {
-		StringID id = genStringID(name);
+		StringID id = genStringID(name.c_str());
 
-		Model *model = new Model();
+		if (models.count(id) > 0) {
+			LOG(WARNING) << "Model with name " << name << " was already loaded. Ignoring loading again and returning previous ID.";
+			return id;
+		}
+
 		std::string finalPath = RESOURCES_DIR + path + fileName;
 		Assimp::Importer importer;
 		const aiScene *scene = importer.ReadFile(finalPath, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_CalcTangentSpace | aiProcess_GenNormals);
 
 		if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
-			std::cout << "Error loadModel ASSIMP" << importer.GetErrorString() << std::endl;
+			LOG(FATAL) << "ASSIMP couldn't load the model " << name << "." << importer.GetErrorString();
+			return NE_INVALID_STRING_ID;
 		}
 
-		model->processScene(scene, path, materialName);
-
-		if (models.count(id) > 0) {
-			return id;
-			//throw "Model with this name already exists";
-			//return NE_INVALID_STRING_ID;
-		}
-
+		Model* model = new Model(scene, path, materialName);
 		models.insert({ id, model });
 		return id;
 	}
 
 	Model* ResourceManager::getModel(std::string name) {
-		StringID id = genStringID(name);
+		StringID id = genStringID(name.c_str());
 
-		if (models.count(id) == 0)
-			throw "Model doesn't exist";
+		if (models.count(id) == 0) 
+			LOG(FATAL) << "Model with name " << name << " does not exist.";
 
 		return models.at(id);
 	}
 
 	Model* ResourceManager::getModel(StringID id) {
 		if (models.count(id) == 0)
-			throw "Model doesn't exist";
+			LOG(FATAL) << "Model with id " << id << " does not exist.";
 
 		return models.at(id);
 	}
 
 	StringID ResourceManager::setMaterial(std::string name, Material *material) {
-		StringID id = genStringID(name);
+		StringID id = genStringID(name.c_str());
 
-		if (materials.count(id) > 0)
-			throw "Material with this name already loaded";
+		if (materials.count(id) > 0) {
+			LOG(INFO) << "Material with name " << name << " was already set. Ignoring new insertion and returning previous ID.";
+			return id;
+		}
 
 		materials.insert({ id, material });
 
@@ -115,7 +119,7 @@ namespace narvalengine {
 	}
 
 	StringID ResourceManager::replaceMaterial(std::string name, Material* material) {
-		StringID id = genStringID(name);
+		StringID id = genStringID(name.c_str());
 
 		if (materials.count(id) > 0) 
 			materials[id] = material;
@@ -126,7 +130,7 @@ namespace narvalengine {
 	}
 
 	Material * ResourceManager::getMaterial(std::string name) {
-		return materials.at(genStringID(name));
+		return materials.at(genStringID(name.c_str()));
 	}
 
 	Material* ResourceManager::getMaterial(StringID id) {
@@ -134,13 +138,18 @@ namespace narvalengine {
 	}
 
 	StringID ResourceManager::setTexture(std::string name, Texture *t) {
-		StringID id = genStringID(name);
+		StringID id = genStringID(name.c_str());
+		if (textures.count(id) > 0) {
+			LOG(INFO) << "Texture with name " << name << " was already set. Ignoring new insertion and returning previous ID.";
+			return id;
+		}
+
 		textures.insert({ id, t });
 		return id;
 	}
 
 	StringID ResourceManager::replaceTexture(std::string name, Texture* t) {
-		StringID id = genStringID(name);
+		StringID id = genStringID(name.c_str());
 		if (textures.count(id) > 0)
 			textures[id] = t;
 		else
@@ -149,11 +158,12 @@ namespace narvalengine {
 	}
 
 	StringID ResourceManager::loadVDBasTexture(std::string name, std::string path) {
-		StringID id = genStringID(name);
+		StringID id = genStringID(name.c_str());
 
-		if (textures.count(id) > 0)
+		if (textures.count(id) > 0) {
+			LOG(INFO) << "VDB Texture with name " << name << " was already loaded. Ignoring loading again and returning previous ID.";
 			return id;
-			//throw "VDB Texture with this name already loaded";
+		}
 
 		openvdb::io::File file(RESOURCES_DIR + path);
 		openvdb::GridBase::Ptr baseGrid;
@@ -175,7 +185,7 @@ namespace narvalengine {
 		float resY = abs(minbb.y()) + abs(maxbb.y());
 		float resZ = abs(minbb.z()) + abs(maxbb.z());
 
-		//centered at origin
+		//Centered at origin.
 		if (minbb.x() < 0 && maxbb.x() >= 0)
 			resX += 1;
 		if (minbb.y() < 0 && maxbb.y() >= 0)
@@ -205,18 +215,21 @@ namespace narvalengine {
 	}
 
 	StringID ResourceManager::loadVolasTexture(std::string name, std::string path) {
-		StringID id = genStringID(name);
+		StringID id = genStringID(name.c_str());
 
-		if (textures.count(id) > 0)
+		if (textures.count(id) > 0) {
+			LOG(INFO) << "VOL Texture with name " << name << " was already loaded. Ignoring loading again and returning previous ID.";
 			return id;
+		}
 
 		std::ifstream file(RESOURCES_DIR + path);
 		std::string buffer;
 
 		if (!file) {
-			std::cerr << "Couldn't read " << path << " vol file." << std::endl;
-			exit(1);
+			LOG(FATAL) << "Couldn't read the file at " << RESOURCES_DIR + path << ".";
+			return NE_INVALID_STRING_ID;
 		}
+
 		getline(file, buffer);
 		std::string resolutionString = buffer;
 		std::string delimitator = " ";
@@ -267,23 +280,21 @@ namespace narvalengine {
 		return id;
 	}
 
-	/*
-		Supports only:
-		JPEG baseline & progressive (12 bpc/arithmetic not supported, same as stock IJG lib)
-		PNG 1/2/4/8/16-bit-per-channel
-	*/
 	StringID ResourceManager::loadTexture(std::string name, std::string path) {
-		StringID id = genStringID(name);
+		StringID id = genStringID(name.c_str());
 
-		if (textures.count(id) > 0)
+		if (textures.count(id) > 0) {
+			LOG(INFO) << "Texture with name " << name << " was already loaded. Ignoring loading again and returning previous ID.";
 			return id;
-			//throw "Texture with this name already loaded";
+		}
 
 		int width, height, channels;
 		unsigned char *data = stbi_load((RESOURCES_DIR + path).c_str(), &width, &height, &channels, STBI_rgb_alpha);
 
-		if(data == nullptr)
-			throw "Error loading texture";
+		if (data == nullptr) {
+			LOG(FATAL) << "Couldn't read the file at " << RESOURCES_DIR + path << ".";
+			return NE_INVALID_STRING_ID;
+		}
 
 		uint32_t sizeBytes = sizeof(char) * width * height * 4;
 		
@@ -296,7 +307,7 @@ namespace narvalengine {
 	}
 
 	Texture* ResourceManager::getTexture(std::string name) {
-		StringID id = genStringID(name);
+		StringID id = genStringID(name.c_str());
 		return textures.at(id);
 	}
 
@@ -308,18 +319,20 @@ namespace narvalengine {
 	}
 
 	StringID ResourceManager::loadShader(std::string name, std::string vertexShaderPath, std::string fragmentShaderPath, std::string geometryShaderPath) {
-		StringID id = genStringID(name);
+		StringID id = genStringID(name.c_str());
 
-		if (shaders.count(id) > 0)
-			throw "Shader with this name already loaded";
+		if (shaders.count(id) > 0) {
+			LOG(INFO) << "Shader with name " << name << " was already loaded. Ignoring loading again and returning previous ID.";
+			return id;
+		}
 
 		std::string  vertexCode = "", fragmentCode = "", geometryCode = "";
 		std::string buffer;
 		std::ifstream vc(RESOURCES_DIR + vertexShaderPath);
 
 		if (!vc) {
-			std::cerr << "Couldn't read " << vertexShaderPath << "vertex shader file." << std::endl;
-			exit(1);
+			LOG(FATAL) << "Couldn't read the file at " << RESOURCES_DIR + vertexShaderPath << ".";
+			return NE_INVALID_STRING_ID;
 		}
 
 		while (getline(vc, buffer)) {
@@ -329,8 +342,8 @@ namespace narvalengine {
 		std::ifstream fc(RESOURCES_DIR + fragmentShaderPath);
 
 		if (!fc) {
-			std::cerr << "Couldn't read fragment shader file." << std::endl;
-			exit(1);
+			LOG(FATAL) << "Couldn't read the file at " << RESOURCES_DIR + vertexShaderPath << ".";
+			return NE_INVALID_STRING_ID;
 		}
 
 		while (fc) {
@@ -347,7 +360,7 @@ namespace narvalengine {
 	}
 
 	Shader* ResourceManager::getShader(std::string name) {
-		StringID id = genStringID(name);
+		StringID id = genStringID(name.c_str());
 		return shaders.at(id);
 	}
 
