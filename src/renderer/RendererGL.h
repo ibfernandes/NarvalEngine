@@ -203,6 +203,10 @@ namespace narvalengine {
 			glBufferData(GL_ELEMENT_ARRAY_BUFFER, mem.size, mem.data, GL_STATIC_DRAW);
 			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 		}
+
+		void destroy() {
+			glDeleteBuffers(1, &id);
+		}
 	};
 
 	struct VertexBufferGL {
@@ -239,6 +243,10 @@ namespace narvalengine {
 
 		void bindAttributesEnd() {
 
+		}
+
+		void destroy() {
+			glDeleteBuffers(1, &id);
 		}
 	};
 
@@ -340,6 +348,10 @@ namespace narvalengine {
 			glBindTexture(GL_TEXTURE_2D, id);
 			glGetTexImage(target, mip, glTexFormatInfo.format, glTexFormatInfo.type, data);
 		}
+
+		void destroy() {
+			glDeleteTextures(1, &id);
+		}
 	};
 
 	class FrameBufferGL {
@@ -422,6 +434,18 @@ namespace narvalengine {
 
 		void init();
 
+		void deleteTexture(TextureHandler th) {
+			textures[th.id].destroy();
+		}
+
+		void deleteIndexBuffer(IndexBufferHandler ibh) {
+			indexBuffers[ibh.id].destroy();
+		}
+
+		void deleteVertexBuffer(VertexBufferHandler vbh) {
+			vertexBuffers[vbh.id].destroy();
+		}
+
 		void createIndexBuffer(IndexBufferHandler ibh, MemoryBuffer mem, VertexLayout vertexLayout) {
 			IndexBufferGL ib;
 			ib.create(mem);
@@ -434,15 +458,12 @@ namespace narvalengine {
 			vertexBuffers[vbh.id] = vb;
 		}
 
-		//TODO map uh
 		void createUniform(UniformHandler uh, const char* name, MemoryBuffer memBuffer, UniformType::Enum type, int flags) {
 			UniformGL ugl;
 			ugl.mem = memBuffer;
 			ugl.type = type;
 			ugl.name = name;
 			uniforms[uh.id] = ugl;
-
-			//uniforms.insert({ name, ugl });
 		}
 
 		void readTexture(TextureHandler texh, void* data, int mip = 0) {
@@ -485,8 +506,6 @@ namespace narvalengine {
 		
 		void updateUniform(UniformHandler uh, MemoryBuffer memBuffer) {
 			uniforms[uh.id].mem = memBuffer;
-			//GLint uniformLoc = glGetUniformLocation(program.id, name);
-			//glUniform1f(uniformLoc, memBuffer.data);
 		}
 
 		void updateTexture(TextureHandler texHandler, int offsetX, int offsetY, int offsetZ, int width, int height, int depth, MemoryBuffer mem) {

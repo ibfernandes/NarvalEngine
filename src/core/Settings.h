@@ -2,11 +2,6 @@
 #include <glm/glm.hpp>
 
 namespace narvalengine {
-	enum VolumetricMethod {
-		RAY_MARCHING,
-		LOBE_SAMPLING,
-		MONTE_CARLO
-	};
 
 	enum RendererAPIName {
 		OPENGL,

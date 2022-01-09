@@ -7,6 +7,13 @@
 namespace narvalengine {
 	/**
 	 * Struct responsible for allocating handles. Used for managing renderer resources.
+	 * The memory layout is defined as:
+	 * Struct			| Dense					| Sparse
+	 * HandleAllocator	| 0 ... nHandles		| 0 ... nHandles
+	 * 
+	 * Where:
+	 * Dense contains actual handles in use.
+	 * Sparse contains indices for handles in use.
 	 */
 	struct HandleAllocator {
 
@@ -19,16 +26,15 @@ namespace narvalengine {
 
 		void reset() {
 			uint16_t* dense = getDensePtr();
-			for (uint16_t i = 0; i < maxHandles; i++) {
+			for (uint16_t i = 0; i < maxHandles; i++)
 				dense[i] = i;
-			}
 		}
 
 		uint16_t alloc() {
 			if (nHandles < maxHandles) {
-
 				uint16_t* dense = getDensePtr();
 				uint16_t* sparse = getSparsePtr();
+
 				uint16_t  handle = dense[nHandles];
 				sparse[handle] = nHandles;
 
@@ -42,6 +48,7 @@ namespace narvalengine {
 		void free(uint16_t handle) {
 			uint16_t* dense = getDensePtr();
 			uint16_t* sparse = getSparsePtr();
+
 			uint16_t index = sparse[handle];
 			nHandles--;
 
@@ -54,9 +61,10 @@ namespace narvalengine {
 		bool isValid(uint16_t handle) {
 			uint16_t* dense = getDensePtr();
 			uint16_t* sparse = getSparsePtr();
+
 			uint16_t  index = sparse[handle];
 
-			return index < maxHandles&& dense[index] == handle;
+			return index < nHandles&& dense[index] == handle;
 		}
 
 		uint16_t getHandleAt(uint16_t handle) {

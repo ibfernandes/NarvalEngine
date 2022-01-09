@@ -6,6 +6,12 @@
 #include "core/Camera.h"
 
 namespace narvalengine {
+	enum VolumetricMethod {
+		RAY_MARCHING,
+		LOBE_SAMPLING,
+		MONTE_CARLO
+	};
+
 	//VMS = Volumetric Methods Shaders
 	class VMS {
 	public:
@@ -13,7 +19,7 @@ namespace narvalengine {
 		RendererContext *renderCtx;
 		Scene* scene;
 		float dummyVar[3] = {-1, -1, -1};
-		int currentMethod = LOBE_SAMPLING;
+		int currentMethod = RAY_MARCHING;
 		static const int maxUniforms = 50;
 		float avgMeanPath = 0;
 
@@ -321,7 +327,7 @@ namespace narvalengine {
 				//handPickLobeSampling();
 			}
 
-			scattering = &gm->scattering; //TODO  divide by gm->densityMultiplier
+			scattering = &gm->scattering;
 			absorption = &gm->absorption;
 			density = &gm->densityMultiplier;
 
@@ -340,9 +346,9 @@ namespace narvalengine {
 			renderCtx->setModel(mh);
 
 			renderCtx->setFrameBuffer(fbh);
-			glDisable(GL_DEPTH_TEST); //TODO temporary, should not expose GL here plus it should be enabled only on volRederingMode = 1 (PATH TRACING MODE)	
+			//glDisable(GL_DEPTH_TEST); //TODO temporary, should not expose GL here plus it should be enabled only on volRederingMode = 1 (PATH TRACING MODE)	
 			renderCtx->render(lsProgram);
-			glEnable(GL_DEPTH_TEST);
+			//glEnable(GL_DEPTH_TEST);
 		}
 
 		void prepareRayMarching(Camera *camera, ModelHandler mh, InstancedModel *im, FrameBufferHandler fbh,TextureHandler background, TextureHandler backgroundDepth) {
@@ -387,9 +393,9 @@ namespace narvalengine {
 			renderCtx->setModel(mh);
 
 			renderCtx->setFrameBuffer(fbh);
-			glDisable(GL_DEPTH_TEST); //TODO temporary, should not expose GL here plus it should be enabled only on volRederingMode = 1 (PATH TRACING MODE)	
+			//glDisable(GL_DEPTH_TEST); //TODO temporary, should not expose GL here plus it should be enabled only on volRederingMode = 1 (PATH TRACING MODE)	
 			renderCtx->render(rmProgram);
-			glEnable(GL_DEPTH_TEST);
+			//glEnable(GL_DEPTH_TEST);
 		}
 
 		void prepare(Camera* camera, ModelHandler mh, InstancedModel* im, FrameBufferHandler fbh, int frameCount, TextureHandler previousFrame, TextureHandler background, TextureHandler backgroundDepth) {

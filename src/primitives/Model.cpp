@@ -90,6 +90,10 @@ namespace narvalengine {
 		lights.clear();
 	}
 
+	bool Model::assimpHasMaterial(aiMaterial* mat, aiTextureType type) {
+		return (mat->GetTextureCount(type) > 0);
+	}
+
 	std::vector<TextureInfo> Model::loadMaterialTextures(aiMaterial* mat, aiTextureType type, std::string typeName, TextureName texName, const aiScene* scene) {
 		std::vector<TextureInfo> loadingTextures;
 
@@ -105,14 +109,7 @@ namespace narvalengine {
 
 			//If the texture is Embedded within the model format.
 			if (const aiTexture* texture = scene->GetEmbeddedTexture(texture_file.C_Str())) {
-				/*Texture *tex;
-				std::cout << typeName << std::endl;
-				std::cout << texture->achFormatHint << std::endl;
-				std::cout << texture->mFilename.C_Str() << std::endl;
-				std::cout << texture->mHeight << std::endl;
-				std::cout << texture->mWidth << std::endl;
-				t2d.generateWithData(texture);
-				ResourceManager::getSelf()->setTexture2D(string, t2d);*/
+				//Implement
 			}else {
 				texID = ResourceManager::getSelf()->loadTexture(string, relativePath + string);
 				ResourceManager::getSelf()->getTexture(texID)->textureName = texName;
@@ -193,19 +190,30 @@ namespace narvalengine {
 
 		aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
 
+		//In order to correctly import OBJ materials for PBR, the following definitions must be met:
+		// Kd = Albedo
+		// Ks = Roughness
+		// Ns = Metalness
+		// Ka = AO
+		// Bump = Normal
 		std::vector<TextureInfo> textures;
-		// 1. diffuse maps
+
+		// 1. Diffuse map (Albedo)
 		std::vector<TextureInfo> diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "material.diffuse", TextureName::ALBEDO, scene);
 		textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
-		// 2. specular maps
-		std::vector<TextureInfo> specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, "material.specular", TextureName::EMISSION, scene);
+		// 2. Specular map (Roughness)
+		std::vector<TextureInfo> specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, "material.roughness", TextureName::ROUGHNESS, scene);
 		textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
-		// 3. normal maps
-		std::vector<TextureInfo> normalMaps = loadMaterialTextures(material, aiTextureType_DISPLACEMENT, "material.normal", TextureName::NORMAL_MAP, scene);
+		// 3. Metalness map
+		std::vector<TextureInfo> metallicMaps = loadMaterialTextures(material, aiTextureType_SHININESS, "material.metallic", TextureName::METALLIC, scene);
+		textures.insert(textures.end(), metallicMaps.begin(), metallicMaps.end());
+		// 4. Normal map (Normal || Height)
+		std::vector<TextureInfo> normalMaps;
+		if(assimpHasMaterial(material, aiTextureType_NORMALS))
+			normalMaps = loadMaterialTextures(material, aiTextureType_NORMALS, "material.normal", TextureName::NORMAL, scene);
+		else
+			normalMaps = loadMaterialTextures(material, aiTextureType_HEIGHT, "material.normal", TextureName::NORMAL, scene);
 		textures.insert(textures.end(), normalMaps.begin(), normalMaps.end());
-		// 4. height maps
-		std::vector<TextureInfo> heightMaps = loadMaterialTextures(material, aiTextureType_BASE_COLOR, "texture_height", TextureName::EMISSION, scene);
-		textures.insert(textures.end(), heightMaps.begin(), heightMaps.end());
 
 		Mesh thismesh;
 
@@ -233,9 +241,17 @@ namespace narvalengine {
 				Texture* albedoTex = ResourceManager::getSelf()->getTexture(diffuseMaps.at(i).texID);
 				objMat->addTexture(TextureName::ALBEDO, albedoTex);
 
+				if (i < specularMaps.size()) {
+					Texture* roughnessTex = ResourceManager::getSelf()->getTexture(specularMaps.at(i).texID);
+					objMat->addTexture(TextureName::ROUGHNESS, roughnessTex);
+				}
+				if (i < metallicMaps.size()) {
+					Texture* metallicTex = ResourceManager::getSelf()->getTexture(metallicMaps.at(i).texID);
+					objMat->addTexture(TextureName::METALLIC, metallicTex);
+				}
 				if (i < normalMaps.size()) {
 					Texture* normalTex = ResourceManager::getSelf()->getTexture(normalMaps.at(i).texID);
-					objMat->addTexture(TextureName::NORMAL_MAP, normalTex);
+					objMat->addTexture(TextureName::NORMAL, normalTex);
 				}
 
 				ResourceManager::getSelf()->replaceMaterial(std::to_string(diffuseMaps.at(i).texID), objMat);

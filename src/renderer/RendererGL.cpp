@@ -6,14 +6,11 @@ namespace narvalengine {
 	void APIENTRY
 		MessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam) {
 
-		if (type == GL_DEBUG_TYPE_ERROR) {
-			LOG(FATAL) << 
-			fprintf(stderr, "message = %s, GL CALLBACK: %s type = 0x%x, severity = 0x%x\n",
-				message,
-				(type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""),
-				type,
-				severity);
-		}
+		if (type == GL_DEBUG_TYPE_ERROR) 
+			LOG(FATAL) << "OpenGL API error. "  << std::endl <<
+			"Message: " << message << std::endl << 
+			"Type: 0x" << std::hex << type << std::endl <<
+			"Severity: 0x" << std::hex << severity;
 	}
 
 	void FrameBufferGL::create(Attachment *attachments, int length) {

@@ -22,6 +22,7 @@ add_compile_definitions(NOMINMAX)
 
 # Using cpp17
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W0")
 
 #----------------------------------------------------------------------
 # Vulkan
@@ -41,18 +42,22 @@ set(MAGIC_ENUM "includes/magic_enum/include/magic_enum.hpp")
 # Google Test
 enable_testing()
 include(GoogleTest)
-set(WITH_CUSTOM_PREFIX TRUE)
 add_subdirectory(includes/googletest)
-include_directories(includes/googletest)
+include_directories(includes/googletest/googletest)
 include_directories(includes/googletest/googletest/include)
 
 #----------------------------------------------------------------------
 #Google Logging
+add_compile_definitions(GLOG_NO_ABBREVIATED_SEVERITIES)
+add_compile_definitions(GLOG_CUSTOM_PREFIX_SUPPORT)
+set(WITH_CUSTOM_PREFIX TRUE)
 add_subdirectory(includes/glog)
-include_directories(includes/glog)
+include_directories(includes/glog/src)
+# The logging.h file is created in the build directory, so this line below is a workaround to include this file
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/includes/glog)
 
 #----------------------------------------------------------------------
-##Tracy
+##Tracy (DISABLED)
 ##set should be conditional to debug mode...
 #add_definitions(-DTRACY_ENABLE)
 ##add_subdirectory(includes/tracy)
@@ -88,15 +93,6 @@ include_directories(includes/rapidjson/include)
 SET( RAPIDJSON_LIBRARIES ${RapidJSON_LIBRARY})
 
 #----------------------------------------------------------------------
-# GLFW
-set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
-set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-add_subdirectory(includes/glfw)
-include_directories(includes/glfw/deps) #<glad/gl.h> used by ImGui
-include_directories(includes/glfw/include)
-
-#----------------------------------------------------------------------
 # GLAD
 include_directories(includes/glad/include)
 set(GLAD "includes/glad/include/glad/glad.h"
@@ -127,6 +123,8 @@ set(ASSIMP_BUILD_ALL_IMPORTERS_BY_DEFAULT FALSE)
 set(ASSIMP_BUILD_OBJ_IMPORTER TRUE) #Supports only OBJ files for now.
 add_subdirectory(includes/assimp)
 include_directories(includes/assimp/include)
+# The config.h file is created only in the build directory, so this line below is a workaround to include this file
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/includes/assimp/include)
 
 #----------------------------------------------------------------------
 # GLM library
@@ -153,6 +151,7 @@ set(TINYFILEDIALOGS_SOURCES
 #----------------------------------------------------------------------
 # ImGui
 add_compile_definitions(IMGUI_IMPL_OPENGL_LOADER_GLAD)
+add_compile_definitions(IMGUI_DEFINE_MATH_OPERATORS)
 include_directories(includes/imgui)
 
 set(IMGUI_SOURCES
@@ -165,6 +164,15 @@ set(IMGUI_SOURCES
     "includes/imgui/examples/imgui_impl_glfw.cpp"
     "includes/imgui/examples/imgui_impl_opengl3.cpp"
 )
+
+#----------------------------------------------------------------------
+# GLFW
+set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+add_subdirectory(includes/glfw)
+include_directories(includes/glfw/deps) #<glad/gl.h> used by ImGui
+include_directories(includes/glfw/include)
 
 # --------------------------------------------------------------------------------------
 # Finders
@@ -295,9 +303,6 @@ if (OPENEXR_FOUND AND OPENVDB_FOUND AND TBB_FOUND)
     set(core_libs ${OPENVDB_LIBRARIES} ${TBB_LIBRARIES} ${OPENEXR_LIBRARIES} ${Boost_LIBRARIES})
 endif()
 
-#file(COPY "C:/vcpkg/installed/x64-windows/bin/Half-2_5.dll" DESTINATION ${CMAKE_BINARY_DIR}/Debug)
-#file(COPY "C:/vcpkg/installed/x64-windows/bin/tbb.dll" DESTINATION ${CMAKE_BINARY_DIR}/Debug)
-
 # --------------------------------------------------------------------------------------
 # Sources files
 set(_src_root_path "${NarvalEngine_SOURCE_DIR}/src/")
@@ -317,38 +322,45 @@ endforeach()
 
 include_directories( "${CMAKE_SOURCE_DIR}/src" )
 
+set(NE_ALL_LIBRARIES TBB::tbb Vulkan::Vulkan ${core_libs} assimp ${RAPIDJSON_LIBRARIES} ${TINYEXR_LIBRARIES} glog::glog glfw ${GLFW_LIBRARIES})
+set(NE_ALL_SOURCES ${SOURCE_FILES} ${OPTICK_SOURCE_FILES} ${MAGIC_ENUM} ${GLAD} ${NANOVDB} ${IMGUI_SOURCES} ${TINYFILEDIALOGS_SOURCES} ${FASTNOISE_SOURCES} ${STB_SOURCES})
+
+# --------------------------------------------------------------------------------------
+# Correct lib/dll folder output
+set_target_properties(glfw
+    PROPERTIES
+        LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+)
+set_target_properties(assimp
+    PROPERTIES
+        LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+)
+set_target_properties(glog
+    PROPERTIES
+        LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+)
+
 # --------------------------------------------------------------------------------------
 # Executable and linking
-add_executable(NarvalEngine ${SOURCE_FILES} ${OPTICK_SOURCE_FILES} ${MAGIC_ENUM} ${GLAD} ${NANOVDB} ${IMGUI_SOURCES} ${TINYFILEDIALOGS_SOURCES} ${FASTNOISE_SOURCES} ${STB_SOURCES} )
-target_link_libraries(NarvalEngine TBB::tbb Vulkan::Vulkan ${core_libs} glfw ${GLFW_LIBRARIES} assimp ${RAPIDJSON_LIBRARIES} ${TINYEXR_LIBRARIES} glog::glog)
+add_executable(NarvalEngine ${NE_ALL_SOURCES} )
+target_link_libraries(NarvalEngine ${NE_ALL_LIBRARIES})
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT NarvalEngine)
 
 # --------------------------------------------------------------------------------------
-# Copy proper Debug DLLs into binary folder
-add_custom_command(TARGET NarvalEngine
-    POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/includes/glfw/src/Debug/glfw3d.dll" "${CMAKE_BINARY_DIR}/Debug"
-    COMMENT "Copy dll file to ${CMAKE_CURRENT_BINARY_DIR} directory" VERBATIM
-)
-add_custom_command(TARGET NarvalEngine
-    POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/includes/assimp/code/Debug/assimp-vc142-mtd.dll" "${CMAKE_BINARY_DIR}/Debug"
-    COMMENT "Copy dll file to ${CMAKE_CURRENT_BINARY_DIR} directory" VERBATIM
-)
-add_custom_command(TARGET NarvalEngine
-    POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/includes/glog/Debug/glogd.dll" "${CMAKE_BINARY_DIR}/Debug"
-    COMMENT "Copy dll file to ${CMAKE_CURRENT_BINARY_DIR} directory" VERBATIM
-)
+# Google testing project (Not working yet)
+set(GOOGLETEST_SRC "includes/googletest/googletest/src/gtest-all.cc")
+set(NE_TESTS_SRC "unitTests/tests.h" "unitTests/tests.cpp")
 
-# --------------------------------------------------------------------------------------
-# Google testing project
-add_library(NELib STATIC ${SOURCE_FILES})
+add_library(NELib STATIC ${NE_ALL_SOURCES})
 add_library(NeLibInterface INTERFACE)
-target_link_libraries(NeLibInterface INTERFACE ${core_libs} glfw ${GLFW_LIBRARIES} assimp ${TINYEXR_LIBRARIES} )
+target_link_libraries(NeLibInterface INTERFACE ${NE_ALL_LIBRARIES} )
 
-#change testing to Mtd 
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-add_executable(narval_unit_testing ${NarvalEngine_SOURCE_DIR}/tests/tests.cpp)
-target_link_libraries(narval_unit_testing gtest gtest_main NeLibInterface NELib)
-gtest_discover_tests(narval_unit_testing)
+add_executable(NarvalEngineTests ${NE_TESTS_SRC} ${GOOGLETEST_SRC})
+target_link_libraries(NarvalEngineTests NELib NeLibInterface )
+gtest_discover_tests(NarvalEngineTests)
+target_compile_definitions(NELib PUBLIC USE_OPTICK=0) #Disable optick for tests.
+target_compile_definitions(NeLibInterface INTERFACE WITH_GTEST=OFF) #Disable glog with GTEST.

@@ -157,6 +157,9 @@ namespace narvalengine {
 	class RendererInterface {
 	public:
 		virtual void init() = 0;
+		virtual void deleteTexture(TextureHandler th) = 0;
+		virtual void deleteIndexBuffer(IndexBufferHandler ibh) = 0;
+		virtual void deleteVertexBuffer(VertexBufferHandler vbh) = 0;
 		virtual void createIndexBuffer(IndexBufferHandler ibh, MemoryBuffer mem, VertexLayout vertexLayout) = 0;
 		virtual void createVertexBuffer(VertexBufferHandler vbh, MemoryBuffer mem, VertexLayout vertexLayout) = 0;
 		virtual void createUniform(UniformHandler uh, const char* name, MemoryBuffer memBuffer, UniformType::Enum type, int flags) = 0;
@@ -323,15 +326,65 @@ namespace narvalengine {
 				return modelhandler;
 			}
 
+			void deleteVertexBuffer(VertexBufferHandler vbh) {
+				if (vertexBufferHandleAllocator->isValid(vbh.id)) {
+					vertexBufferHandleAllocator->free(vbh.id);
+					renderer->deleteVertexBuffer(vbh);
+				}
+			}
+
+			void deleteIndexBuffer(IndexBufferHandler ibh) {
+				if (indexBufferHandleAllocator->isValid(ibh.id)) {
+					indexBufferHandleAllocator->free(ibh.id);
+					renderer->deleteIndexBuffer(ibh);
+				}
+			}
+
+			void deleteMaterial(MaterialHandler mh) {
+				if (materialHandleAllocator->isValid(mh.id)) {
+					materialHandleAllocator->free(mh.id);
+
+					for (int i = 0; i < TextureName::TextureNameCount; i++)
+						if (materialHandleAllocator->isValid(mh.textures[i].id))
+							renderer->deleteTexture(mh.textures[i]);
+				}
+			}
+
+			void deleteMesh(MeshHandler mh) {
+				if (meshHandleAllocator->isValid(mh.id))
+					meshHandleAllocator->free(mh.id);
+
+				deleteVertexBuffer(mh.vertexBuffer);
+				deleteIndexBuffer(mh.indexBuffer);
+				deleteMaterial(mh.material);
+			}
+
+			void deleteModel(ModelHandler mh) {
+				if (modelHandleAllocator->isValid(mh.id))
+					modelHandleAllocator->free(mh.id);
+
+				for (MaterialHandler matH : mh.materials)
+					deleteMaterial(matH);
+
+				for (MeshHandler meshH : mh.meshes)
+					deleteMesh(meshH);
+			}
+
 			void updateUniform(UniformHandler uh, MemoryBuffer memBuffer) {
+				if (!uniformHandleAllocator->isValid(uh.id))
+					LOG(FATAL) << "Invalid uniform handler: " << uh.id << ".";
 				renderer->updateUniform(uh, memBuffer);
 			}
 
 			void readTexture(TextureHandler texHandler, void *data, int mip = 0) {
+				if(!textureHandleAllocator->isValid(texHandler.id))
+					LOG(FATAL) << "Invalid texture handler: " << texHandler.id << ".";
 				renderer->readTexture(texHandler, data, mip);
 			}
 
 			void updateTexture(TextureHandler texHandler, int offsetX, int offsetY, int offsetZ, int width, int height, int depth, MemoryBuffer mem) {
+				if (!textureHandleAllocator->isValid(texHandler.id))
+					LOG(FATAL) << "Invalid texture handler: " << texHandler.id << ".";
 				renderer->updateTexture(texHandler, offsetX, offsetY, offsetZ, width, height, depth, mem);
 			}
 

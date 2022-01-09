@@ -1,8 +1,5 @@
 #pragma once
 #include "imgui.h"
-#ifndef IMGUI_DEFINE_MATH_OPERATORS
-#define IMGUI_DEFINE_MATH_OPERATORS
-#endif
 #include "imgui_internal.h"
 #include "addons/ImGuizmo/ImGuizmo.h"
 #include <glm/glm.hpp>
@@ -21,4 +18,11 @@ namespace ImGuiExt{
 	bool CollapsingHeader(const char* label, ImVec4 shadowColor, ImGuiTreeNodeFlags flags = 0);
 	void TextVec3(glm::vec3 v, std::string name = "");
 	ImVec4 add(ImVec4 vec4, float v);
+	/**
+	* Renders a text with {@code padding}.
+	*
+	* @param text to be rendered.
+	* @param padding in pixels.
+	*/
+	void PaddedText(const char *text, ImVec2 padding);
 };

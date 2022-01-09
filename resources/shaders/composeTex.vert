@@ -12,6 +12,5 @@ uniform mat4 proj;
 
 void main(){
     gl_Position = proj * cam * model * vec4(vertex, 1.0);
-   // gl_Position = vec4(vertex, 1.0);
     texCoords = tex;
 }

@@ -386,6 +386,6 @@ void main(){
 		thisColor += vec4(bg.xyz * avgTr + avgL , 1.0f);
 	else
 		thisColor += vec4(bg.xyz, 1);
-	
+
 	color = thisColor;
 }

@@ -58,8 +58,7 @@ namespace narvalengine {
 		void renderScene(FrameBufferHandler* fbh, TextureHandler* fbhTex, int currentFrame);
 		void renderPostProcessing();
 		void renderRealTimePBR();
-
-		void reloadScene();
+		void reloadScene(bool absolutePath);
 		void initVolumetricShader();
 		void initPBR();
 		void initPostProcessingShader();
@@ -69,6 +68,9 @@ namespace narvalengine {
 		void initImageDifferenceShader();
 		void initRenderAPI();
 		void hoverObject();
+		void sortAndGroup(Scene *scene);
+		void generateModelHandlers();
+		void deleteModelHandlers();
 	public:
 		GLint WIDTH, HEIGHT;
 		float aspectRatio;
@@ -81,7 +83,7 @@ namespace narvalengine {
 		OfflineEngine *offEngine;
 		int renderedTiles = 0;
 
-		float nearPlane = 1;
+		float nearPlane = 0.1;
 		float farPlane = 60000;
 		float projAngle = 45;
 		glm::mat4 proj;
@@ -124,6 +126,7 @@ namespace narvalengine {
 
 		//REAL TIME
 		const char* models[6] = { "cloud", "dragonHavard", "fireball", "explosion", "bunny_cloud", "explosion" };
+		//Maps the resources from the ResourceManager to the Graphic API.
 		std::map<StringID, ModelHandler> rmToRenderAPI;
 		FrameBufferHandler frameBuffers[4]; //TODO not being used(?)
 		TextureHandler renderFrameTex[4];
@@ -149,9 +152,10 @@ namespace narvalengine {
 		glm::vec3 lightPos[10];
 		bool isMaterialSet[6]{};
 		int texIds[7] = { 0, 1, 2, 3, 4, 5, 7 };
+		//Light is made of .position and .color, thus the offset is 2.
 		int pbrLightsOffset = 2;
 		TextureHandler lightTexColorH;
-		glm::vec4 defaultLightColor = glm::vec4(252 / 255.0f, 186 / 255.0f, 3 / 255.0f, 1);
+		glm::vec4 defaultLightColor = glm::vec4(255 / 255.0f, 255 / 255.0f, 255 / 255.0f, 1);
 
 		//REAL TIME - Volume
 		ProgramHandler volProgramHandler;

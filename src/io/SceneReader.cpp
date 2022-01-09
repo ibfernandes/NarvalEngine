@@ -8,8 +8,6 @@ namespace narvalengine {
 	}
 
 	void SceneReader::loadScene(std::string filePath, bool absolutePath) {
-		if (scene)
-			delete scene;
 
 		scene = new Scene();
 
@@ -21,8 +19,12 @@ namespace narvalengine {
 		else
 			vc = std::ifstream(RESOURCES_DIR + filePath);
 
-		if (!vc) 
-			LOG(FATAL) << "Couldn't read " << filePath << ".";
+		if (!vc) {
+			if (absolutePath)
+				LOG(FATAL) << "Couldn't read " << filePath << ".";
+			else
+				LOG(FATAL) << "Couldn't read " << RESOURCES_DIR + filePath << ".";
+		}
 
 		while (getline(vc, buffer)) 
 			text = text + buffer + "\n";
@@ -95,13 +97,13 @@ namespace narvalengine {
 			ResourceManager::getSelf()->setTexture(name + ".metallic", metallicTex);
 
 			Texture *albedoTex = nullptr;
-			//If it should load from a texture file
+			//If it should load from a texture file.
 			if (material["albedo"].IsString()) {
 				ResourceManager::getSelf()->loadTexture(name + ".albedo", albedoPath);
 				albedoTex = ResourceManager::getSelf()->getTexture(name + ".albedo");
 				albedoTex->textureName = TextureName::ALBEDO;
 			}else { 
-				//If it is a simple 3 float color
+				//If it is a simple 3 float color.
 				albedoTex = new Texture(1, 1, RGB32F, flags, { (uint8_t*)&albedo[0], sizeof(float) * 3 });
 				albedoTex->textureName = TextureName::ALBEDO;
 				ResourceManager::getSelf()->setTexture(name + ".albedo", albedoTex);
@@ -114,7 +116,7 @@ namespace narvalengine {
 
 			Texture* normalMapTex;
 			normalMapTex = new Texture(1, 1, RGB32F, flags, { (uint8_t*)&normalMap[0], sizeof(float) * 3 });
-			normalMapTex->textureName = TextureName::NORMAL_MAP;
+			normalMapTex->textureName = TextureName::NORMAL;
 			ResourceManager::getSelf()->setTexture(name + ".normal", normalMapTex);
 
 
@@ -122,7 +124,7 @@ namespace narvalengine {
 			mat->addTexture(TextureName::ALBEDO, albedoTex);
 			mat->addTexture(TextureName::METALLIC, metallicTex);
 			mat->addTexture(TextureName::ROUGHNESS, roughnessTex);
-			mat->addTexture(TextureName::NORMAL_MAP, normalMapTex);
+			mat->addTexture(TextureName::NORMAL, normalMapTex);
 
 			GGXDistribution *ggxD = new GGXDistribution();
 			ggxD->alpha = roughnessToAlpha(roughness);
@@ -139,8 +141,13 @@ namespace narvalengine {
 			DiffuseLight *diffLight = new DiffuseLight();
 			diffLight->li = albedo;
 
+			Texture *albedoTex = new Texture(1, 1, RGB32F, NE_TEX_SAMPLER_UVW_CLAMP | NE_TEX_SAMPLER_MIN_MAG_LINEAR, { &albedo[0], sizeof(float) * 3 });
+			albedoTex->textureName = TextureName::ALBEDO;
+			ResourceManager::getSelf()->setTexture(name + ".albedo", albedoTex);
+
 			Material *lightMaterial = new Material();
 			lightMaterial->light = diffLight;
+			lightMaterial->addTexture(TextureName::ALBEDO, albedoTex);
 
 			ResourceManager::getSelf()->replaceMaterial(name, lightMaterial);
 		}else if (type.compare("directionalLight") == 0) {
@@ -347,12 +354,11 @@ namespace narvalengine {
 
 			Material *material = ResourceManager::getSelf()->getMaterial(materialName);
 			if (material->light != nullptr) {
-				model->lights.push_back(&sphere[0]);
+				lights.push_back(&sphere[0]);
 				material->light->primitive = &sphere[0];
 			} else
-				model->primitives.push_back(&sphere[0]);
-
-			model->materials.push_back(material);
+				primitives.push_back(&sphere[0]);
+			materials.push_back(material);
 			sphere[0].material = material;
 
 			model = new Model(vertexDataMem, indexDataMem,

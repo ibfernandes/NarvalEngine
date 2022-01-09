@@ -51,7 +51,7 @@
 	},
 	
 	"renderer": {
-		"resolution": [1200, 600],
+		"resolution": [480, 240],
 		"spp": 1,
 		"bounces": 3,
 		"mode": "realtime",

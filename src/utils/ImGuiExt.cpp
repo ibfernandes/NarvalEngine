@@ -8,6 +8,17 @@ namespace ImGuiExt {
         return true;
     }
 
+    void ImGuiExt::PaddedText(const char* text, ImVec2 padding) {
+        //Source: https://github.com/ocornut/imgui/issues/3145.
+        ImVec2 textSize = ImGui::CalcTextSize(text);
+        ImVec2 cursor = ImGui::GetCursorPos();
+        ImGui::InvisibleButton("##invPaddedTextButton", textSize + ImVec2(padding));
+        ImVec2 finalCursorPos = ImGui::GetCursorPos();
+        ImGui::SetCursorPos(cursor + padding);
+        ImGui::Text(text);
+        ImGui::SetCursorPos(finalCursorPos);
+    }
+
     bool ImGuiExt::ListBox(const char* label, int* current_item, const char* const items[], int items_count, int height_items, ImVec4 activeTextColor){
         const bool value_changed = ListBox(label, current_item, Items_ArrayGetter, (void*)items, items_count, height_items, activeTextColor);
         return value_changed;
@@ -61,7 +72,7 @@ namespace ImGuiExt {
         ImVec2 size = ImGui::GetContentRegionMax();
         ImGui::PopStyleVar();
 
-        leftCorner.y = leftCorner.y + ImGui::GetItemRectSize().y;
+        leftCorner.y = leftCorner.y + ImGui::GetItemRectSize().y - 1;
         rightCorner = ImVec2(leftCorner.x + size.x, leftCorner.y);
 
         drawList->AddLine(leftCorner, rightCorner, ImGui::GetColorU32(shadowColor), 1.0f);

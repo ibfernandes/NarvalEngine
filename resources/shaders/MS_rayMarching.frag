@@ -131,7 +131,7 @@ vec3 evalHG(vec3 incoming, vec3 scattered) {
 //geometric term
 vec3 evaluateLight(Light light, in vec3 pos){
     float d = length(light.position - pos);
-    return (light.Li) / (d*d); //TODO this number 100 here is a pure gambiarra
+    return (light.Li) / (d*d *100); //TODO this number 100 here is a pure gambiarra
 }
 
 vec3 volumetricShadow(in vec3 cubePos, in vec3 lightPos){

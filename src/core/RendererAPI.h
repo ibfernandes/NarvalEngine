@@ -235,7 +235,7 @@ namespace narvalengine {
 		ROUGHNESS = 1 << 2,
 		METALLIC = 1 << 3,
 		EMISSION = 1 << 4,
-		NORMAL_MAP = 1 << 5,
+		NORMAL = 1 << 5,
 		AO = 1 << 6,
 		TEX_1 = 1 << 7,
 		TEX_2 = 1 << 8,

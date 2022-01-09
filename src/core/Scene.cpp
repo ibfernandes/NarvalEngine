@@ -23,9 +23,9 @@ namespace narvalengine {
 			delete instancedModels[i];
 		for (int i = 0; i < lights.size(); i++)
 			delete lights[i];
-
 		instancedModels.clear();
 		lights.clear();
+		float test = 0;
 	}
 
 	bool Scene::intersectScene(Ray ray, RayIntersection &hit, float tMin, float tMax) {

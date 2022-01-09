@@ -47,6 +47,7 @@ namespace narvalengine {
 		* @param materialName
 		*/
 		void processScene(const aiScene* scene, std::string path, std::string materialName);
+		bool assimpHasMaterial(aiMaterial* mat, aiTextureType type);
 	public:
 		std::string relativePath;
 

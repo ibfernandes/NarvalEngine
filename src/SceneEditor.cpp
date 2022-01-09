@@ -33,6 +33,7 @@ namespace narvalengine {
 		selectedFilePath = "scenes/cornellbox-pbrt.json";
 		sceneReader.loadScene(selectedFilePath, false);
 		scene = sceneReader.getScene();
+		sortAndGroup(scene);
 		camera = sceneReader.getMainCamera();
 		settings = sceneReader.getSettings();
 
@@ -50,30 +51,17 @@ namespace narvalengine {
 			FPSgraphPoints[i] = 0;
 
 		ResourceManager::getSelf()->loadModel("quad", "models/", "quad.obj");
-		ResourceManager::getSelf()->loadModel("quad", "models/", "quad.obj");
 		ResourceManager::getSelf()->loadModel("cube", "models/", "cube.obj");
 		ResourceManager::getSelf()->loadTexture("default", "imgs/checkboard.png");
 		ResourceManager::getSelf()->loadTexture("defaultAlt", "imgs/checkboard2.png");
+
 		ResourceManager::getSelf()->loadShader("volumeMonteCarlo", "shaders/volumeMonteCarlo.vert", "shaders/volumeMonteCarlo.frag", "");
 		ResourceManager::getSelf()->loadShader("imageDifference", "shaders/imageDifference.vert", "shaders/imageDifference.frag", "");
 		ResourceManager::getSelf()->loadShader("monocolor", "shaders/monoColor.vert", "shaders/monoColor.frag", "");
-		ResourceManager::getSelf()->loadShader("randomVisualizer", "shaders/random.vert", "shaders/random.frag", "");
 		ResourceManager::getSelf()->loadShader("billboard", "shaders/billboard.vert", "shaders/billboard.frag", "");
-		ResourceManager::getSelf()->loadShader("phong", "shaders/phong.vert", "shaders/phong.frag", "");
 		ResourceManager::getSelf()->loadShader("pbr", "shaders/pbr.vert", "shaders/pbr.frag", "");
-		ResourceManager::getSelf()->loadShader("cloudscape", "shaders/cloudscape.vert", "shaders/cloudscape.frag", "");
-		ResourceManager::getSelf()->loadShader("visibility", "shaders/visibility.vert", "shaders/visibility.frag", "");
-		ResourceManager::getSelf()->loadShader("shvolume", "shaders/shvolume.vert", "shaders/shvolume.frag", "");
-		ResourceManager::getSelf()->loadShader("volume", "shaders/volume.vert", "shaders/volume.frag", "");
-		ResourceManager::getSelf()->loadShader("volumewcs", "shaders/volumeWCS.vert", "shaders/volumeWCS.frag", "");
 		ResourceManager::getSelf()->loadShader("simpleTexture", "shaders/simpleTexture.vert", "shaders/simpleTexture.frag", "");
-		ResourceManager::getSelf()->loadShader("gamma", "shaders/gammaCorrection.vert", "shaders/gammaCorrection.frag", "");
-		ResourceManager::getSelf()->loadShader("pathTracingLastPass", "shaders/pathTracingLastPass.vert", "shaders/pathTracingLastPass.frag", "");
-		ResourceManager::getSelf()->loadTexture("cloudheights", "imgs/heights.png");
-		ResourceManager::getSelf()->loadTexture("weather", "imgs/weather.png");
-		ResourceManager::getSelf()->loadTexture("lightbulb", "imgs/light-bulb.png");
 		ResourceManager::getSelf()->loadShader("screentex", "shaders/screenTex.vert", "shaders/screenTex.frag", "");
-		ResourceManager::getSelf()->loadShader("gradientBackground", "shaders/gradientBackground.vert", "shaders/gradientBackground.frag", "");
 		ResourceManager::getSelf()->loadShader("volumelbvh", "shaders/volumeLBVH.vert", "shaders/volumeLBVH.frag", "");
 		ResourceManager::getSelf()->loadShader("simpleLightDepth", "shaders/simpleLightDepth.vert", "shaders/simpleLightDepth.frag", "");
 		ResourceManager::getSelf()->loadShader("composeTex", "shaders/composeTex.vert", "shaders/composeTex.frag", "");
@@ -243,6 +231,53 @@ namespace narvalengine {
 		postProcessingUni[6] = renderCtx->createUniform("exposure", { (uint8_t*)&exposure, sizeof(float) }, UniformType::Float, 0);
 	}
 
+	void SceneEditor::deleteModelHandlers() {
+		for (auto const& tuple : rmToRenderAPI) 
+			renderCtx->deleteModel(tuple.second);
+		rmToRenderAPI.clear();
+	}
+
+	void SceneEditor::generateModelHandlers() {
+		for (int i = 0; i < scene->instancedModels.size(); i++) {
+			InstancedModel* im = scene->instancedModels.at(i);
+			if (im->model->materials.at(0)->bsdf->bsdfType & BxDF_TRANSMISSION) {
+				if (rmToRenderAPI.find(im->modelID) != rmToRenderAPI.end())
+					continue;
+
+				Model* model = ResourceManager::getSelf()->getModel(im->modelID);
+				ModelHandler mh = renderCtx->createModel(model);
+				rmToRenderAPI.insert({ im->modelID, mh });
+			}
+
+			if (im->model->materials.at(0)->bsdf->bsdfType & BxDF_DIFFUSE) {
+				if (rmToRenderAPI.find(im->modelID) != rmToRenderAPI.end())
+					continue;
+
+				Model* model = ResourceManager::getSelf()->getModel(im->modelID);
+				ModelHandler mh = renderCtx->createModel(model);
+				rmToRenderAPI.insert({ im->modelID, mh });
+			}
+		}
+
+		for (int i = 0; i < scene->lights.size(); i++) {
+			InstancedModel* im = scene->lights.at(i);
+
+			InfiniteAreaLight* infAreaLight;
+			if (infAreaLight = dynamic_cast<InfiniteAreaLight*>(im->model->materials.at(0)->light)) {
+				Material* m = im->model->materials.at(0);
+				Texture* tex = m->getTexture(TextureName::TEX_1);
+				infAreaLightTex = renderCtx->createTexture(tex);
+			}
+
+			if (rmToRenderAPI.find(im->modelID) != rmToRenderAPI.end())
+				continue;
+
+			Model* model = ResourceManager::getSelf()->getModel(im->modelID);
+			ModelHandler mh = renderCtx->createModel(model);
+			rmToRenderAPI.insert({ im->modelID, mh });
+		}
+	}
+
 	void SceneEditor::initRenderAPI() {
 		vms = new VMS(renderCtx, scene);
 		vms->mcSPP = settings.spp;
@@ -266,44 +301,7 @@ namespace narvalengine {
 			rayIndices[i] = nullptr;
 		}
 
-		for (int i = 0; i < scene->instancedModels.size(); i++) {
-			InstancedModel *im = scene->instancedModels.at(i);
-			if (im->model->materials.at(0)->bsdf->bsdfType & BxDF_TRANSMISSION) {
-				if (rmToRenderAPI.find(im->modelID) != rmToRenderAPI.end())
-					continue;
-
-				Model *model = ResourceManager::getSelf()->getModel(im->modelID);
-				ModelHandler mh = renderCtx->createModel(model);
-				rmToRenderAPI.insert({ im->modelID, mh });
-			}
-
-			if (im->model->materials.at(0)->bsdf->bsdfType & BxDF_DIFFUSE) {
-				if (rmToRenderAPI.find(im->modelID) != rmToRenderAPI.end())
-					continue;
-
-				Model *model = ResourceManager::getSelf()->getModel(im->modelID);
-				ModelHandler mh = renderCtx->createModel(model);
-				rmToRenderAPI.insert({ im->modelID, mh });
-			}
-		}
-
-		for (int i = 0; i < scene->lights.size(); i++) {
-			InstancedModel* im = scene->lights.at(i);
-
-			InfiniteAreaLight* infAreaLight;
-			if (infAreaLight = dynamic_cast<InfiniteAreaLight*>(im->model->materials.at(0)->light)) {
-				Material* m = im->model->materials.at(0);
-				Texture *tex = m->getTexture(TextureName::TEX_1);
-				infAreaLightTex = renderCtx->createTexture(tex);
-			}
-
-			if (rmToRenderAPI.find(im->modelID) != rmToRenderAPI.end())
-				continue;
-
-			Model* model = ResourceManager::getSelf()->getModel(im->modelID);
-			ModelHandler mh = renderCtx->createModel(model);
-			rmToRenderAPI.insert({ im->modelID, mh });
-		}
+		generateModelHandlers();
 
 		lightTexColorH = renderCtx->createTexture(1, 1, 0, TextureLayout::RGBA32F, { (uint8_t*)&defaultLightColor[0], sizeof(glm::vec4) }, NE_TEX_SAMPLER_MIN_MAG_NEAREST | NE_TEX_SAMPLER_UVW_MIRROR);
 		realTimeTimer.startTimer();
@@ -591,19 +589,19 @@ namespace narvalengine {
 		}
 	}
 
-	void SceneEditor::reloadScene() {
+	void SceneEditor::reloadScene(bool absolutePath) {
+		
+		if (scene != nullptr) 
+			delete scene;
+		deleteModelHandlers();
 
-		sceneReader.loadScene(selectedFilePath, false);
+		sceneReader.loadScene(selectedFilePath, absolutePath);
 		scene = sceneReader.getScene();
 		camera = sceneReader.getMainCamera();
 		settings = sceneReader.getSettings();
-
 		sceneFrameSize = settings.resolution;
 
-		//startOffEngine(); //TODO why was I starting it here?
-
-		//camera = *sceneReader.getMainCamera();
-		initRenderAPI();
+		generateModelHandlers();
 		generateSceneImList();
 	}
 
@@ -723,13 +721,17 @@ namespace narvalengine {
 
 					ImGui::PushID(i);
 					if (ImGui::Selectable(imIcons[i].c_str(), selectedImList == i, ImGuiSelectableFlags_SpanAllColumns)) {
-						currentSelectedIM = getSelectedIMfromListPos(i);
-						selectedImList = i;
-						glm::mat4 transf = currentSelectedIM->transformToWCS;
+						if (imIcons[i] == ICON_FA_CAMERA) {
+							selectedImList = i;
+						}else {
+							currentSelectedIM = getSelectedIMfromListPos(i);
+							selectedImList = i;
+							glm::mat4 transf = currentSelectedIM->transformToWCS;
 
-						selectObjPos = getTranslation(transf);
-						selectObjScale = getScale(transf);
-						selectObjRotation = getRotation(transf);
+							selectObjPos = getTranslation(transf);
+							selectObjScale = getScale(transf);
+							selectObjRotation = getRotation(transf);
+						}
 					}
 					ImGui::PopID();
 
@@ -762,11 +764,11 @@ namespace narvalengine {
 		if (ImGuiExt::CollapsingHeader("Transform", gUIPalette.iceGrey[4])) {
 			ImVec2 size = ImGui::GetContentRegionMax();
 
-			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
+			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(columnOffset.x/2, columnOffset.y/2));
 			ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0, 0, 0, 0));
-			ImGui::BeginChild("##transformChild", ImVec2(rightColumnMenuSize.x, ImGui::GetFontSize() * (3 + 2)), 0,  ImGuiWindowFlags_NoScrollWithMouse);
+			ImGui::BeginChild("##transformChild", ImVec2(rightColumnMenuSize.x, ImGui::GetFontSize() * (4 + 2)), 0,  ImGuiWindowFlags_NoScrollWithMouse);
+			
 			//BeginChild Item padding
-
 			float widthSpacing = ImGui::CalcTextSize("Position: ", 0, false, -1).x + columnOffset.x;
 			ImGui::Columns(3, NULL, false);
 			ImGui::SetColumnWidth(0, columnOffset.x);
@@ -779,7 +781,7 @@ namespace narvalengine {
 			ImGui::NextColumn();
 
 			ImGui::NextColumn();
-			ImGui::Text("Position: ");
+			ImGuiExt::PaddedText("Position: ", ImVec2(0, columnOffset.y / 2));
 			ImGui::NextColumn();
 			if (ImGui::DragFloat3("##selectObjPos", &selectObjPos[0], 0.1, -999, 999, "%.2f")) {
 				if (currentSelectedIM != nullptr) {
@@ -790,18 +792,18 @@ namespace narvalengine {
 			ImGui::NextColumn();
 
 			ImGui::NextColumn();
-			ImGui::Text("Scale: ");
+			ImGuiExt::PaddedText("Scale: ", ImVec2(0, columnOffset.y / 2));
 			ImGui::NextColumn();
 			if (ImGui::DragFloat3("##selectObjScale", &selectObjScale[0], 0.1, -999, 999, "%.2f")) {
 				if (currentSelectedIM != nullptr) {
 					ImGuizmo::RecomposeMatrixFromComponents(&selectObjPos[0], &selectObjRotation[0], &selectObjScale[0], &currentSelectedIM->transformToWCS[0][0]);
 					currentSelectedIM->invTransformToWCS = glm::inverse(currentSelectedIM->transformToWCS);
 				}
-	}
+			}
 			ImGui::NextColumn();
 
 			ImGui::NextColumn();
-			ImGui::Text("Rotation: ");
+			ImGuiExt::PaddedText("Position: ", ImVec2(0, columnOffset.y / 2));
 			ImGui::NextColumn();
 			if (ImGui::DragFloat3("##selectObjRotation", &selectObjRotation[0], 0.1, -999, 999, "%.2f")) {
 				if (currentSelectedIM != nullptr) {
@@ -815,22 +817,21 @@ namespace narvalengine {
 			ImGui::PopStyleColor();
 			ImGui::PopStyleVar();
 		}
-
-		//ImGui::Dummy(ImVec2(0, -200));
 	};
 
 	void SceneEditor::selectedMaterialImGUI() {
 		ImGui::SetNextItemOpen(true, ImGuiCond_Once);
 
 		if (ImGuiExt::CollapsingHeader("Material", gUIPalette.iceGrey[4])) {
-			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(10, 10));
+			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(columnOffset.x / 2, columnOffset.y / 2));
 			ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0, 0, 0, 0));
+
 			float height = 1;
 			if (currentSelectedIM != nullptr && currentSelectedIM->model->lights.size() == 0) {
 				if (currentSelectedIM->model->materials.at(0)->bsdf->bsdfType & BxDF_TRANSMISSION) {
 					height = ImGui::GetFontSize() * (7 + 4);
 				}else if (currentSelectedIM->model->materials.at(0)->bsdf->bsdfType & BxDF_DIFFUSE) {
-					height = ImGui::GetFontSize() * (1 + 2);
+					height = ImGui::GetFontSize() * (2 + 1);
 				}
 			}
 
@@ -850,21 +851,23 @@ namespace narvalengine {
 					ImGui::NextColumn();
 
 					ImGui::NextColumn();
-					ImGui::Text("Absorption (1/m): ");
+					ImGuiExt::PaddedText("Absorption (1/m): ", ImVec2(0, columnOffset.y / 2));
 					ImGui::NextColumn();
+					ImGui::PushItemWidth(rightColumnMenuSize.x - widthSpacing - columnOffset.x);
 					if (ImGui::DragFloat3("##absorption", ((float*)vms->absorption), 0.001f, 0.001f, 5.0f))
 						didSceneChange = true;
 					ImGui::NextColumn();
 
 					ImGui::NextColumn();
-					ImGui::Text("Scattering (1/m): ");
+					ImGuiExt::PaddedText("Scattering (1/m): ", ImVec2(0, columnOffset.y / 2));
 					ImGui::NextColumn();
+					ImGui::PushItemWidth(rightColumnMenuSize.x - widthSpacing - columnOffset.x);
 					if(ImGui::DragFloat3("##scattering", ((float*)vms->scattering), 0.001f, 0.001f, 5000.0f))
 						didSceneChange = true;
 					ImGui::NextColumn();
 
 					ImGui::NextColumn();
-					ImGui::Text("Density Multiplier: ");
+					ImGuiExt::PaddedText("Density Multiplier: ", ImVec2(0, columnOffset.y / 2));
 					ImGui::NextColumn();
 					ImGui::PushItemWidth(80.0f);
 					if(ImGui::DragFloat("##densityCoef", vms->density, 0.01, 0.001f, 150.0))
@@ -874,39 +877,46 @@ namespace narvalengine {
 
 					if (vms->currentMethod == RAY_MARCHING) {
 						ImGui::NextColumn();
-						ImGui::Text("N. of Steps: ");
+						ImGuiExt::PaddedText("N. of Steps: ", ImVec2(0, columnOffset.y / 2));
 						ImGui::NextColumn();
 						ImGui::DragInt("##numberOfSteps", &(vms->rmNumberOfSteps), 2, 1.0, 100);
 						ImGui::NextColumn();
 
 						ImGui::NextColumn();
-						ImGui::Text("Shadow Steps");
+						ImGuiExt::PaddedText("Shadow Steps: ", ImVec2(0, columnOffset.y / 2));
 						ImGui::NextColumn();
 						ImGui::DragInt("##shadowSteps", &vms->rmNumberOfShadowSteps, 1, 0.0, 256);
 						ImGui::NextColumn();
 					}
 
 					ImGui::NextColumn();
-					ImGui::Text("Phase Function: ");
+					ImGuiExt::PaddedText("Phase Function: ", ImVec2(0, columnOffset.y / 2));
 					ImGui::NextColumn();
+					ImGui::PushItemWidth(rightColumnMenuSize.x - widthSpacing - columnOffset.x);
 					ImGui::Combo("##phaseFunctionOption", &phaseFunctionOption, phaseFunctionOptions, IM_ARRAYSIZE(phaseFunctionOptions));
 					ImGui::NextColumn();
 
 					ImGui::NextColumn();
-					ImGui::Text("g: ");
+					ImGuiExt::PaddedText("g: ", ImVec2(0, columnOffset.y / 2));
 					ImGui::NextColumn();
 					ImGui::DragFloat("##shadowSteps", vms->g, 0.01, -0.99, 0.99);
 					ImGui::NextColumn();
 
 					ImGui::Columns(1);
-				}
-				else if (currentSelectedIM->model->materials.at(0)->bsdf->bsdfType & BxDF_DIFFUSE) {
-					ImGui::Columns(2, NULL, false);
+				}else if (currentSelectedIM->model->materials.at(0)->bsdf->bsdfType & BxDF_DIFFUSE) {
+					ImGui::Columns(3, NULL, false);
 
-					ImGui::SetColumnWidth(0, 150);
-					ImGui::SetColumnWidth(1, rightColumnMenuSize.x - 150);
+					ImGui::SetColumnWidth(0, columnOffset.x);
+					ImGui::SetColumnWidth(1, 150);
+					ImGui::SetColumnWidth(2, rightColumnMenuSize.x - 150);
 
-					ImGui::Text("Texture: ");
+					ImGui::Dummy(ImVec2(1, columnOffset.y));
+					ImGui::NextColumn();
+					ImGui::NextColumn();
+					ImGui::NextColumn();
+
+					ImGui::NextColumn();
+					ImGuiExt::PaddedText("Texture: ", ImVec2(0, columnOffset.y / 2));
 					ImGui::NextColumn();
 					ImGui::Button("Select...");
 					ImGui::NextColumn();
@@ -926,9 +936,9 @@ namespace narvalengine {
 		if (ImGuiExt::CollapsingHeader("Camera", gUIPalette.iceGrey[4])) {
 			ImVec2 size = ImGui::GetContentRegionMax();
 
-			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
+			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(columnOffset.x / 2, columnOffset.y / 2));
 			ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0, 0, 0, 0));
-			float height = ImGui::GetFontSize() * (3 + 2);
+			float height = ImGui::GetFontSize() * (4 + 2);
 			float widthSpacing = ImGui::CalcTextSize("Focus Dist. (m): ", 0, false, -1).x + columnOffset.x;
 			ImGui::BeginChild("##cameraChild", ImVec2(rightColumnMenuSize.x, height), 0, ImGuiWindowFlags_NoScrollWithMouse);
 			//BeginChild Item padding
@@ -945,21 +955,21 @@ namespace narvalengine {
 			ImGui::NextColumn();
 
 			ImGui::NextColumn();
-			ImGui::Text("vFov: ");
+			ImGuiExt::PaddedText("vFov: ", ImVec2(0, columnOffset.y / 2));
 			ImGui::NextColumn();
 			if (ImGui::DragFloat("##vfovcam", &camera.vfov, 1.0, 0, 180, "%.1f"))
 				shouldUpdateCamera = true;
 			ImGui::NextColumn();
 			
 			ImGui::NextColumn();
-			ImGui::Text("Aperture (mm): ");
+			ImGuiExt::PaddedText("Aperture (mm): ", ImVec2(0, columnOffset.y / 2));
 			ImGui::NextColumn();
 			if(ImGui::DragFloat("##aperturecam", &camera.aperture, 1.0, 0, 180, "%.1f"))
 				shouldUpdateCamera = true;
 			ImGui::NextColumn();
 
 			ImGui::NextColumn();
-			ImGui::Text("Focus Dist. (m): ");
+			ImGuiExt::PaddedText("Focus Dist. (m): ", ImVec2(0, columnOffset.y / 2));
 			ImGui::NextColumn();
 			if(ImGui::DragFloat("##focuscam", &camera.focusDistance, 1.0, 0, 100, "%.1f"))
 				shouldUpdateCamera = true;
@@ -977,7 +987,7 @@ namespace narvalengine {
 		if (ImGuiExt::CollapsingHeader("Light", gUIPalette.iceGrey[4])) {
 			ImVec2 size = ImGui::GetContentRegionMax();
 
-			float height = ImGui::GetFontSize() * (2 + 2);
+			float height = ImGui::GetFontSize() * (1 + 2);
 			float widthSpacing = ImGui::CalcTextSize("Power (W): ", 0, false, -1).x + columnOffset.x;
 			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
 			ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0, 0, 0, 0));
@@ -996,9 +1006,9 @@ namespace narvalengine {
 			ImGui::NextColumn();
 
 			ImGui::NextColumn();
-			ImGui::Text("Power (W): ");
+			ImGuiExt::PaddedText("Power (W): ", ImVec2(0, columnOffset.y / 2));
 			ImGui::NextColumn();
-			//TODO not quite right, there should be a treatment case for Le() and Li()
+			ImGui::PushItemWidth(rightColumnMenuSize.x - widthSpacing - columnOffset.x * 2);
 			ImGui::DragFloat3("##lightpower", &currentSelectedIM->model->lights.at(0)->material->light->li[0], 0.5, 0, 10000, "%.1f");
 			ImGui::NextColumn();
 
@@ -1014,13 +1024,13 @@ namespace narvalengine {
 		if (ImGuiExt::CollapsingHeader("Render Options", gUIPalette.iceGrey[4])) {
 			ImVec2 size = ImGui::GetContentRegionMax();
 
-			float height = ImGui::GetFontSize() * (5 + 2);
+			float height = ImGui::GetFontSize() * (6 + 2);
 			float widthSpacing = ImGui::CalcTextSize("Resolution: ", 0, false, -1).x + columnOffset.x;
-			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
+			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(columnOffset.x / 2, columnOffset.y / 2));
 			ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0, 0, 0, 0));
 			ImGui::BeginChild("##renderoptions", ImVec2(rightColumnMenuSize.x, height), 0, ImGuiWindowFlags_NoScrollWithMouse);
+			
 			//BeginChild Item padding
-
 			ImGui::Columns(3, NULL, false);
 
 			ImGui::SetColumnWidth(0, columnOffset.x);
@@ -1033,20 +1043,20 @@ namespace narvalengine {
 			ImGui::NextColumn();
 
 			ImGui::NextColumn();
-			ImGui::Text("Volumetric Algorithm: ");
+			ImGuiExt::PaddedText("Algorithm: ", ImVec2(0, columnOffset.y / 2));
 			ImGui::NextColumn();
 			if(ImGui::Combo("##currentRenderMode", &(vms->currentMethod), renderModes, IM_ARRAYSIZE(renderModes)))
 				didSceneChange = true;
 			ImGui::NextColumn();
 
 			ImGui::NextColumn();
-			ImGui::Text("Resolution: ");
+			ImGuiExt::PaddedText("Resolution: ", ImVec2(0, columnOffset.y / 2));
 			ImGui::NextColumn();
 			ImGui::DragInt2("##resolution", &settings.resolution[0], 1.0, 0, 3840, "%.1f");
 			ImGui::NextColumn();
 
 			ImGui::NextColumn();
-			ImGui::Text("SPP: ");
+			ImGuiExt::PaddedText("SPP: ", ImVec2(0, columnOffset.y / 2));
 			ImGui::NextColumn();
 			if (ImGui::DragInt("##spp", &settings.spp, 1.0, 0, 1000, "%.1f")) {
 				vms->mcSPP = settings.spp;
@@ -1055,7 +1065,7 @@ namespace narvalengine {
 			ImGui::NextColumn();
 
 			ImGui::NextColumn();
-			ImGui::Text("Bounces: ");
+			ImGuiExt::PaddedText("Bounces: ", ImVec2(0, columnOffset.y / 2));
 			ImGui::NextColumn();
 			if (ImGui::DragInt("##bounces", &settings.bounces, 1.0, 0, 300, "%.0f")) {
 				vms->mcMaxBounces = settings.bounces;
@@ -1106,15 +1116,17 @@ namespace narvalengine {
 
 			if (currentRenderingMode == REALTIME_RENDERING_MODE) {
 				ImGui::NextColumn();
-				ImGui::Text("FPS:   %d", lastFPS);
+				ImGui::Text("FPS: %d", lastFPS);
+				ImGui::Text("Time: %.1fms", (1000.0f/ lastFPS));
+				ImGui::Dummy(ImVec2(1, columnOffset.y));
 				ImGui::PlotLines("", FPSgraphPoints, IM_ARRAYSIZE(FPSgraphPoints), 0, 0, 0, 200, ImVec2(rightColumnMenuSize.x - 80, ImGui::GetFontSize() * 4));
 				if (vms->currentMethod == VolumetricMethod::MONTE_CARLO) {
 					bool finished = (frameCount > settings.spp) ? true : false;
 
 					if (!finished)
-						ImGui::Text("Elapsed Time:   %.2f s", realTimeTimer.getElapsedSeconds());
+						ImGui::Text("Elapsed Time: %.2f s", realTimeTimer.getElapsedSeconds());
 					else
-						ImGui::Text("Elapsed Time:   %.0f ms", realTimeTimer.getMilliseconds());
+						ImGui::Text("Elapsed Time: %.0f ms", realTimeTimer.getMilliseconds());
 				}
 
 			}else if (currentRenderingMode == OFFLINE_RENDERING_MODE) {
@@ -1139,13 +1151,13 @@ namespace narvalengine {
 		if (ImGuiExt::CollapsingHeader("Tone Mapping", gUIPalette.iceGrey[4])) {
 			ImVec2 size = ImGui::GetContentRegionMax();
 
-			float height = ImGui::GetFontSize() * (5 + 2);
+			float height = ImGui::GetFontSize() * (3 + 2);
 			float widthSpacing = ImGui::CalcTextSize("Exposure: ", 0, false, -1).x + columnOffset.x;
-			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
+			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(columnOffset.x / 2, columnOffset.y / 2));
 			ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0, 0, 0, 0));
 			ImGui::BeginChild("##tonemapping", ImVec2(rightColumnMenuSize.x, height), 0, ImGuiWindowFlags_NoScrollWithMouse);
+			
 			//BeginChild Item padding
-
 			ImGui::Columns(3, NULL, false);
 
 			ImGui::SetColumnWidth(0, columnOffset.x);
@@ -1158,13 +1170,13 @@ namespace narvalengine {
 			ImGui::NextColumn();
 
 			ImGui::NextColumn();
-			ImGui::Text("Gamma: ");
+			ImGuiExt::PaddedText("Gamma: ", ImVec2(0, columnOffset.y / 2));
 			ImGui::NextColumn();
 			ImGui::DragFloat("##gamma", &gamma, 0.1, 0, 10, "%.1f");
 			ImGui::NextColumn();
 
 			ImGui::NextColumn();
-			ImGui::Text("Exposure: ");
+			ImGuiExt::PaddedText("Exposure: ", ImVec2(0, columnOffset.y / 2));
 			ImGui::NextColumn();
 			ImGui::DragFloat("##exposure", &exposure, 0.1, 0, 10, "%.1f");
 			ImGui::NextColumn();
@@ -1309,20 +1321,13 @@ namespace narvalengine {
 		ImGui::BeginMainMenuBar();
 		menuBarSize = ImGui::GetWindowSize();
 		if (ImGui::BeginMenu("File")) {
-			if (ImGui::MenuItem("Open", "Ctrl + O")) {
+			if (ImGui::MenuItem("Open", "")) {
 				const char* pathptr = tinyfd_openFileDialog(openFile, startingFolder, 0, NULL, NULL, 0);
 				if (pathptr != nullptr) {
 					selectedFilePath = std::string(pathptr);
-					reloadScene();
+					reloadScene(true);
 				}
 			}
-			if (ImGui::MenuItem("Save", "Ctrl + S")) {
-
-			}
-			ImGui::Separator();
-			if (ImGui::MenuItem("Cut", "CTRL+X", false, false)) {}
-			if (ImGui::MenuItem("Copy", "CTRL+C", false, false)) {}
-			if (ImGui::MenuItem("Paste", "CTRL+V", false, false)) {}
 			ImGui::EndMenu();
 		}
 
@@ -1364,11 +1369,11 @@ namespace narvalengine {
 		ImGui::EndMainMenuBar();
 
 		//Right column fixed menu
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 5));
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
 		ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, 8);
-		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 1));
+		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
 		ImGui::PushStyleColor(ImGuiCol_WindowBg, gUIPalette.iceGrey[2]);
-		ImGui::SetNextWindowPos(ImVec2(WIDTH - rightColumnMenuSize.x, menuBarSize.y), ImGuiCond_Always);
+		ImGui::SetNextWindowPos(ImVec2(WIDTH - rightColumnMenuSize.x + 1, menuBarSize.y), ImGuiCond_Always);
 		ImGui::SetNextWindowSize(ImVec2(rightColumnMenuSize.x, rightColumnMenuSize.y - menuBarSize.y), 0);
 		ImGui::Begin("Right Column Menu", p_open, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar  | ImGuiWindowFlags_NoMove  | ImGuiWindowFlags_NoScrollbar);
 		sceneListImGUI();
@@ -1391,9 +1396,10 @@ namespace narvalengine {
 		ImVec4 menuBarColor = ImGui::GetStyleColorVec4(ImGuiCol_MenuBarBg);
 		menuBarColor = ImVec4(menuBarColor.x - 0.35f, menuBarColor.y - 0.35f, menuBarColor.z - 0.35f,  1);
 		ImGui::PushStyleColor(ImGuiCol_MenuBarBg, menuBarColor);
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0);
 		//ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 8));
 		ImGui::SetNextWindowPos(ImVec2(0, menuBarSize.y), 0);
-		ImGui::SetNextWindowSize(ImVec2(WIDTH - rightColumnMenuSize.x, menuBarSize.y));
+		ImGui::SetNextWindowSize(ImVec2(WIDTH - rightColumnMenuSize.x + 1, menuBarSize.y));
 		ImGui::Begin("Secondary Menu", p_open, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoScrollbar);
 		ImGui::BeginMenuBar();
 		menuBarSize.y = menuBarSize.y + ImGui::GetWindowSize().y;
@@ -1407,30 +1413,24 @@ namespace narvalengine {
 			currentRenderingMode = OFFLINE_RENDERING_MODE;
 			startOffEngine();
 		}
-		if (ImGui::MenuItem("Reload Scene")) {
-			//reloadScene(); //TODO fix
-		}
-		if (ImGui::MenuItem("Compare RealTime")) {
-			frameCount = 0;
-			didSceneChange = true;
-			currentRenderingMode = 3;
-		}
 		ImGui::EndMenuBar();
 		ImGui::End();
 		ImGui::PopStyleVar();
-		//ImGui::PopStyleVar();
+		ImGui::PopStyleVar();
 		ImGui::PopStyleColor();
 
 		//ImGui::ShowDemoWindow();
 
 		//Debug window
-		ImGui::SetNextWindowPos(ImVec2(2, menuBarSize.y), ImGuiCond_Once);
-		ImGui::SetNextWindowSize(ImVec2(rightColumnMenuSize.x / 1.5f, 1100), ImGuiCond_Once);
-		ImGui::Begin("Debug", p_open, ImGuiWindowFlags_None);
-		shootRayImGUI();
-		shadowMappingImGUI();
-		newVolRenderImGUI();
-		ImGui::End();
+		#ifdef NE_DEBUG_MODE
+			ImGui::SetNextWindowPos(ImVec2(0, menuBarSize.y), ImGuiCond_Once);
+			ImGui::SetNextWindowSize(ImVec2(rightColumnMenuSize.x / 1.5f, 1100), ImGuiCond_Once);
+			ImGui::Begin("Debug", p_open, ImGuiWindowFlags_None);
+			shootRayImGUI();
+			shadowMappingImGUI();
+			newVolRenderImGUI();
+			ImGui::End();
+		#endif
 
 		//Log window
 		ImGui::PushStyleColor(ImGuiCol_ResizeGrip, 0);
@@ -1516,31 +1516,6 @@ namespace narvalengine {
 
 		ImGui::End();
 		ImGui::PopStyleColor();
-
-		/*ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0, 0, 0, 0));
-		ImVec2 ImGuizmoViewSize = ImVec2(100, 100);
-		pos = ImVec2((WIDTH - rightColumnMenuSize.x) - ImGuizmoViewSize.x, menuBarSize.y);
-		ImGui::SetNextWindowSize(ImGuizmoViewSize);
-		ImGui::SetNextWindowPos(pos);
-		ImGui::Begin("GizmoView", p_open, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse |
-			ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar);
-
-		
-		ImGuizmo::BeginFrame();
-		windowWidth = (float)ImGui::GetWindowWidth();
-		windowHeight = (float)ImGui::GetWindowHeight();
-		ImGuizmo::SetRect(ImGui::GetWindowPos().x, ImGui::GetWindowPos().y, windowWidth, windowHeight);
-		ImGuizmo::CamPack camPack = {0,0,0,0,0,0,0,0,0};
-		//glm::mat4 camMat = (*camera.getCam());
-		glm::mat4 camMat = glm::lookAt(camera.position, camera.position - camera.front, camera.up);
-		//ImGuizmo::ViewManipulate(&((*camera.getCam())[0][0]), 2, pos, ImGuizmoViewSize, 0x10101010, &camPack);
-		ImGuizmo::ViewManipulate(&camMat[0][0], 1, pos, ImGuizmoViewSize, 0x10101010, &camPack);
-		camera.front = glm::normalize(glm::vec3(camPack.at[0], camPack.at[1], camPack.at[2]));
-		camera.up = glm::vec3(camPack.up[0], camPack.up[1], camPack.up[2]);
-		camera.position = glm::vec3(camPack.eye[0], camPack.eye[1], camPack.eye[2]);
-
-		ImGui::End();
-		ImGui::PopStyleColor();*/
 	};
 
 	void SceneEditor::renderOffline() {
@@ -1586,11 +1561,24 @@ namespace narvalengine {
 	}
 
 	void SceneEditor::renderRealTimeShadows() {
+		
 		renderCtx->setFrameBufferClear(shadowfboh, 1.1, 0, 0, 1);
 
 		//for each light render each object's scene from its light point of view.
 		int indexpbr = 0;
 		for (int i = 0; i < scene->lights.size(); i++) {
+			Rectangle* r;
+			if (r = dynamic_cast<Rectangle*>(scene->lights.at(i)->model->materials.at(0)->light->primitive)) {
+				volLightType = 0;
+			} else {
+				continue; //Light type not supported yet.
+				Sphere* s = dynamic_cast<Sphere*>(scene->lights.at(i)->model->materials.at(0)->light->primitive);
+
+				volLightType = 1;
+				renderCtx->updateUniform(volUniforms[16], { (uint8_t*)&lightPos[0], sizeof(glm::vec3) });
+				volLightRecSize = glm::vec3(s->radius);
+			}
+
 			InstancedModel* imLight = scene->lights.at(i);
 			lightPos[i] = getTranslation(imLight->transformToWCS);
 			glm::vec3 lightLookAt = lightPos[i];
@@ -1600,24 +1588,11 @@ namespace narvalengine {
 
 			renderCtx->updateUniform(shadowUniforms[1], { &lightProjection[0][0], sizeof(glm::mat4) });
 			renderCtx->updateUniform(shadowUniforms[2], { &lightView[i][0][0], sizeof(glm::mat4) });
-
 			renderCtx->updateUniform(pbrLightUniforms[indexpbr], { (uint8_t*)&lightPos[i], sizeof(glm::vec3) });
 			renderCtx->updateUniform(pbrLightUniforms[indexpbr + 1], { (uint8_t*)&imLight->model->materials.at(0)->light->li, sizeof(glm::vec3) });
 
-			//TODO temporary gambiarra
+			//TODO temporary gambiarra, should not dynamic cast
 			Model* m = scene->lights.at(i)->model;
-			Rectangle* r;
-			if (r = dynamic_cast<Rectangle*>(scene->lights.at(i)->model->materials.at(0)->light->primitive)) {
-				volLightType = 0;
-			}
-			else {
-				Sphere* s = dynamic_cast<Sphere*>(scene->lights.at(i)->model->materials.at(0)->light->primitive);
-
-				volLightType = 1;
-				renderCtx->updateUniform(volUniforms[16], { (uint8_t*)&lightPos[0], sizeof(glm::vec3) });
-				volLightRecSize = glm::vec3(s->radius);
-				continue;
-			}
 
 			renderCtx->updateUniform(volUniforms[16], { (uint8_t*)&lightPos[0], sizeof(glm::vec3) });
 			renderCtx->updateUniform(volUniforms[17], { (uint8_t*)&scene->lights.at(0)->model->materials.at(0)->light->li, sizeof(glm::vec3) });
@@ -1726,6 +1701,7 @@ namespace narvalengine {
 				//TODO not correct, either move a pointer inside mesh or... 
 				if (im->model->materials.at(0)->bsdf->bsdfType & BxDF_DIFFUSE) {
 					ModelHandler mh = rmToRenderAPI.at(im->modelID);
+					//TODO: if invalid, should set a "Debug texture", or should LOG FATAL?
 					if (mh.meshes.at(i).material.id == INVALID_HANDLE)
 						continue;
 
@@ -1758,9 +1734,9 @@ namespace narvalengine {
 						isMaterialSet[1] = false;
 
 					//material.normal
-					if (isHandleValid(mh.meshes.at(i).material.textures[ctz(TextureName::NORMAL_MAP)].id)) {
+					if (isHandleValid(mh.meshes.at(i).material.textures[ctz(TextureName::NORMAL)].id)) {
 						isMaterialSet[3] = true;
-						renderCtx->setTexture(mh.meshes.at(i).material.textures[ctz(TextureName::NORMAL_MAP)], pbrUniforms[9]);
+						renderCtx->setTexture(mh.meshes.at(i).material.textures[ctz(TextureName::NORMAL)], pbrUniforms[9]);
 					}else
 						isMaterialSet[3] = false;
 
@@ -1786,57 +1762,12 @@ namespace narvalengine {
 			}
 
 			if (im->model->materials.at(0)->bsdf->bsdfType & BxDF_TRANSMISSION) {
-
-				/*for (int i = 0; i < 43; i++)
-					renderCtx->setUniform(volUniforms[i]);
-
-				//texHandler e uniformHandler
-				ModelHandler mh = rmToRenderAPI.at(im->modelID);
-
-				if (isHandleValid(mh.meshes.at(0).material.textures[ctz(TextureName::TEX_1)].id))
-					renderCtx->setTexture(mh.meshes.at(0).material.textures[ctz(TextureName::TEX_1)], volUniforms[4]); //volume
-				//if (mh.meshes.at(0).textures.size() > 0)
-				//	renderCtx->setTexture(mh.meshes.at(0).textures.at(0), volUniforms[4]); //volume
-
-				//renderCtx->updateUniform(volUniforms[8], { (uint8_t*)&time, sizeof(time) }); //update time	
-				//renderCtx->updateUniform(volUniforms[25], { (uint8_t*)&frameCount, sizeof(frameCount) }); //update frameCount
-				//TODO invMaxDensity not setted as per volume
-				Medium* m = im->model->materials.at(0)->medium;
-				GridMedia* gm = (GridMedia*)m;
-				densityMc = gm->densityMultiplier;
-				invMaxDensity = gm->invMaxDensity;
-				VolumeBSDF *volbsdf = (VolumeBSDF*)im->model->materials.at(0)->bsdf->bxdf[0];
-				HG* hg = (HG*)volbsdf->phaseFunction;
-				g = hg->g;
-
-				scattering = gm->scattering / gm->densityMultiplier;
-				absorption = gm->absorption / gm->densityMultiplier;
-
-				renderCtx->updateUniform(volUniforms[28], { (uint8_t*)&invMaxDensity, sizeof(float) });
-				renderCtx->updateUniform(volUniforms[29], { (uint8_t*)&densityMc, sizeof(float) });
-
-				renderCtx->setTexture(fbhTex[(currentFrame + 1) % 2], volUniforms[5]); //background
-				renderCtx->setTexture(renderFrameDepthTex[(currentFrame + 1) % 2], volUniforms[6]); //backgroundDepth
-				renderCtx->setTexture(fbhTex[(currentFrame + 1) % 2], volUniforms[7]); //previous frame
-				//renderCtx->setTexture(shadowDepthTex, phongUniforms[10]); //shadowTex
-				if(infAreaLightTex.id != INVALID_HANDLE)
-					renderCtx->setTexture(infAreaLightTex, volUniforms[37]); //infArea Texture
-
-				renderCtx->updateUniform(volUniforms[0], { (uint8_t*)(&im->transformToWCS[0][0]), sizeof(im->transformToWCS) });
-				renderCtx->updateUniform(volUniforms[2], { (uint8_t*)camera.getCam(), sizeof(glm::mat4) });
-				renderCtx->updateUniform(volUniforms[3], { (uint8_t*)(camera.getPosition()), sizeof(glm::vec3) });
-				renderCtx->updateUniform(volUniforms[27], { (uint8_t*)&im->invTransformToWCS[0][0], sizeof(glm::mat4) });
-				renderCtx->setModel(rmToRenderAPI.at(im->modelID));
-
-				renderCtx->setFrameBuffer(fbh[currentFrame]);
-				glDisable(GL_DEPTH_TEST); //TODO temporary, should not expose GL here plus it should be enabled only on volRederingMode = 1 (PATH TRACING MODE)	
-				renderCtx->render(volProgramHandler);
-				glEnable(GL_DEPTH_TEST);*/
-
 				vms->proj = proj;
 				vms->cam = *camera.getCam();
-				vms->prepare(&camera, rmToRenderAPI.at(im->modelID), im, fbh[currentFrame], frameCount, fbhTex[(currentFrame + 1) % 2], defaultTex, renderFrameDepthTex[currentFrame]);
-
+				if (vms->currentMethod == VolumetricMethod::RAY_MARCHING || vms->currentMethod == VolumetricMethod::LOBE_SAMPLING)
+					vms->prepare(&camera, rmToRenderAPI.at(im->modelID), im, fbh[1], frameCount, fbhTex[1], fbhTex[0], renderFrameDepthTex[0]);
+				else
+					vms->prepare(&camera, rmToRenderAPI.at(im->modelID), im, fbh[currentFrame], frameCount, fbhTex[(currentFrame + 1) % 2], fbhTex[currentFrame], renderFrameDepthTex[currentFrame]);
 			}
 		}
 	}
@@ -1853,6 +1784,7 @@ namespace narvalengine {
 			renderCtx->setFrameBufferClear(fbRenderFrame[1], 0, 0, 0, 1);
 			renderCtx->setFrameBufferClear(fbRenderFrame[2], 0, 0, 0, 1);
 		}else if (vms->currentMethod == VolumetricMethod::RAY_MARCHING || vms->currentMethod == VolumetricMethod::LOBE_SAMPLING) {
+			//Render the whole scene at 0 and the scene with the volume at 1.
 			renderCtx->setFrameBufferClear(fbRenderFrame[0], 0, 0, 0, 1);
 			renderCtx->setFrameBufferClear(fbRenderFrame[1], 0, 0, 0, 1);
 			renderCtx->setFrameBufferClear(fbRenderFrame[2], 0, 0, 0, 1);
@@ -1863,6 +1795,37 @@ namespace narvalengine {
 
 		maxBounces = settings.bounces;
 		renderScene(&fbRenderFrame[0], &renderFrameTex[0], currentFrame);
+
+		//Glue scene with volume at 1 on top of the scene at 0.
+		if (vms->currentMethod == VolumetricMethod::RAY_MARCHING || vms->currentMethod == VolumetricMethod::LOBE_SAMPLING) {
+			//Display final result
+			model = glm::mat4(1);
+			model = glm::translate(model, { (WIDTH) / 2, (HEIGHT) / 2, 0 });
+			model = glm::scale(model, { WIDTH / 2, -HEIGHT / 2, 1 });
+
+			renderCtx->setUniform(composeTexUniforms[0]); //tex1
+			renderCtx->setUniform(composeTexUniforms[1]); //tex2
+			renderCtx->setUniform(composeTexUniforms[2]); //depth1
+			renderCtx->setUniform(composeTexUniforms[3]); //depth2
+			renderCtx->setUniform(composeTexUniforms[4]); 
+			renderCtx->setUniform(composeTexUniforms[5]); 
+			renderCtx->setUniform(composeTexUniforms[6]); 
+
+			renderCtx->setTexture(renderFrameTex[0], composeTexUniforms[0]);
+			renderCtx->setTexture(renderFrameTex[1], composeTexUniforms[1]);
+			renderCtx->setTexture(renderFrameDepthTex[0], composeTexUniforms[2]);
+			renderCtx->setTexture(renderFrameDepthTex[1], composeTexUniforms[3]);
+
+			renderCtx->updateUniform(composeTexUniforms[4], { (uint8_t*)(&model[0]), sizeof(model) });
+			renderCtx->updateUniform(composeTexUniforms[5], { (uint8_t*)(&orthoProj[0]), sizeof(model) });
+			renderCtx->updateUniform(composeTexUniforms[6], { (uint8_t*)(&staticCam[0]), sizeof(model) });
+
+			renderCtx->setModel(quadModelHandler);
+
+			renderCtx->setFrameBuffer(fbRenderFrame[2]);
+
+			renderCtx->render(composeTexProgramH);
+		}
 
 		//Display final result
 		model = glm::mat4(1);
@@ -1878,7 +1841,11 @@ namespace narvalengine {
 		renderCtx->updateUniform(uniforms[1], { (uint8_t*)(&orthoProj[0]), sizeof(model) });
 		renderCtx->updateUniform(uniforms[2], { (uint8_t*)(&staticCam[0]), sizeof(model) });
 
-		renderCtx->setTexture(renderFrameTex[currentFrame], uniforms[4]);
+		if (vms->currentMethod == VolumetricMethod::RAY_MARCHING || vms->currentMethod == VolumetricMethod::LOBE_SAMPLING)
+			renderCtx->setTexture(renderFrameTex[2], uniforms[4]);
+		else
+			renderCtx->setTexture(renderFrameTex[currentFrame], uniforms[4]);
+
 		renderCtx->setModel(quadModelHandler);
 
 		renderCtx->setFrameBuffer(fbRenderFrame[3]);
@@ -1922,4 +1889,22 @@ namespace narvalengine {
 
 		renderImGUI();
 	};
+
+
+	void SceneEditor::sortAndGroup(Scene *scene) {
+
+		std::vector<InstancedModel*> transmissiveModels;
+		std::vector<InstancedModel*> sorted;
+		for (InstancedModel* im : scene->instancedModels) {
+			if (im->model->materials.at(0)->bsdf->bsdfType & BxDF_TRANSMISSION) 
+				transmissiveModels.push_back(im);
+			else
+				sorted.push_back(im);
+		}
+
+		for (InstancedModel* im : transmissiveModels) 
+			sorted.push_back(im);
+
+		scene->instancedModels = sorted;
+	}
 }
