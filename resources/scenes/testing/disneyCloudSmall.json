@@ -1,0 +1,81 @@
+{
+	"version" : "0.0.1a",
+	
+	"materials": [
+		{
+			"name": "floorMaterial",
+			"type": "microfacet",
+			"roughness": 0.95,
+			"metallic": 0.0,
+			"albedo": [1, 1, 1]
+		},
+		{
+			"name": "emitter",
+			"type": "emitter",
+			"albedo": [10, 10, 10]
+		},
+		{
+			"name": "volumeMaterial",
+			"type": "volume",
+			"scattering": [1.1, 1.1, 1.1],
+			"absorption": [0.01, 0.01, 0.01],
+			"phaseFunction": "hg",
+			"g": 0.7,
+			"path" : "vdb/wdas_cloud_sixteenth.vdb",
+			"density": 500
+		}
+	],
+	
+	"primitives": [
+		{
+			"name": "rectLight",
+			"type": "rectangle",
+			"transform": {
+				"position": [0, 3, 0],
+				"scale": [1, 1, 1],
+				"rotation": [-89, 0, 0]
+			},
+			"materialName": "emitter"
+		},
+		{
+			"name": "cubeFloor",
+			"type": "rectangle",
+			"transform": {
+				"position": [0, 0, 0],
+				"scale": [20, 20, 20],
+				"rotation": [90, 0, 0]
+			},
+			"materialName": "floorMaterial"
+		},
+		{
+			"name": "volume",
+			"type": "volume",
+			"transform": {
+				"position": [0, 1.5, 1.0],
+				"scale": [2.27, 1.35, 1.92],
+				"rotation": [0, 0, 0]
+			},
+			"materialName": "volumeMaterial"
+		}
+	],
+
+	"camera": {
+		"position": [0, 1, -3],
+		"lookAt": [0, 2, 0],
+		"up": [0, 1, 0],
+		"speed": 5,
+		"vfov": 45,
+		"aperture": 0.0001,
+		"autoFocus": true,
+		"focus": 1
+	},
+	
+	"renderer": {
+		"resolution": [600, 300],
+		"spp": 1,
+		"bounces": 6,
+		"mode": "realtime",
+		"HDR": false,
+		"toneMapping": false
+	}
+}

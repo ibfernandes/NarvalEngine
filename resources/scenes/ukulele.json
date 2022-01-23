@@ -1,0 +1,74 @@
+{
+	"version" : "0.0.1a",
+	
+	"materials": [
+		{
+			"name": "floorMat",
+			"type": "microfacet",
+			"roughness": 0.95,
+			"metallic": 0.0,
+			"albedo": [0.9, 0.8, 0.9],
+			"normalMap": [0.5, 0.5, 1.0]
+		},
+		{
+			"name": "emitter",
+			"type": "emitter",
+			"albedo": [10, 10, 10]
+		}
+	],
+	
+	"primitives": [
+		{
+			"name": "rectLight",
+			"type": "rectangle",
+			"transform": {
+				"position": [0, 1, -2],
+				"scale": [4, 4, 4],
+				"rotation": [-90, 0, 0]
+			},
+			"materialName": "emitter"
+		},
+		{
+			"name": "cubeFloor",
+			"type": "rectangle",
+			"transform": {
+				"position": [0, 0, 0],
+				"scale": [300, 300, 1],
+				"rotation": [90, 0, 0]
+			},
+			"materialName": "floorMat"
+		},
+		{
+			"name": "sphere",
+			"type": "obj",
+			"transform": {
+				"position": [0, 0.2, 0],
+				"scale": [2, 2, 2],
+				"rotation": [0, 180, 0]
+			},
+			"path" : "models/ukulele/ukulele.obj"
+		}
+	],
+
+	"camera": {
+		"position": [0, 0.5, -2],
+		"positionOriginal": [0, 1, -6.5],
+		"lookAt": [0, 1, 0],
+		"up": [0, 1, 0],
+		"speed": 5,
+		"vfov": 45,
+		"aperture": 0.0001,
+		"autoFocus": true,
+		"focus": 1
+	},
+	
+	"renderer": {
+		"resolution2": [1280, 720],
+		"resolution": [940, 620],
+		"spp": 1,
+		"bounces": 6,
+		"mode": "realtime",
+		"HDR": true,
+		"toneMapping": false
+	}
+}

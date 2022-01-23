@@ -166,7 +166,7 @@ vec3 calculateLightPoint(LightPoint light){
 	vec3 halfway = normalize(toCam + toLight);
 	float distance = length(light.position - fragIn.worldCoord);
 	float attenuation = 1.0 / (distance * distance);
-	vec3 radiance = (light.color/100) * attenuation;
+	vec3 radiance = (light.color) * attenuation;
 
 	// Cook-Torrance BRDF
 	float NDF = distributionGGX(normal, halfway, roughness);   

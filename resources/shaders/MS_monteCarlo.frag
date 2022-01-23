@@ -50,6 +50,7 @@ struct Light {
 	vec3 maxVertex;
 	vec3 size;
 	mat4 transformWCS;
+	vec3 scale;
     vec3 Li;
 	int type;
 };
@@ -117,7 +118,7 @@ float convertAreaToSolidAngle(float pdfArea, vec3 normal, vec3 p1, vec3 p2) {
 }
 
 float getLightPdf(vec3 intersecP, vec3 normal, Light light, vec3 pointOnLight){
-	vec3 sizeWCS = vec3(light.transformWCS[0][0], light.transformWCS[1][1], light.transformWCS[2][2]) * light.size;
+	vec3 sizeWCS = light.scale * light.size;
 	float area = 1;
 	
 	for (int i = 0; i < 3; i++)
@@ -289,7 +290,7 @@ vec3 evalBSDF(vec3 incoming, vec3 scattered, vec3 normal) {
 
 vec3 sampleBSDF(vec3 incoming, vec3 normal){
 	vec3 ss, ts;
-	normal = vec3(0,0,1);//TODO temp
+	normal = vec3(0,1,0);//TODO temp
 	generateOrthonormalCS(normal, ss, ts);
 	incoming = toLCS(incoming, normal, ss, ts);
 	vec3 scattered = sampleHG(incoming, normal);
