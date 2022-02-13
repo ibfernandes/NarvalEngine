@@ -1,29 +1,37 @@
 #include "core/GlossyBSDF.h"
 
 namespace narvalengine {
-	GlossyBSDF::GlossyBSDF(MicrofacetDistribution *distribution, Fresnel *fresnel) {
+	GlossyBSDF::GlossyBSDF(GGXDistribution *distribution, Fresnel *fresnel) {
 		this->distribution = distribution;
 		this->fresnel = fresnel;
 		bxdftype = BxDFType(BxDF_GLOSSY | BxDF_DIFFUSE);
 	}
 
-	glm::vec3 GlossyBSDF::sample(glm::vec3 incoming, glm::vec3 normal) {
+	glm::vec3 GlossyBSDF::sample(const glm::vec3& incoming, const glm::vec3& normal, const RayIntersection& ri) {
+		float roughness = ri.primitive->material->sampleMaterial(TextureName::ROUGHNESS, ri.uv.x, ri.uv.y).x;
+		distribution->alpha = roughness * roughness;
 		return distribution->sample(incoming, normal);
 	}
 
-	float GlossyBSDF::pdf(glm::vec3 incoming, glm::vec3 scattered) {
-		glm::vec3 microfacetNormal = glm::normalize(-incoming + scattered);
+	float GlossyBSDF::pdf(const glm::vec3& incoming, const glm::vec3& scattered, const RayIntersection& ri) {
+		glm::vec3 microfacetNormal = glm::normalize(incoming + scattered);
+		float roughness = ri.primitive->material->sampleMaterial(TextureName::ROUGHNESS, ri.uv.x, ri.uv.y).x;
+		distribution->alpha = roughness * roughness;
 		return distribution->pdf(scattered, microfacetNormal);
+
 	}
 
-	glm::vec3 GlossyBSDF::eval(glm::vec3 incoming, glm::vec3 scattered, RayIntersection ri) {
-		glm::vec3 H = glm::normalize(-incoming + scattered);
-		float HdotV = glm::dot(-incoming, H);
-		float NdotV = cosTheta(-incoming);
+	glm::vec3 GlossyBSDF::eval(const glm::vec3& incoming, const glm::vec3& scattered, const RayIntersection& ri) {
+		float roughness = ri.primitive->material->sampleMaterial(TextureName::ROUGHNESS, ri.uv.x, ri.uv.y).x;
+		distribution->alpha = roughness * roughness;
+
+		glm::vec3 H = glm::normalize(incoming + scattered);
+		float HdotV = glm::dot(incoming, H);
+		float NdotV = cosTheta(incoming);
 		float NdotL = cosTheta(scattered);
 
 		float  D = distribution->D(H);
-		float  G = distribution->G(-incoming, scattered);
+		float  G = distribution->G(incoming, scattered);
 		glm::vec3 F = fresnel->eval(HdotV);
 
 		glm::vec3 numerator = D * G * F;

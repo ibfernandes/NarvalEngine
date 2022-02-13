@@ -32,7 +32,7 @@ namespace narvalengine {
 		if (sampledMedia) {
 			//move ray to near intersection at voxel
 			scattered.o = incoming.getPointAt(t);
-			scattered.d = intersection.primitive->material->bsdf->sample(incoming.d, intersection.normal);
+			scattered.d = intersection.primitive->material->bsdf->sample(incoming.d, intersection.normal, intersection);
 		} else {
 			scattered.o = incoming.getPointAt(distInsideVolume + 0.001f);
 			scattered.d = incoming.d;

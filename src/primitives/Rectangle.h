@@ -21,5 +21,6 @@ namespace narvalengine {
 		glm::vec2 samplePointOnTexture(glm::vec3 pointOnSurface);
 		float pdf(RayIntersection interaction, glm::mat4 transformToWCS);
 		glm::vec4 barycentricCoordinates(glm::vec3 p, glm::vec3 a, glm::vec3 b, glm::vec3 c, glm::vec3 d);
+		void calculateAABB(glm::vec3& min, glm::vec3& max);
 	};
 }

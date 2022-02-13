@@ -18,6 +18,7 @@ namespace narvalengine {
 
 
 	ResourceManager::~ResourceManager() {
+		//TODO delete all resources/
 	}
 
 
@@ -130,10 +131,14 @@ namespace narvalengine {
 	}
 
 	Material * ResourceManager::getMaterial(std::string name) {
+		if (materials.count(genStringID(name.c_str())) == 0)
+			LOG(FATAL) << "Material " << name << " doesn't exist.";
 		return materials.at(genStringID(name.c_str()));
 	}
 
 	Material* ResourceManager::getMaterial(StringID id) {
+		if (materials.count(id) == 0)
+			LOG(FATAL) << "Material " << id << " doesn't exist.";
 		return materials.at(id);
 	}
 
@@ -143,7 +148,7 @@ namespace narvalengine {
 			LOG(INFO) << "Texture with name " << name << " was already set. Ignoring new insertion and returning previous ID.";
 			return id;
 		}
-
+		t->resourceID = id;
 		textures.insert({ id, t });
 		return id;
 	}
@@ -280,8 +285,10 @@ namespace narvalengine {
 		return id;
 	}
 
-	StringID ResourceManager::loadTexture(std::string name, std::string path) {
+	StringID ResourceManager::loadTexture(std::string name, std::string path, bool absolutePath) {
 		StringID id = genStringID(name.c_str());
+		if (!absolutePath)
+			path = (RESOURCES_DIR + path);
 
 		if (textures.count(id) > 0) {
 			LOG(INFO) << "Texture with name " << name << " was already loaded. Ignoring loading again and returning previous ID.";
@@ -289,18 +296,19 @@ namespace narvalengine {
 		}
 
 		int width, height, channels;
-		unsigned char *data = stbi_load((RESOURCES_DIR + path).c_str(), &width, &height, &channels, STBI_rgb_alpha);
+		unsigned char *data = stbi_load(path.c_str(), &width, &height, &channels, STBI_rgb_alpha);
 
 		if (data == nullptr) {
-			LOG(FATAL) << "Couldn't read the file at " << RESOURCES_DIR + path << ".";
+			LOG(FATAL) << "Couldn't read the file at " << path << ".";
 			return NE_INVALID_STRING_ID;
 		}
 
 		uint32_t sizeBytes = sizeof(char) * width * height * 4;
 		
-		int flags = NE_TEX_SAMPLER_UVW_CLAMP | NE_TEX_SAMPLER_MIN_MAG_NEAREST;
-
-		textures.insert({ id, new Texture(width, height, RGBA8, flags, {data, sizeBytes}) });
+		int flags = NE_TEX_SAMPLER_UVW_MIRROR| NE_TEX_SAMPLER_MIN_MAG_NEAREST;
+		Texture *texture = new Texture(width, height, RGBA8, flags, { data, sizeBytes });
+		texture->resourceID = id;
+		textures.insert({ id, texture });
 		stbi_image_free(data);
 
 		return id;
@@ -342,7 +350,7 @@ namespace narvalengine {
 		std::ifstream fc(RESOURCES_DIR + fragmentShaderPath);
 
 		if (!fc) {
-			LOG(FATAL) << "Couldn't read the file at " << RESOURCES_DIR + vertexShaderPath << ".";
+			LOG(FATAL) << "Couldn't read the file at " << RESOURCES_DIR + fragmentShaderPath << ".";
 			return NE_INVALID_STRING_ID;
 		}
 

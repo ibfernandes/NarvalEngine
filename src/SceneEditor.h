@@ -7,11 +7,11 @@
 #include "core/Camera.h"
 #include "materials/Texture.h"
 #include "core/Renderer.h"
-#include "imgui.h"
 #include "utils/ImGuiExt.h"
 #include "utils/IconsFontAwesome5.h"
 #include "utils/ColorPalette.h"
-#include "addons/ImGuizmo/ImGuizmo.h" 
+#include "ImGuizmo.h" 
+#include "imnodes.h" 
 #include <glm/glm.hpp>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -19,12 +19,16 @@
 #include "core/Camera.h"
 #include "VMS.h"
 #include <sstream>
+#include "NodeEditor.h"
+#include "StandartSurfaceEditor.h"
+
 
 namespace narvalengine {
 
 	enum RenderingMode {
 		OFFLINE_RENDERING_MODE,
-		REALTIME_RENDERING_MODE
+		REALTIME_RENDERING_MODE,
+		NODE_EDITOR_MODE
 	};
 
 	/**
@@ -71,6 +75,7 @@ namespace narvalengine {
 		void sortAndGroup(Scene *scene);
 		void generateModelHandlers();
 		void deleteModelHandlers();
+		void renderSceneStandartSurface(FrameBufferHandler* fbh, TextureHandler* fbhTex, int currentFrame);
 	public:
 		GLint WIDTH, HEIGHT;
 		float aspectRatio;
@@ -293,6 +298,12 @@ namespace narvalengine {
 
 		glm::vec4 defaultTexColor = glm::vec4(0 / 255.0f, -0 / 255.0f, 0 / 255.0f, 1);
 		TextureHandler defaultTex;
+
+		//Node Editor
+		NodeEditor nodeEditor;
+
+		//
+		StandartSurfaceEditor standartSurfaceEditor;
 
 		SceneEditor();
 		void init();

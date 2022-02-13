@@ -70,6 +70,11 @@ namespace narvalengine {
 		 * @return eval.
 		 */
 		float geometrySchlickGGX(float NdotV);
+
+		static float roughnessToAlpha(float roughness) {
+			return std::sqrt(roughness);
+		}
 	};
+
 
 }

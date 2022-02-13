@@ -40,6 +40,8 @@ namespace narvalengine {
 		UniformHandler lightUniforms[maxUniforms];
 		glm::vec3 lightPos[maxUniforms / 6];
 		glm::vec3 lightSize[maxUniforms / 6];
+		glm::vec3 lightScale[maxUniforms / 6];
+		const int lightStructElements = 7;
 
 		//MS_rayMarching shader parameters
 		//rm = Ray Marching
@@ -120,6 +122,7 @@ namespace narvalengine {
 				}
 
 				lightSize[i] = r->getSize();
+				lightScale[i] = getScale(scene->lights.at(i)->transformToWCS);
 
 				renderCtx->updateUniform(lightUniforms[index], { (uint8_t*)&lightPos[0], sizeof(glm::vec3) });
 				renderCtx->updateUniform(lightUniforms[index + 1], { (uint8_t*)&scene->lights.at(i)->model->materials.at(0)->light->li, sizeof(glm::vec3) });
@@ -127,6 +130,7 @@ namespace narvalengine {
 				renderCtx->updateUniform(lightUniforms[index + 3], { (uint8_t*)r->vertexData[1], sizeof(glm::vec3) });
 				renderCtx->updateUniform(lightUniforms[index + 4], { (uint8_t*)&lightSize[i], sizeof(glm::vec3) });
 				renderCtx->updateUniform(lightUniforms[index + 5], { (uint8_t*)&scene->lights.at(i)->transformToWCS, sizeof(glm::mat4) });
+				renderCtx->updateUniform(lightUniforms[index + 6], { &lightScale[i], sizeof(glm::vec3)});
 			}
 		}
 
@@ -137,7 +141,7 @@ namespace narvalengine {
 				InstancedModel* imLight = scene->lights.at(i);
 				lightPos[i] = getTranslation(imLight->transformToWCS);
 
-				int index = 6 * i;
+				int index = lightStructElements * i;
 
 				//TODO missing minVertex, maxVertex and size
 				std::string name = "lights[" + std::to_string(i) + "]";
@@ -147,6 +151,7 @@ namespace narvalengine {
 				lightUniforms[index + 3] = renderCtx->createUniform(std::string(name + ".maxVertex").c_str(), { (uint8_t*)&dummyVar[0], sizeof(glm::vec3) }, UniformType::Vec3, 0);
 				lightUniforms[index + 4] = renderCtx->createUniform(std::string(name + ".size").c_str(), { (uint8_t*)&dummyVar[0], sizeof(glm::vec3) }, UniformType::Vec3, 0);
 				lightUniforms[index + 5] = renderCtx->createUniform(std::string(name + ".transformWCS").c_str(), { (uint8_t*)&scene->lights.at(i)->transformToWCS, sizeof(glm::mat4) }, UniformType::Mat4, 0);
+				lightUniforms[index + 6] = renderCtx->createUniform(std::string(name + ".scale").c_str(), { (uint8_t*)&dummyVar[0], sizeof(glm::vec3)}, UniformType::Vec3, 0);
 			}
 		}
 

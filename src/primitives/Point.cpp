@@ -24,4 +24,9 @@ namespace narvalengine {
 	float Point::pdf(RayIntersection interaction, glm::mat4 transformToWCS) {
 		return 1;
 	}
+
+	void Point::calculateAABB(glm::vec3& min, glm::vec3& max) {
+		min = *((glm::vec3*)vertexData[0]);
+		max = *((glm::vec3*)vertexData[0]);
+	}
 }

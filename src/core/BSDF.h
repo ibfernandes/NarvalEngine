@@ -29,18 +29,20 @@ namespace narvalengine {
 		 * 
 		 * @param incoming in Spherical Coordinate System (SCS).
 		 * @param normal in Spherical Coordinate System (SCS).
+		 * @param ri in Spherical Coordinate System (SCS).
 		 * @return sampled direction in Spherical Coordinate System (SCS).
 		 */
-		virtual glm::vec3 sample(glm::vec3 incoming, glm::vec3 normal) = 0;
+		virtual glm::vec3 sample(const glm::vec3 &incoming, const glm::vec3 &normal, const RayIntersection &ri) = 0;
 
 		/**
 		 * Calculates the Probability Density Function (PDF) of sampling this scattered direction in Spherical Coordinate System (SCS).
 		 * 
 		 * @param incoming in Spherical Coordinate System (SCS).
 		 * @param scattered in Spherical Coordinate System (SCS).
+		 * @param ri in Spherical Coordinate System (SCS).
 		 * @return pdf.
 		 */
-		virtual float pdf(glm::vec3 incoming, glm::vec3 scattered) = 0;
+		virtual float pdf(const glm::vec3 &incoming, const glm::vec3 &scattered, const RayIntersection &ri) = 0;
 
 		/**
 		 * Evals the BSDF function fr(x, w_i, w_o) in Spherical Coordinate System (SCS).
@@ -50,12 +52,13 @@ namespace narvalengine {
 		 * @param ri in Spherical Coordinate System (SCS).
 		 * @return eval.
 		 */
-		virtual glm::vec3 eval(glm::vec3 incoming, glm::vec3 scattered, RayIntersection ri) = 0;
+		virtual glm::vec3 eval(const glm::vec3 &incoming, const glm::vec3 &scattered, const RayIntersection &ri) = 0;
 	};
 
 	/**
-	*	All BSDF functions receive Rays in World Coordinate System (WCS) and converts them to Spherical Coordinate System (SCS), where the z-axis is up, before invoking any BxDF functions.
-	*	All results are returned in World Coordinate System (WCS).
+	* All BSDF functions receive Rays in World Coordinate System (WCS) and converts them to Spherical Coordinate System (SCS), where the z-axis is up, before invoking any BxDF functions.
+	* It is also necessary to negate the incoming ray before converting it to SCS, as we are pointing from the camera TO the hit point.
+	* All results are returned in World Coordinate System (WCS).
 	*/
 	class BSDF {
 	public:
@@ -91,13 +94,13 @@ namespace narvalengine {
 		 * 
 		 * @param incoming in world coordinates space (WCS).
 		 * @param normal in world coordinates space (WCS).
+		 * @param ri RayIntersection where this incomingRay hit and has its origin set to.
 		 * @return sampled direction in world coordinates space (WCS).
 		 */
-		glm::vec3 sample(glm::vec3 incoming, glm::vec3 normal) {
+		glm::vec3 sample(const glm::vec3 &incoming, const glm::vec3 &normal, const RayIntersection &ri) {
 			glm::vec3 ss, ts;
 			generateOrthonormalCS(normal, ss, ts);
-			incoming = toLCS(incoming, normal, ss, ts);
-			glm::vec3 scattered = bxdf[0]->sample(incoming, normal);
+			glm::vec3 scattered = bxdf[0]->sample(toLCS(-glm::normalize(incoming), normal, ss, ts), normal, ri);
 			scattered = toWorld(scattered, normal, ss, ts);
 			return scattered;
 		}
@@ -108,18 +111,17 @@ namespace narvalengine {
 		 * @param incoming in world coordinates space (WCS).
 		 * @param scattered in world coordinates space (WCS).
 		 * @param normal in world coordinates space (WCS).
+		 * @param ri RayIntersection where this incomingRay hit and has its origin set to.
 		 * @return pdf.
 		 */
-		float pdf(glm::vec3 incoming, glm::vec3 scattered, glm::vec3 normal) {
+		float pdf(const glm::vec3 &incoming, const glm::vec3 &scattered, const glm::vec3 &normal, const RayIntersection &ri) {
 			if (!(bsdfType & BxDF_TRANSMISSION) && (!sameHemisphere(-incoming, normal) || !sameHemisphere(scattered, normal)))
 				return 0;
 
 			glm::vec3 ss, ts;
 			generateOrthonormalCS(normal, ss, ts);
-			incoming = toLCS(incoming, normal, ss, ts);
-			scattered = toLCS(scattered, normal, ss, ts);
 
-			return bxdf[0]->pdf(incoming, scattered);
+			return bxdf[0]->pdf(toLCS(-glm::normalize(incoming), normal, ss, ts), toLCS(scattered, normal, ss, ts), ri);
 		}
 
 		/**
@@ -130,15 +132,13 @@ namespace narvalengine {
 		 * @param ri RayIntersection where this incomingRay hit and has its origin set to.
 		 * @return eval.
 		 */
-		glm::vec3 eval(glm::vec3 incoming, glm::vec3 scattered, RayIntersection ri) {
+		glm::vec3 eval(const glm::vec3 &incoming, const glm::vec3 &scattered, const RayIntersection &ri) {
 			if (!(bsdfType & BxDF_TRANSMISSION) && (!sameHemisphere(-incoming, ri.normal) || !sameHemisphere(scattered, ri.normal)))
 				return glm::vec3(0);
 			glm::vec3 ss, ts;
 			generateOrthonormalCS(ri.normal, ss, ts);
-			incoming = toLCS(incoming, ri.normal, ss, ts);
-			scattered = toLCS(scattered, ri.normal, ss, ts);
 
-			return bxdf[0]->eval(incoming, scattered, ri);
+			return bxdf[0]->eval(toLCS(-glm::normalize(incoming), ri.normal, ss, ts), toLCS(scattered, ri.normal, ss, ts), ri);
 		}
 	};
 

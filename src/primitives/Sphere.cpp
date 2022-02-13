@@ -13,6 +13,11 @@ namespace narvalengine {
 		return glm::vec3(*vertexData[0], *(vertexData[0] + 1), *(vertexData[0] + 2));
 	}
 
+	void Sphere::calculateAABB(glm::vec3& min, glm::vec3& max) {
+		min = getCenter() - radius;
+		max = getCenter() + radius;
+	}
+
 	bool Sphere::intersect(Ray r, RayIntersection &hit) {
 		glm::vec3 center = glm::vec3(*vertexData[0], *(vertexData[0] + 1), *(vertexData[0] + 2));
 		glm::vec3 oc = r.origin - center;
@@ -42,24 +47,8 @@ namespace narvalengine {
 		glm::vec3 sphereCenter = glm::vec3(*vertexData[0], *(vertexData[0] + 1), *(vertexData[0] + 2));
 		sphereCenter = transformToWCS * glm::vec4(sphereCenter, 1.0f);
 
-		glm::vec3 w = sphereCenter - interaction.hitPoint;
-		float distanceToCenter = glm::length(w);
-		w = glm::normalize(w);
-
-		float q = glm::max(0.0, std::sqrt(1.0 - (radius / distanceToCenter) * (radius / distanceToCenter)));
-		glm::vec3 v, u;
-		generateOrthonormalCS(w, v, u);
-
-		float r1 = random();
-		float r2 = random();
-		float theta = std::acos(1 - r1 + r1 * q);
-		float phi = TWO_PI * r2;
-
-		glm::vec3 local = sphericalToCartesian(radius, theta, phi);
-		//direction to x'
-		glm::vec3 nwp = glm::normalize(toWorld(glm::normalize(local), w, v, u));
-
-		return toWorld(local, w, v, u);
+		glm::vec3 normal = glm::normalize(interaction.hitPoint - sphereCenter);
+		return sphereCenter + normal * radius;
 	}
 
 	glm::vec2 Sphere::samplePointOnTexture(glm::vec3 pointOnSurface) {
@@ -73,7 +62,8 @@ namespace narvalengine {
 		float distanceToCenter = glm::length(w);
 		float q = glm::max(0.0, std::sqrt(1.0 - (radius / distanceToCenter) * (radius / distanceToCenter)));
 
-		//Uniform cone PDF
-		return 1.0f / (2.0f * PI * (1.0f - q));
+		return convertAreaToSolidAngle(1.0f / 4.0f * PI * radius * radius, interaction.normal, interaction.hitPoint, samplePointOnSurface(interaction, transformToWCS));
+		//Uniform cone PDF.
+		//return 1.0f / (2.0f * PI * (1.0f - q));
 	}
 }

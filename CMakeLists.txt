@@ -115,12 +115,15 @@ set(STB_SOURCES
 #----------------------------------------------------------------------
 # ASSIMP
 # Set ASSIMP options and add directory
+set(ASSIMP_RAPIDJSON_NO_MEMBER_ITERATOR OFF)
 set(ASSIMP_BUILD_ASSIMP_TOOLS OFF)
 set(ASSIMP_BUILD_SAMPLES OFF)
 set(ASSIMP_BUILD_TESTS OFF)
 set(ASSIMP_NO_EXPORT ON)
 set(ASSIMP_BUILD_ALL_IMPORTERS_BY_DEFAULT FALSE)
-set(ASSIMP_BUILD_OBJ_IMPORTER TRUE) #Supports only OBJ files for now.
+set(ASSIMP_BUILD_OBJ_IMPORTER TRUE) 
+set(ASSIMP_BUILD_GLTF_IMPORTER TRUE) 
+set(ASSIMP_BUILD_GLTF_IMPORTER TRUE) 
 add_subdirectory(includes/assimp)
 include_directories(includes/assimp/include)
 # The config.h file is created only in the build directory, so this line below is a workaround to include this file
@@ -159,11 +162,22 @@ set(IMGUI_SOURCES
     "includes/imgui/imgui_draw.cpp"
     "includes/imgui/imgui_demo.cpp"
     "includes/imgui/imgui_widgets.cpp"
-    "includes/imgui/addons/ImGuizmo/ImGuizmo.h"
-    "includes/imgui/addons/ImGuizmo/ImGuizmo.cpp"
-    "includes/imgui/examples/imgui_impl_glfw.cpp"
-    "includes/imgui/examples/imgui_impl_opengl3.cpp"
+    "includes/imgui/imgui_tables.cpp"
+    "includes/imgui/backends/imgui_impl_opengl3.h"
+    "includes/imgui/backends/imgui_impl_opengl3.cpp"
+    "includes/imgui/backends/imgui_impl_glfw.h"
+    "includes/imgui/backends/imgui_impl_glfw.cpp"
+    "includes/ImGuizmo/ImGuizmo.h"
+    "includes/ImGuizmo/ImGuizmo.cpp"
+    "includes/imnodes/imnodes.h"
+    "includes/imnodes/imnodes.cpp"
+    "includes/imnodes/imnodes_internal.h"
 )
+
+#----------------------------------------------------------------------
+# ImGui Addons
+include_directories(includes/ImGuizmo)
+include_directories(includes/imnodes)
 
 #----------------------------------------------------------------------
 # GLFW

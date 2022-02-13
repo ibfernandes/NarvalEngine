@@ -1,4 +1,5 @@
 #include "utils/ImGuiExt.h"
+#include "utils/ImGuiStyle.h"
 
 namespace ImGuiExt {
     static bool Items_ArrayGetter(void* data, int idx, const char** out_text){
@@ -57,7 +58,7 @@ namespace ImGuiExt {
 
         ImGui::ListBoxFooter();
         if (value_changed)
-            ImGui::MarkItemEdited(g.CurrentWindow->DC.LastItemId);
+            ImGui::MarkItemEdited(g.LastItemData.ID);
 
         return value_changed;
     }
@@ -88,5 +89,24 @@ namespace ImGuiExt {
 
     ImVec4 add(ImVec4 vec4, float v) {
         return ImVec4(vec4.x + v, vec4.y + v, vec4.y + v, vec4.z + v);
+    }
+
+    void ColorPicker(const char* id, float* color, ImVec2 buttonSize, ImGuiColorEditFlags flags) {
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(color[0], color[1], color[2], 1));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(color[0], color[1], color[2], 1));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(color[0], color[1], color[2], 1));
+        if (ImGui::Button("", buttonSize))
+            ImGui::OpenPopup("mypicker");
+
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, narvalengine::imGuiStyleDefs.windowPadding);
+        if (ImGui::BeginPopup("mypicker")) {
+            ImGui::ColorPicker4(id, color, ImGuiColorEditFlags_NoSidePreview | ImGuiColorEditFlags_NoSmallPreview);
+            ImGui::EndPopup();
+        }
+        ImGui::PopStyleVar();
+
+        ImGui::PopStyleColor();
+        ImGui::PopStyleColor();
+        ImGui::PopStyleColor();
     }
 };

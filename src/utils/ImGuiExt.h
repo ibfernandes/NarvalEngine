@@ -1,7 +1,7 @@
 #pragma once
 #include "imgui.h"
 #include "imgui_internal.h"
-#include "addons/ImGuizmo/ImGuizmo.h"
+#include "ImGuizmo.h"
 #include <glm/glm.hpp>
 #include <string>
 
@@ -25,4 +25,6 @@ namespace ImGuiExt{
 	* @param padding in pixels.
 	*/
 	void PaddedText(const char *text, ImVec2 padding);
+
+	void ColorPicker(const char* id, float *color, ImVec2 buttonSize, ImGuiColorEditFlags flags);
 };

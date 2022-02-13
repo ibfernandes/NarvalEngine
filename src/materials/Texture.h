@@ -8,6 +8,7 @@
 #include "utils/Math.h"
 #include <glog/logging.h>
 #include <magic_enum.hpp>
+#include "utils/StringID.h"
 
 namespace narvalengine {
 	/**
@@ -85,11 +86,21 @@ namespace narvalengine {
 		TextureChannelFormat textureChannelFormat;
 		int samplerFlags;
 		MemoryBuffer mem;
+		StringID resourceID = NE_INVALID_STRING_ID;
 
 		Texture();
 		Texture(int width, int height, TextureLayout texFormat, int samplerFlags, MemoryBuffer memBuffer);
 		Texture(int width, int height, int depth, TextureLayout texFormat, int samplerFlags, MemoryBuffer memBuffer);
 		glm::ivec3 getResolution();
+
+		/**
+		 * Wraps the texture coordinates {@code u}, {@code v} and {@code w} according to the texture sampling flags set in this {@code samplerFlags}.
+		 * 
+		 * @param u
+		 * @param v
+		 * @param w
+		 */
+		void wrapTextureCoordinates(float &u, float &v, float &w);
 
 		/**
 		 * Samples directly at the {@code index}.
@@ -102,9 +113,9 @@ namespace narvalengine {
 		/**
 		 * Samples a pixel from this texture using the UVW texture coordinates {@code u}, {@code v} and {@code w}.
 		 * 
-		 * @param u must be in the interval [0, 1].
-		 * @param v must be in the interval [0, 1].
-		 * @param w must be in the interval [0, 1].
+		 * @param u.
+		 * @param v.
+		 * @param w.
 		 * @return sampled color.
 		 */
 		glm::vec4 sample(float u, float v = 0, float w = 0);

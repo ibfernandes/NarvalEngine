@@ -10,4 +10,6 @@
 #include "primitives/Model.h"
 #include "primitives/Point.h"
 #include "core/RendererAPI.h"
+#include "integrators/VolumetricPathIntegrator.h"
+#include "io/SceneReader.h"
 #include <limits>

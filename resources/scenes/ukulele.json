@@ -22,7 +22,7 @@
 			"name": "rectLight",
 			"type": "rectangle",
 			"transform": {
-				"position": [0, 1, -2],
+				"position": [0, 3, -2],
 				"scale": [4, 4, 4],
 				"rotation": [-90, 0, 0]
 			},
@@ -39,7 +39,7 @@
 			"materialName": "floorMat"
 		},
 		{
-			"name": "sphere",
+			"name": "ukulele",
 			"type": "obj",
 			"transform": {
 				"position": [0, 0.2, 0],

@@ -9,10 +9,12 @@
 #include "materials/Texture.h"
 #include "SceneEditor.h"
 #include "imgui.h"
-#include "examples/imgui_impl_glfw.h"
-#include "examples/imgui_impl_opengl3.h"
+#include "backends/imgui_impl_glfw.h"
+#include "backends/imgui_impl_opengl3.h"
+#include "imnodes.h" 
 #include "utils/IconsFontAwesome5.h"
 #include "utils/ColorPalette.h"
+#include "utils/ImGuiStyle.h"
 #include <stdlib.h>
 #include <time.h> 
 #include <glad/glad.h>
@@ -20,6 +22,7 @@
 #include <iostream>
 #include <glog/logging.h>
 #include "optick.h"
+
 
 
 namespace narvalengine {

@@ -19,7 +19,7 @@
 	"primitives": [
 		{
 			"name": "rectLight",
-			"type": "sphere",
+			"type": "rectangle",
 			"radius": 1,
 			"transform": {
 				"position": [0, 12, -7],

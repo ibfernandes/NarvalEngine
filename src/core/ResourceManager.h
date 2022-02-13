@@ -64,9 +64,10 @@ namespace narvalengine {
 		 * 
 		 * @param name
 		 * @param path
+		 * @param absolutePath if true, uses the path. If false uses the relative path to the RESOURCES_DIR
 		 * @return 
 		 */
-		StringID loadTexture(std::string name, std::string path);
+		StringID loadTexture(std::string name, std::string path, bool absolutePath = false);
 		Texture* getTexture(std::string name);
 		Texture* getTexture(StringID id);
 

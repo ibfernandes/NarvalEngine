@@ -23,8 +23,8 @@ namespace narvalengine {
 	}
 
 	float GGXDistribution::G(glm::vec3 incoming, glm::vec3 outgoing) {
-		glm::vec3 normal = glm::normalize(-incoming + outgoing);
-		float NoV = glm::dot(normal, -incoming);
+		glm::vec3 normal = glm::normalize(incoming + outgoing);
+		float NoV = glm::dot(normal, incoming);
 		float NoL = glm::dot(normal, outgoing);
 		float NdotV = glm::max(NoV, 0.0f);
 		float NdotL = glm::max(NoL, 0.0f);

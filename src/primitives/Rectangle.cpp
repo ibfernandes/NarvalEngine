@@ -8,6 +8,11 @@ namespace narvalengine {
 		return glm::vec3(*vertexData[n], *(vertexData[n] + 1), *(vertexData[n] + 2));
 	}
 
+	void Rectangle::calculateAABB(glm::vec3& min, glm::vec3& max) {
+		min = getVertex(0);
+		max = getVertex(1);
+	}
+
 	glm::vec3 Rectangle::getSize() {
 		glm::vec3 v0 = getVertex(0);
 		glm::vec3 v1 = getVertex(1);
@@ -20,7 +25,7 @@ namespace narvalengine {
 	}
 
 	glm::vec3 Rectangle::getCenter() {
-		//Assumes that v[1] is the Rectangle's max
+		//Assumes that v[1] is the Rectangle's max.
 		return getVertex(1) - getSize() / 2.0f;
 	}
 
@@ -72,6 +77,7 @@ namespace narvalengine {
 
 	glm::vec3 Rectangle::samplePointOnSurface(RayIntersection interaction, glm::mat4 transformToWCS) {
 		glm::vec3 e(random(), random(), random());
+		//Assumes v0 is the min point.
 		glm::vec3 v0 = getVertex(0);
 		glm::vec3 size = getSize();
 		glm::vec3 pointOnSurface = glm::vec3(v0.x + size.x * e[0], v0.y + size.y * e[1], v0.z + size.z * e[2]);
@@ -151,7 +157,9 @@ namespace narvalengine {
 	}
 
 	float Rectangle::pdf(RayIntersection interaction, glm::mat4 transformToWCS) {
-		glm::vec3 sizeWCS = glm::vec3(transformToWCS[0][0], transformToWCS[1][1], transformToWCS[2][2]) * getSize();
+		glm::vec3 size = getSize();
+		glm::vec3 scale = getScale(transformToWCS);
+		glm::vec3 sizeWCS = scale * size;
 
 		float area = 1;
 

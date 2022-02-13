@@ -22,22 +22,23 @@ namespace narvalengine {
 		*(vertexData[1] + 2) = v2.z;
 	}
 
+	void AABB::calculateAABB(glm::vec3& min, glm::vec3& max) {
+		min = getVertex(0);
+		max = getVertex(1);
+	}
+
+	glm::vec3 AABB::getHalfSize() {
+		return getSize() / 2.0f;
+	}
+
 	glm::vec3 AABB::getSize() {
-		glm::vec3 v0 = getVertex(0);
-		glm::vec3 v1 = getVertex(1);
-
-		for (int i = 0; i < 3; i++)
-			if (v0[i] == v1[i])
-				v0[i] = v1[i] = 0;
-
-		return glm::abs(v0) + glm::abs(v1);
+		//max - min.
+		return getVertex(1) - getVertex(0);
 	}
 
 	glm::vec3 AABB::getCenter() {
-		glm::vec3 size = glm::abs(getVertex(0)) + glm::abs(getVertex(1));
-
-		//Assumes that v[1] is the AABB's max
-		return getVertex(1) - size / 2.0f;
+		//Assumes that v[1] is the AABB's max.
+		return getVertex(1) - getSize() / 2.0f;
 	}
 
 	glm::vec3 AABB::getVertex(int n) {
@@ -51,19 +52,14 @@ namespace narvalengine {
 			(r.d.z < 0.0) ? 1.0 : -1.0);
 
 		glm::vec3 invD = 1.0f / r.d;
-		glm::vec3 t1 = (getCenter() - r.o + s * getSize() / 2.0f) * invD;
-		glm::vec3 t2 = (getCenter() - r.o - s * getSize() / 2.0f) * invD;
-
-		t2.x *= 1 + 2 * gamma(3);
-		t2.y *= 1 + 2 * gamma(3);
-		t2.z *= 1 + 2 * gamma(3);
+		glm::vec3 t1 = (getCenter() - r.o + s * getHalfSize()) * invD;
+		glm::vec3 t2 = (getCenter() - r.o - s * getHalfSize()) * invD;
 
 		glm::vec3 tmin = glm::min(t1, t2);
 		glm::vec3 tmax = glm::max(t1, t2);
 
 		float tNear = glm::max(glm::max(tmin.x, tmin.y), tmin.z);
 		float tFar = glm::min(glm::min(tmax.x, tmax.y), tmax.z);
-
 
 		hit.normal = -glm::sign(r.d) * glm::step(glm::vec3(t1.y, t1.z, t1.x), t1) * glm::step(glm::vec3(t1.z, t1.x, t1.y), t1);
 		hit.tNear = tNear;
@@ -72,7 +68,12 @@ namespace narvalengine {
 		hit.uv = glm::vec2(0, 0);
 		hit.primitive = this;
 
-		if (tNear > tFar) return false;
+		if (tNear > tFar) {
+			//For robustness, set tNear and tFar to INFINITY when we miss the AABB.
+			hit.tNear = INFINITY;
+			hit.tFar = -INFINITY;
+			return false;
+		}
 
 		return true;
 	}

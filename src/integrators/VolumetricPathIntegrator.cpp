@@ -15,14 +15,14 @@ namespace narvalengine {
 			bool hitSurface = s->intersectScene(ray, intersec, EPSILON3, INFINITY);
 			intersection = intersec;
 
-			// Accumulate beam transmittance for ray segment
+			// Accumulate beam transmittance for ray segment.
 			Medium* m = nullptr;
 			if (hitSurface && intersection.primitive->hasMaterial())
 				m = intersection.primitive->material->medium;
 			if (m != nullptr) 
 				*Tr *= m->Tr(ray, intersec);
 
-			// Initialize next ray segment or terminate transmittance computation
+			// Initialize next ray segment or terminate transmittance computation.
 			if (!hitSurface) return false;
 			if (m != nullptr) return true;
 
@@ -37,6 +37,7 @@ namespace narvalengine {
 		ray.d = lightPoint - intersecPoint;
 
 		glm::vec3 Tr(1.f);
+
 		while (true) {
 			RayIntersection intersec;
 			bool hitSurface = scene->intersectScene(ray, intersec, EPSILON3, INFINITY);
@@ -45,21 +46,26 @@ namespace narvalengine {
 			if (!hitSurface)
 				break;
 
-			if (hitSurface && intersec.primitive->hasMaterial() && intersec.primitive->material->hasLight())
-				return Tr;
+			//If the primitive has no material, block the transmittance.
+			if (!intersec.primitive->hasMaterial())
+				return glm::vec3(0);
 
-			// Handle opaque surface along ray's path.
-			if (hitSurface && intersec.primitive->hasMaterial() && intersec.primitive->material->hasMedium())
-				return glm::vec3(0.0f);
+			// Handle light source along ray's path.
+			if (intersec.primitive->material->hasLight())
+				return Tr;
 
 			// Update transmittance for current ray segment.
 			Medium* m = nullptr;
-			if (intersec.primitive->hasMaterial())
+			if (intersec.primitive->material->hasMedium())
 				m = intersec.primitive->material->medium;
-			if (m != nullptr) 
+			if (m != nullptr)
 				Tr *= m->Tr(ray, intersec);
+			
+			if(hitSurface)
+				//If we hit and object and it has no light nor medium material then it is a surface.
+				return glm::vec3(0,0,0);
 
-			ray.o = ray.getPointAt(intersec.tFar + EPSILON3);
+			ray.o = ray.getPointAt(intersec.tFar + EPSILON12);
 			ray.d = lightPoint - ray.o;
 		}
 		return Tr;
@@ -73,92 +79,80 @@ namespace narvalengine {
 		float lightPdf = 0, scatteringPdf = 0;;
 
 		glm::vec3 Li = light->sampleLi(intersecOnASurface, lightIm->transformToWCS, scatteredWo, lightPdf);
+		glm::vec3 f = glm::vec3(0);
 
-		bool isSurfaceInteraction = false;
+		bool isSurfaceInteraction = true;
 		if (intersecOnASurface.primitive->material->hasMedium())
-			isSurfaceInteraction = true;
+			isSurfaceInteraction = false;
 
+		//Sample light for importance sampling.
 		if (lightPdf > 0 && !isBlack(Li)) {
 			// Compute BSDF or phase function's value for light sample.
-			glm::vec3 f;
-
 			if (isSurfaceInteraction) {
 				// Evaluate BSDF for light sampling strategy.
 				f = intersecOnASurface.primitive->material->bsdf->eval(incoming.d, scatteredWo.d, intersecOnASurface) * glm::abs(glm::dot(scatteredWo.d, intersecOnASurface.normal));
-				scatteringPdf = intersecOnASurface.primitive->material->bsdf->pdf(incoming.d, scatteredWo.d, intersecOnASurface.normal);
-			}
-			else {
+				scatteringPdf = intersecOnASurface.primitive->material->bsdf->pdf(incoming.d, scatteredWo.d, intersecOnASurface.normal, intersecOnASurface);
+			}else {
 				// Evaluate phase function for light sampling strategy.
 				f = intersecOnASurface.primitive->material->bsdf->eval(incoming.d, scatteredWo.d, intersecOnASurface);
 				scatteringPdf = f.x;
 			}
-
+			
 			if (!isBlack(f)) {
 				glm::vec3 pointOnLight = light->primitive->samplePointOnSurface(intersecOnASurface, lightIm->transformToWCS);
 				Li *= visibilityTr(intersecOnASurface.hitPoint, pointOnLight, scene);
 
 				// Add light's contribution to reflected radiance.
 				if (!isBlack(Li)) {
-					if (false /*IsDeltaLight(light.flags)*/)
-						Ld += f * Li / lightPdf;
-					else {
-						float weight = powerHeuristic(lightPdf, scatteringPdf);
-						Ld += f * Li * weight / lightPdf;
-					}
+					float weight = powerHeuristic(lightPdf, scatteringPdf);
+					Ld += f * Li * weight / lightPdf;
 				}
 			}
 		}
 
 		// Sample BSDF with multiple importance sampling.
-		if (true /*!IsDeltaLight(light.flags)*/) {
-			glm::vec3 f;
-			if (isSurfaceInteraction) {
-				// Sample scattered direction for surface interactions.
-				scatteredWo.d = intersecOnASurface.primitive->material->bsdf->sample(incoming.d, intersecOnASurface.normal);
-				f = intersecOnASurface.primitive->material->bsdf->eval(incoming.d, scatteredWo.d, intersecOnASurface);
-				f *= glm::abs(glm::dot(scatteredWo.d, intersecOnASurface.normal));
-				scatteringPdf = intersecOnASurface.primitive->material->bsdf->pdf(incoming.d, scatteredWo.d, intersecOnASurface.normal);
-			}
-			else {
-				// Sample scattered direction for medium interactions.
-				f = intersecOnASurface.primitive->material->bsdf->eval(incoming.d, scatteredWo.d, intersecOnASurface);
-				//We define the normal of a scattering event as the z-axis up.
-				scatteredWo.d = intersecOnASurface.primitive->material->bsdf->sample(incoming.d, glm::vec3(0, 0, 1));
-				scatteringPdf = f.x;
-			}
-
-			if (!isBlack(f) && scatteringPdf > 0) {
-				// Account for light contributions along sampled incoming direction.
-				float weight = 1;
-				if (true /*!sampledSpecular*/) {
-					lightPdf = light->primitive->pdf(intersecOnASurface, lightIm->transformToWCS);
-					if (lightPdf == 0) return Ld;
-					weight = powerHeuristic(scatteringPdf, lightPdf);
-				}
-
-				// Find intersection and compute transmittance.
-				RayIntersection lightIntersect;
-				Ray ray;
-				ray.o = intersecOnASurface.hitPoint;
-				ray.d = scatteredWo.d;
-
-				glm::vec3 Tr(1.0f);
-				//Always handle media.
-				bool foundSurfaceInteraction = intersectTr(ray, lightIntersect, &Tr, scene);
-
-				// Add light contribution from material sampling.
-				glm::vec3 Li(0.f);
-				if (foundSurfaceInteraction) 
-					if (lightIntersect.primitive->material->light == light)
-						//should be      Li = lightIsect.Le(-wi);
-						Li = light->Li(); //changed from Le to Li
-				else
-					Li = light->Li(); //changed from Le to Li
-
-				if (!isBlack(Li))
-					Ld += f * Li * Tr * weight / scatteringPdf;
-			}
+		if (isSurfaceInteraction) {
+			// Sample scattered direction for surface interactions.
+			scatteredWo.d = intersecOnASurface.primitive->material->bsdf->sample(incoming.d, intersecOnASurface.normal, intersecOnASurface);
+			f = intersecOnASurface.primitive->material->bsdf->eval(incoming.d, scatteredWo.d, intersecOnASurface);
+			f *= glm::abs(glm::dot(scatteredWo.d, intersecOnASurface.normal));
+			scatteringPdf = intersecOnASurface.primitive->material->bsdf->pdf(incoming.d, scatteredWo.d, intersecOnASurface.normal, intersecOnASurface);
+		}else {
+			// Sample scattered direction for medium interactions.
+			f = intersecOnASurface.primitive->material->bsdf->eval(incoming.d, scatteredWo.d, intersecOnASurface);
+			//We define the normal of a scattering event as the z-axis up.
+			scatteredWo.d = intersecOnASurface.primitive->material->bsdf->sample(incoming.d, glm::vec3(0, 1, 0), intersecOnASurface);
+			scatteringPdf = f.x;
 		}
+
+		if (!isBlack(f) && scatteringPdf > 0) {
+			// Account for light contributions along sampled incoming direction.
+			float weight = 1;
+			lightPdf = light->primitive->pdf(intersecOnASurface, lightIm->transformToWCS);
+			if (lightPdf == 0) return Ld;
+			weight = powerHeuristic(scatteringPdf, lightPdf);
+
+			// Find intersection and compute transmittance.
+			RayIntersection lightIntersect;
+			Ray ray;
+			ray.o = intersecOnASurface.hitPoint;
+			ray.d = scatteredWo.d;
+
+			glm::vec3 Tr(1.0f);
+			bool foundSurfaceInteraction = intersectTr(ray, lightIntersect, &Tr, scene);
+
+			// Add light contribution from material sampling.
+			glm::vec3 Li(0.f);
+			if (foundSurfaceInteraction) 
+				if (lightIntersect.primitive->material->light == light)
+					Li = light->Li();
+				else
+					Li = light->Li();
+
+			if (!isBlack(Li))
+				Ld += f * Li * Tr * weight / scatteringPdf;
+		}
+
 		return Ld;
 	}
 
@@ -190,7 +184,7 @@ namespace narvalengine {
 
 		for (int b = 0; b < scene->settings.bounces; b++) {
 
-			bool didIntersect = scene->intersectScene(incoming, intersection, EPSILON3, INFINITY);
+			bool didIntersect = scene->intersectScene(incoming, intersection, EPSILON12, INFINITY);
 
 			//If the transmittance reaches 0 there is no more light contribution possible in this path.
 			if (isBlack(transmittance) /*|| !didIntersect || !intersection.primitive->material->bsdf*/)
@@ -222,7 +216,7 @@ namespace narvalengine {
 				//Evaluates the Phase Function BSDF.
 				glm::vec3 phaseFr = intersection.primitive->material->bsdf->eval(incoming.d, scattered.d, intersection);
 				//Evaluates the Phase Function BSDF PDF.
-				float phasePdf = intersection.primitive->material->bsdf->pdf(incoming.d, scattered.d, intersection.normal);
+				float phasePdf = intersection.primitive->material->bsdf->pdf(incoming.d, scattered.d, intersection.normal, intersection);
 
 				//If the BSDF or its PDF is zero, then it is not a valid scattered ray direction
 				if (isBlack(phaseFr) || phasePdf == 0.f) {
@@ -271,8 +265,8 @@ namespace narvalengine {
 				L += transmittance * uniformSampleOneLight(incoming, intersection, scene);
 
 				scattered.o = intersection.hitPoint;
-				scattered.d = intersection.primitive->material->bsdf->sample(incoming.d, intersection.normal);
-				bsdfPdf = intersection.primitive->material->bsdf->pdf(incoming.d, scattered.d, intersection.normal);
+				scattered.d = intersection.primitive->material->bsdf->sample(incoming.d, intersection.normal, intersection);
+				bsdfPdf = intersection.primitive->material->bsdf->pdf(incoming.d, scattered.d, intersection.normal, intersection);
 				glm::vec3 fr = intersection.primitive->material->bsdf->eval(incoming.d, scattered.d, intersection);
 
 				if (isBlack(fr) || bsdfPdf == 0.f) {

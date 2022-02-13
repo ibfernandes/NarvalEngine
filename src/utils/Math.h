@@ -19,14 +19,13 @@
 #define EPSILON5  0.00001
 #define EPSILON	  0.0000000001
 #define EPSILON12 0.00000000001
+#define MACHINE_EPSILON std::numeric_limits<float>::epsilon()
 #define PI 3.14159265358979323846264338327950288
 #define INVPI 0.31830988618379067154
 #define INV2PI 0.15915494309189533577
 #define INV4PI float(0.07957747154594766788)
 #define TWO_PI 6.283185307179586476925286766559
 #define FOUR_PI 12.566370614359172953850573533118
-#define PI_OVER_2 1.57079632679489661923
-#define PI_OVER_4 0.78539816339744830961
 #define INFINITY std::numeric_limits<float>::infinity()
 
 namespace narvalengine {
@@ -520,10 +519,10 @@ namespace narvalengine {
 		float r;
 		if (std::abs(uOffset.x) > std::abs(uOffset.y)) {
 			r = uOffset.x;
-			theta = PI_OVER_4 * (uOffset.y / uOffset.x);
+			theta = INV4PI * (uOffset.y / uOffset.x);
 		}else {
 			r = uOffset.y;
-			theta = PI_OVER_2 - PI_OVER_4 * (uOffset.x / uOffset.y);
+			theta = INV2PI - INV4PI * (uOffset.x / uOffset.y);
 		}
 		return r * glm::vec2(std::cos(theta), std::sin(theta));
 	}
@@ -1173,5 +1172,45 @@ namespace narvalengine {
 		float dist = sqrt((r + g + b) / 3.0f);
 
 		return glm::vec3(dist, dist, dist);
+	}
+
+	/**
+	 * Tests if the point {@code p} is in the same side as the vector ({@code b} - {@code a}) using the point {@code ref} as reference.
+	 *	
+	 * @param p
+	 * @param ref
+	 * @param a
+	 * @param b
+	 * @return 
+	 */
+	inline bool isSameSide(glm::vec3 p, glm::vec3 ref, glm::vec3 a, glm::vec3 b) {
+		glm::vec3 cp1 = glm::cross(b - a, p - a);
+		glm::vec3 cp2 = glm::cross(b - a, ref - a);
+		float dot = glm::dot(cp1, cp2);
+		return (dot >= 0) ? true : false;
+	}
+
+	/**
+	 * Tests if the point {@code p} is inside the triangle {@code a}, {@code b}, {@code c} range using the same side technique.
+	 * Note that a point won't necessarily lie within the triangle surface in order for it to return true.
+	 * 
+	 * @param p
+	 * @param a
+	 * @param b
+	 * @param c
+	 * @return true if p is within the the a, b, c triangle range. False otherwise.
+	 */
+	inline bool isPointInsideTriangleRange(glm::vec3 p, glm::vec3 a, glm::vec3 b, glm::vec3 c) {
+		if (isSameSide(p, a, b, c) && isSameSide(p, b, a, c) && isSameSide(p, c, a, b))
+			return true;
+		return false;
+	}
+	
+	inline glm::vec3 convertNormalFromTextureMap(const glm::vec3 texNormal, const glm::vec3 worldNormal) {
+		glm::vec3 normalTexSpace = texNormal * 2.0f - 1.0f;
+		glm::vec3 t = glm::cross(worldNormal, glm::vec3(0.0, 1.0, 0.0));
+		glm::vec3 b = glm::normalize(glm::cross(worldNormal, t));
+		glm::mat3 tbn = glm::mat3(t, b, worldNormal);
+		return glm::normalize(tbn * normalTexSpace);
 	}
 }

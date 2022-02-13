@@ -1,0 +1,61 @@
+{
+	"version" : "0.0.1a",
+	
+	"materials": [	{
+			"name": "emitter",
+			"type": "emitter",
+			"albedo": [200, 200, 200]
+		},
+		{
+			"name": "mat",
+			"type": "microfacet",
+			"roughness": 0.75,
+			"metallic": 0.2,
+			"albedo": [0.7, 0.7, 0.7]
+		}
+	],
+	
+	"primitives": [
+		{
+			"name": "rectLight",
+			"type": "rectangle",
+			"transform": {
+				"position": [2, 4, 0],
+				"scale": [0.5, 0.5, 1],
+				"rotation": [-89, 0, 0]
+			},
+			"materialName": "emitter"
+		},
+		{
+			"name": "suz",
+			"type": "obj",
+			"transform": {
+				"position": [0, 0, 0],
+				"scale": [1, 1, 1],
+				"rotation": [0,0,0]
+			},
+			"path" : "models/rustSphere/rustSphere.obj",
+			"materialName": "mat"
+		}
+	],
+
+	"camera": {
+		"position": [0, 1, -4],
+		"lookAt": [0, 0, 0],
+		"up": [0, 1, 0],
+		"speed": 5,
+		"vfov": 45,
+		"aperture": 0.0001,
+		"autoFocus": true,
+		"focus": 1
+	},
+	
+	"renderer": {
+		"resolution": [1200, 600],
+		"spp": 1,
+		"bounces": 3,
+		"mode": "realtime",
+		"HDR": false,
+		"toneMapping": false
+	}
+}

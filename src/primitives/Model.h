@@ -19,6 +19,7 @@
 #include "materials/GridMedia.h"
 #include "core/GlossyBSDF.h"
 #include "core/Microfacet.h"
+#include "primitives/BVH.h"
 
 namespace narvalengine {
 	class Model {
@@ -78,6 +79,8 @@ namespace narvalengine {
 		glm::vec3 aabbMin = glm::vec3(+INFINITY);
 		glm::vec3 aabbMax = glm::vec3(-INFINITY);
 		AABB boundingBox;
+
+		BVH bvh;
 
 		/**
 		 * All memory is assumed to be allocated externally and this model has now the ownership of all associated memory.

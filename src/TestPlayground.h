@@ -979,7 +979,7 @@ namespace narvalengine {
 
 							glm::vec3 sampledTransmittance = m->sample(incoming, scattered, ri);
 							glm::vec3 fr = volbsdf->eval(incoming.d, scattered.d, ri);
-							float pdf = volbsdf->pdf(incoming.d, scattered.d);
+							float pdf = volbsdf->pdf(incoming.d, scattered.d, ri);
 
 							glm::vec3 lightSample = volPath->uniformSampleOneLight(scattered, ri, scene);
 

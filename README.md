@@ -38,21 +38,32 @@ the abstractation layer and enable the ray tracing extension for better real-tim
 <li>Scene file descriptor
 	<ul>
 		<li>Materials supported: Microfacet GGX, Emitters, Volumes in .vdb and .vol format.</li> 
-		<li>Primitives supported: Point, Rectangle, Sphere, Volume and OBJ files.</li> 
+		<li>Primitives supported: Point, Rectangle, Sphere, Volume, OBJ and GLTF files.</li> 
 		<li>Pinpoint camera with support to aperture and focus (in path tracing mode only).</li> 
 	</ul>
 </li>
+<li>Node Editor
+	<ul>
+		<li>Supports Materials editing for surfaces and soon for volumes.</li> 
+		<li>Simple Math Operations</li> 
+	</ul>
+</li>
+<li>Dark/Light Mode</li>
 </ul>
 
 <h2>Screenshots</h2>
-<img src="resources/ss1.jpg" />
-<img src="resources/ss2.jpg" />
+<img src="resources/ss8.jpg" />
+<img src="resources/ss3.jpg" />
+<img src="resources/ss4.jpg" />
+<img src="resources/ss5.jpg" />
+<img src="resources/ss7.jpg" />
+<img src="resources/ss9.jpg" />
 
 <h2>Scene Editor</h2>
-Camera can be moved around using W, A, S, D or dragging the mouse. </br>
+Camera can be moved around using W, A, S, D or dragging the mouse. Q and E for up and down movements.</br>
 
 <h2>Installation setup</h2>
-<p>Tested on windows 7 and 10. <i>Should</i> work with Linux by installing openvdb and updating the CMAKE file.</p>
+<p>Tested on windows 7 and 10. <i>Should</i> work with Linux..</p>
 <b>Steps to compile:</b>
 <ol>
 <li>Install <a href="https://github.com/Microsoft/vcpkg">vcpkg</a></li>

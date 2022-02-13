@@ -37,8 +37,8 @@ namespace narvalengine {
 	}
 
 	glm::vec3 OfflineEngine::postProcessing(glm::vec3 hdrColor) {
-		if (settings.hdr) //TODO for now permanently returns the HDR color.
-			return hdrColor;
+		//if (settings.hdr) //TODO for now permanently returns the HDR color.
+			//return hdrColor;
 
 		const float exposure = 0.5;
 

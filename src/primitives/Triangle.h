@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "primitives/Ray.h"
 #include "primitives/Primitive.h"
 #include "utils/Math.h"
@@ -13,9 +13,11 @@ namespace narvalengine {
 		 */
 		float *vertexData[3]{};
 		float *normal = nullptr;
+		float area = 0;
 
 		Triangle();
 		~Triangle();
+		float calculateArea();
 		/**
 		 * Uses three float vectors made of 3 floating-points each to create the vertices that make this triangle.
 		 * 
@@ -47,6 +49,8 @@ namespace narvalengine {
 		Triangle(float* index1, float* index2, float* index3);
 
 		glm::vec3 getVertex(int n);
+		
+		glm::vec2 *getUV(int n);
 
 		/**
 		 * Checks if Ray r intesercts this primitive. If true, stores its values on hit.
@@ -58,9 +62,29 @@ namespace narvalengine {
 		 * @return true if hit. False otherwise.
 		 */
 		bool intersect(Ray ray, RayIntersection &hit) override;
+		/**
+		 * Samples a point in this triangle's surface using two random uniformly sampled numbers.
+		 * Formula: P = (1 − √a)v1 + (√a(1 − b)v2 + (b√a)v3. 
+		 * Where v1, v2 and v3 are the vertices and a and b are random numbers in the range [0,1].
+		 * 
+		 * @param interaction
+		 * @param transformToWCS
+		 * @return 
+		 */
 		glm::vec3 samplePointOnSurface(RayIntersection interaction, glm::mat4 transformToWCS) override;
 		glm::vec2 samplePointOnTexture(glm::vec3 pointOnSurface) override;
 		float pdf(RayIntersection interaction, glm::mat4 transformToWCS) override;
-		glm::vec3 barycentricCoordinates(glm::vec3 p, glm::vec3 a, glm::vec3 b, glm::vec3 c);
+		glm::vec3 barycentricCoordinates(const glm::vec3 &p, const glm::vec3 &a, const glm::vec3 &b, const glm::vec3 &c);
+		/**
+		 * Verifies if a point is within this triangle's surface.
+		 * For a great visualization watch "Gamedev Maths: point in triangle" by Sebastian Lague.
+		 * 
+		 * @param point
+		 * @return 
+		 */
+		bool contains(glm::vec3 point);
+
+		glm::vec3 getCentroid();
+		void calculateAABB(glm::vec3& min, glm::vec3& max);
 	};
 }

@@ -519,6 +519,10 @@ namespace narvalengine {
 			}
 		}
 
+		void* getTextureAPIID(TextureHandler texHandler) {
+			return (void*)(textures[texHandler.id].id);
+		}
+
 		void render(ProgramHandler program, RenderState *renderState) {
 			ProgramGL currentProgram = programs[program.id];
 			currentProgram.use();

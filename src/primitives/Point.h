@@ -12,6 +12,7 @@ namespace narvalengine {
 		glm::vec3 samplePointOnSurface(RayIntersection interaction, glm::mat4 transformToWCS);
 		glm::vec2 samplePointOnTexture(glm::vec3 pointOnSurface);
 		float pdf(RayIntersection interaction, glm::mat4 transformToWCS);
+		void calculateAABB(glm::vec3& min, glm::vec3& max);
 	};
 
 }

@@ -23,13 +23,7 @@ namespace narvalengine {
 	}
 
 	float GridMedia::interpolatedDensity(glm::vec3 gridPoint) {
-		if (gridPoint.x < 0 && gridPoint.x + EPSILON3 > 0)
-			gridPoint.x = 0;
-		if (gridPoint.y < 0 && gridPoint.y + EPSILON3 > 0)
-			gridPoint.y = 0;
-		if (gridPoint.z < 0 && gridPoint.z + EPSILON3 > 0)
-			gridPoint.z = 0;
-
+		gridPoint = glm::min(glm::max(glm::vec3(0), gridPoint), glm::vec3(grid->getResolution()));
 		glm::ivec3 gridPointInt = glm::ivec3(glm::floor(gridPoint.x), glm::floor(gridPoint.y), glm::floor(gridPoint.z));
 		glm::vec3 d = gridPoint - glm::vec3(gridPointInt);
 
@@ -96,7 +90,7 @@ namespace narvalengine {
 			float ra = random();
 			if (density * invMaxDensity > ra) {
 				scattered.o = incoming.getPointAt(t);
-				scattered.d = intersection.primitive->material->bsdf->sample(incoming.d, glm::vec3(0, 0, 1));
+				scattered.d = intersection.primitive->material->bsdf->sample(incoming.d, glm::vec3(0, 1, 0), intersection);
 				scattered = transformRay(scattered, intersection.instancedModel->transformToWCS);
 				return scattering / extinction;
 			}

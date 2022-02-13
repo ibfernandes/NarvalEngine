@@ -1,0 +1,82 @@
+{
+	"version" : "0.0.1a",
+	
+	"materials": [
+		{
+			"name": "emitter",
+			"type": "emitter",
+			"albedo": [100, 100, 70]
+		},
+		{
+			"name": "floorMat",
+			"type": "microfacet",
+			"roughness": 0.95,
+			"metallic": 0.0,
+			"albedo": "imgs/wood.png",
+			"normalMap": [0.5, 0.5, 1.0]
+		},
+		{
+			"name": "cloudVolMat",
+			"type": "volume",
+			"scattering": [1.1, 1.1, 1.1],
+			"absorption": [0.01, 0.01, 0.01],
+			"phaseFunction": "hg",
+			"g": 0.0,
+			"path" : "vdb/wdas_cloud_sixteenth.vdb",
+			"density": 100
+		}
+	],
+	
+	"primitives": [
+		{
+			"name": "rectLight",
+			"type": "rectangle",
+			"transform": {
+				"position": [15, 8.5, 6],
+				"scale": [5, 15, 1],
+				"rotation": [0, 45, 0]
+			},
+			"materialName": "emitter"
+		},
+		{
+			"name": "cloud",
+			"type": "volume",
+			"transform": {
+				"position": [0.0, 6, 0],
+				"scale": [15.9, 9.51, 13.5],
+				"rotation": [0, 0, 0]
+			},
+			"materialName": "cloudVolMat"
+		},
+		{
+			"name": "cubeFloor",
+			"type": "rectangle",
+			"transform": {
+				"position": [0, 0, 0],
+				"scale": [300, 300, 1],
+				"rotation": [90, 0, 0]
+			},
+			"materialName": "floorMat"
+		}
+	],
+
+	"camera": {
+		"position": [0, 8, -26],
+		"lookAt": [0, 0, 0],
+		"up": [0, 1, 0],
+		"speed": 5,
+		"vfov": 45,
+		"aperture": 0.0001,
+		"autoFocus": true,
+		"focus": 1
+	},
+	
+	"renderer": {
+		"resolution": [1200, 600],
+		"spp": 1,
+		"bounces": 3,
+		"mode": "realtime",
+		"HDR": true,
+		"toneMapping": false
+	}
+}

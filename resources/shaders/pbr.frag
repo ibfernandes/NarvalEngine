@@ -17,6 +17,7 @@ struct Material{
     sampler2D specular;
     sampler2D normal;
     sampler2D roughness;
+    sampler2D subsurface;
     sampler2D ao;
 };
 
@@ -26,6 +27,7 @@ struct MaterialIsSet{
     bool specular;
     bool normal;
     bool roughness;
+    bool subsurface;
     bool ao;
 };
 
@@ -43,6 +45,8 @@ uniform vec3 cameraPosition;
 uniform sampler2D shadowMap;
 
 const float PI = 3.14159265359;
+
+
 
 /**
 * Normals are stored assuming the Z-axis as up.

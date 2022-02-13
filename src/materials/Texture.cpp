@@ -85,11 +85,31 @@ namespace narvalengine {
 
 		return res;
 	}
+	void Texture::wrapTextureCoordinates(float &u, float &v, float &w) {
+		if (samplerFlags & NE_TEX_SAMPLER_U_CLAMP)
+			u = glm::clamp(u, 0.0f, 1.0f);
+		else if (samplerFlags & NE_TEX_SAMPLER_U_MIRROR)
+			u = glm::clamp(glm::abs(u - (int)u), 0.0f, 1.0f);
+		else
+			u = glm::clamp(u, 0.0f, 1.0f); //Default: clamp.
+
+		if (samplerFlags & NE_TEX_SAMPLER_V_CLAMP)
+			v = glm::clamp(v, 0.0f, 1.0f);
+		else if (samplerFlags & NE_TEX_SAMPLER_V_MIRROR)
+			v = glm::clamp(glm::abs(v - (int)v), 0.0f, 1.0f);
+		else
+			v = glm::clamp(v, 0.0f, 1.0f); //Default: clamp.
+
+		if (samplerFlags & NE_TEX_SAMPLER_W_CLAMP)
+			w = glm::clamp(w, 0.0f, 1.0f);
+		else if (samplerFlags & NE_TEX_SAMPLER_W_MIRROR)
+			w = glm::clamp(glm::abs(w - (int)w), 0.0f, 1.0f);
+		else
+			w = glm::clamp(w, 0.0f, 1.0f); //Default: clamp.
+	}
 
 	glm::vec4 Texture::sample(float u, float v, float w) {
-		if (u < 0 || v < 0 || w < 0)
-			LOG(FATAL) << "Invalid texture coordinates. Memory Access Violation when trying to read negative texture coordinates: [" << u << ", " << v << "]";
-
+		wrapTextureCoordinates(u, v, w);
 		glm::vec4 res = glm::vec4(0, 0, 0, 0);
 		glm::ivec3 pos;
 

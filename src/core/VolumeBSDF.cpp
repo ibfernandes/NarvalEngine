@@ -10,15 +10,15 @@ namespace narvalengine {
 		delete phaseFunction;
 	}
 
-	glm::vec3 VolumeBSDF::sample(glm::vec3 incoming, glm::vec3 normal) {
+	glm::vec3 VolumeBSDF::sample(const glm::vec3& incoming, const glm::vec3& normal, const RayIntersection& ri) {
 		return phaseFunction->sample(incoming);
 	}
 
-	float VolumeBSDF::pdf(glm::vec3 incoming, glm::vec3 scattered) {
+	float VolumeBSDF::pdf(const glm::vec3& incoming, const glm::vec3& scattered, const RayIntersection& ri) {
 		return phaseFunction->pdf(incoming, scattered);
 	}
 
-	glm::vec3 VolumeBSDF::eval(glm::vec3 incoming, glm::vec3 scattered, RayIntersection ri) {
+	glm::vec3 VolumeBSDF::eval(const glm::vec3& incoming, const glm::vec3& scattered, const RayIntersection& ri) {
 		return glm::vec3(phaseFunction->eval(incoming, scattered));
 	}
 }

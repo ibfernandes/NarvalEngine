@@ -47,7 +47,7 @@ namespace narvalengine {
 			return textures[ctz(textureType)];
 		}
 
-		bool containsMaterialName(TextureName type) {
+		bool hasTexture(TextureName type) {
 			return textureTypes & type;
 		}
 
@@ -55,8 +55,8 @@ namespace narvalengine {
 		 * Sample specific channels with semantic meaning of {@code textureType}.
 		 * 
 		 * @param textureType
-		 * @param u in the interval [0, 1].
-		 * @param v in the interval [0, 1].
+		 * @param u texture coordinate.
+		 * @param v texture coordinate.
 		 * @return sampled color.
 		 */
 		glm::vec4 sampleMaterial(TextureName textureType, float u, float v) {

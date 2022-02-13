@@ -115,16 +115,19 @@ namespace narvalengine {
 			ResourceManager::getSelf()->setTexture(name + ".roughness", roughnessTex);
 
 			Texture* normalMapTex;
-			normalMapTex = new Texture(1, 1, RGB32F, flags, { (uint8_t*)&normalMap[0], sizeof(float) * 3 });
-			normalMapTex->textureName = TextureName::NORMAL;
-			ResourceManager::getSelf()->setTexture(name + ".normal", normalMapTex);
+			if (material.HasMember("normalMap")) {
+				normalMapTex = new Texture(1, 1, RGB32F, flags, { (uint8_t*)&normalMap[0], sizeof(float) * 3 });
+				normalMapTex->textureName = TextureName::NORMAL;
+				ResourceManager::getSelf()->setTexture(name + ".normal", normalMapTex);
+			}
 
 
 			Material *mat = new Material();
 			mat->addTexture(TextureName::ALBEDO, albedoTex);
 			mat->addTexture(TextureName::METALLIC, metallicTex);
 			mat->addTexture(TextureName::ROUGHNESS, roughnessTex);
-			mat->addTexture(TextureName::NORMAL, normalMapTex);
+			if (material.HasMember("normalMap"))
+				mat->addTexture(TextureName::NORMAL, normalMapTex);
 
 			GGXDistribution *ggxD = new GGXDistribution();
 			ggxD->alpha = roughnessToAlpha(roughness);
@@ -239,7 +242,7 @@ namespace narvalengine {
 		std::vector<Mesh> meshes;
 		VertexLayout vertexLayout;
 
-		if (type.compare("obj") == 0) {
+		if (type.compare("obj") == 0 || type.compare("gltf") == 0) {
 			glm::vec3 scale = getVec3(primitive["transform"]["scale"]);
 			glm::vec3 rotate = getVec3(primitive["transform"]["rotation"]);
 			std::string materialName;
@@ -474,7 +477,6 @@ namespace narvalengine {
 			mesh.vertexLayout = vertexLayout;
 
 			Rectangle *rectangle = new Rectangle[1];
-			rectangle[0].vertexLayout = &vertexLayout;
 			rectangle[0].vertexData[0] = &vertexData[0];
 			rectangle[0].vertexData[1] = &vertexData[mesh.strideLength * 2];
 			rectangle[0].normal = normal;
@@ -500,6 +502,7 @@ namespace narvalengine {
 				meshes,
 				vertexLayout
 			);
+			rectangle[0].vertexLayout = &model->vertexLayout;
 
 			StringID modelID = ResourceManager::getSelf()->replaceModel(name, model);
 			InstancedModel *instancedModel = new InstancedModel(model, modelID, getTransform(pos, rotate, scale));

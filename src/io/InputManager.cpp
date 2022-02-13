@@ -132,5 +132,8 @@ namespace narvalengine {
 		keyMapping.insert({ "TRANSLATE_OBJECT", {KeyRelease, NE_INPUT_MOD_SET(GLFW_KEY_T, NE_INPUT_MOD_CTRL)} });
 
 		keyMapping.insert({ "TESTING_KEY", {KeyHolding, GLFW_KEY_1} });
+
+		keyMapping.insert({ "NODE_EDITOR_ADD_NEW_NODE", {KeyRelease, GLFW_MOUSE_BUTTON_RIGHT} });
+
 	}
 }

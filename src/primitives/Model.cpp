@@ -3,6 +3,7 @@
 namespace narvalengine {
 	Model::Model(const aiScene* scene, std::string path, std::string materialName) {
 		processScene(scene, path, materialName);
+		bvh.init(this);
 	}
 
 	Model::Model(MemoryBuffer vertexData, MemoryBuffer indexData,
@@ -177,12 +178,7 @@ namespace narvalengine {
 
 			//texture coordinates (UV)
 			if (mesh->mTextureCoords[0]) {
-				//For whatever reason, Assimp sometimes process negative UVs. Just flipping it for now if it is the case.
-				if (mesh->mTextureCoords[0][i].x < 0)
-					mesh->mTextureCoords[0][i].x += 1;
-				if (mesh->mTextureCoords[0][i].y < 0)
-					mesh->mTextureCoords[0][i].y += 1;
-
+				//For whatever reason, Assimp sometimes process negative UVs.
 				vertexData[vertexStartIndex + i * stride + 9] = mesh->mTextureCoords[0][i].x;
 				vertexData[vertexStartIndex + i * stride + 10] = mesh->mTextureCoords[0][i].y;
 			}
@@ -201,12 +197,23 @@ namespace narvalengine {
 		// 1. Diffuse map (Albedo)
 		std::vector<TextureInfo> diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "material.diffuse", TextureName::ALBEDO, scene);
 		textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
+		
 		// 2. Specular map (Roughness)
-		std::vector<TextureInfo> specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, "material.roughness", TextureName::ROUGHNESS, scene);
+		std::vector<TextureInfo> specularMaps;
+		if (assimpHasMaterial(material, aiTextureType_SHININESS))
+			specularMaps  = loadMaterialTextures(material, aiTextureType_SPECULAR, "material.roughness", TextureName::ROUGHNESS, scene);
+		else if (assimpHasMaterial(material, aiTextureType_DIFFUSE_ROUGHNESS))
+			specularMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE_ROUGHNESS, "material.roughness", TextureName::ROUGHNESS, scene);
 		textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
+		
 		// 3. Metalness map
-		std::vector<TextureInfo> metallicMaps = loadMaterialTextures(material, aiTextureType_SHININESS, "material.metallic", TextureName::METALLIC, scene);
+		std::vector<TextureInfo> metallicMaps;
+		if (assimpHasMaterial(material, aiTextureType_SHININESS))
+			metallicMaps = loadMaterialTextures(material, aiTextureType_SHININESS, "material.metallic", TextureName::METALLIC, scene);
+		else if (assimpHasMaterial(material, aiTextureType_METALNESS))
+			metallicMaps = loadMaterialTextures(material, aiTextureType_METALNESS, "material.metallic", TextureName::METALLIC, scene);
 		textures.insert(textures.end(), metallicMaps.begin(), metallicMaps.end());
+		
 		// 4. Normal map (Normal || Height)
 		std::vector<TextureInfo> normalMaps;
 		if(assimpHasMaterial(material, aiTextureType_NORMALS))
@@ -214,6 +221,11 @@ namespace narvalengine {
 		else
 			normalMaps = loadMaterialTextures(material, aiTextureType_HEIGHT, "material.normal", TextureName::NORMAL, scene);
 		textures.insert(textures.end(), normalMaps.begin(), normalMaps.end());
+
+		//TODO Treat cases where the type is undefined.
+		//An example is when the metalness and roughness are packed into a single texture, as in GLTF. Assimp doesn't detect it and attributes aiTextureType_UNKNOWN.
+		if (assimpHasMaterial(material, aiTextureType_UNKNOWN))
+			LOG(WARNING) << "Unknown type material was identified for Assimp Material " << material->GetName().C_Str();
 
 		Mesh thismesh;
 
@@ -364,6 +376,16 @@ namespace narvalengine {
 		if (boundingBox.vertexData[0] != nullptr && boundingBox.vertexData[1] != nullptr)
 			if (!boundingBox.intersect(ray, tempIntersec))
 				return false;
+
+		if (bvh.nodeCount > 0) {
+			bool localIntersec =  bvh.intersect(ray, tempIntersec);
+			if (localIntersec && tempIntersec.tNear > tMin && tempIntersec.tNear < tMax) {
+				tMax = tempIntersec.tNear;
+				hit = tempIntersec;
+				ditIntersect = true;
+			}
+			return ditIntersect;
+		}
 
 		//If no LBVH is set, iterate linearly over all primitives
 		for (int i = 0; i < primitives.size(); i++) {

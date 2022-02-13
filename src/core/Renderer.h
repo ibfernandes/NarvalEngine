@@ -171,6 +171,7 @@ namespace narvalengine {
 		virtual void createProgram (ProgramHandler ph, ShaderHandler vertex, ShaderHandler fragment) = 0;
 		virtual void updateUniform(UniformHandler uh, MemoryBuffer memBuffer) = 0;
 		virtual void updateTexture(TextureHandler texHandler, int offsetX, int offsetY, int offsetZ, int width, int height, int depth, MemoryBuffer mem) = 0;
+		virtual void* getTextureAPIID(TextureHandler texh) = 0;
 		virtual void render(ProgramHandler program, RenderState *renderState) = 0;
 	};
 
@@ -386,6 +387,10 @@ namespace narvalengine {
 				if (!textureHandleAllocator->isValid(texHandler.id))
 					LOG(FATAL) << "Invalid texture handler: " << texHandler.id << ".";
 				renderer->updateTexture(texHandler, offsetX, offsetY, offsetZ, width, height, depth, mem);
+			}
+
+			void* getTextureAPIID(TextureHandler th) {
+				return renderer->getTextureAPIID(th);
 			}
 
 			void setUniform(UniformHandler uh) {

@@ -10,9 +10,9 @@ namespace narvalengine {
 
 		VolumeBSDF(PhaseFunction* phase);
 		~VolumeBSDF();
-		glm::vec3 sample(glm::vec3 incoming, glm::vec3 normal) override;
-		float pdf(glm::vec3 incoming, glm::vec3 scattered) override;
-		glm::vec3 eval(glm::vec3 incoming, glm::vec3 scattered, RayIntersection ri) override;
+		glm::vec3 sample(const glm::vec3& incoming, const glm::vec3& normal, const RayIntersection& ri) override;
+		float pdf(const glm::vec3& incoming, const glm::vec3& scattered, const RayIntersection& ri) override;
+		glm::vec3 eval(const glm::vec3 &incoming, const glm::vec3& scattered, const RayIntersection& ri) override;
 	};
 
 }

@@ -10,21 +10,21 @@ GTEST_API_ int main(int argc, char **argv) {
 
 namespace narvalengine {
 	void PrintTo(const Ray& ray, std::ostream* os) {
-		*os << "Ray.origin: " << toString(ray.o) << std::endl 
-		<< "Ray.direction: " << toString(ray.d) << std::endl;
+		*os << "Ray.origin: " << toString(ray.o) << std::endl
+			<< "Ray.direction: " << toString(ray.d) << std::endl;
 	}
 	void PrintTo(const RayIntersection& ri, std::ostream* os) {
 		*os << "RayIntersec.hitPoint: " << toString(ri.hitPoint) << std::endl
-		 << "RayIntersec.normal: " << toString(ri.normal) << std::endl
-		 << "RayIntersec.uv: " << toString(ri.uv) << std::endl
-		 << "RayIntersec.tNear: " << ri.tNear << std::endl
-		 << "RayIntersec.tFar: " << ri.tFar << std::endl;
+			<< "RayIntersec.normal: " << toString(ri.normal) << std::endl
+			<< "RayIntersec.uv: " << toString(ri.uv) << std::endl
+			<< "RayIntersec.tNear: " << ri.tNear << std::endl
+			<< "RayIntersec.tFar: " << ri.tFar << std::endl;
 	}
 
 	/**
 	*	Tests if two floats are equal tolerating epsilon as error.
 	*/
-	::testing::AssertionResult floatEqEpsilon(float f1, float f2, float epsilon) {
+	::testing::AssertionResult floatEqualsEpsilon(float f1, float f2, float epsilon) {
 
 		if (f1 > (f2 - epsilon) && f1 < (f2 + epsilon))
 			return ::testing::AssertionSuccess();
@@ -36,7 +36,7 @@ namespace narvalengine {
 	*	Tests if two vectors are equal tolerating epsilon as error.
 	*/
 	::testing::AssertionResult vec3EqualsEpsilon(glm::vec3 v1, glm::vec3 v2, float epsilon) {
-		if (floatEqEpsilon(v1.x, v2.x, epsilon) && floatEqEpsilon(v1.y, v2.y, epsilon) && floatEqEpsilon(v1.z, v2.z, epsilon))
+		if (floatEqualsEpsilon(v1.x, v2.x, epsilon) && floatEqualsEpsilon(v1.y, v2.y, epsilon) && floatEqualsEpsilon(v1.z, v2.z, epsilon))
 			return ::testing::AssertionSuccess();
 		else
 			return ::testing::AssertionFailure() << toString(v1) << " not equal to " << toString(v2);
@@ -160,7 +160,7 @@ namespace narvalengine {
 			}
 
 			result = result / (nSamples * spherePDF);
-			EXPECT_TRUE(floatEqEpsilon(result, g, 0.05f));
+			EXPECT_TRUE(floatEqualsEpsilon(result, g, 0.05f));
 			delete hgPhaseFunction;
 		}
 	}
@@ -203,7 +203,7 @@ namespace narvalengine {
 					float angleTheta = glm::orientedAngle(incomingRay, scattered, glm::vec3(0, 0, 1));
 					float cosTheta = glm::dot(glm::normalize(incomingRay), glm::normalize(scattered));
 					float angleThetaFromCos = std::acosf(cosTheta);
-					floatEqEpsilon(angleTheta, angleThetaFromCos, EPSILON3);
+					floatEqualsEpsilon(angleTheta, angleThetaFromCos, EPSILON3);
 
 					buckets[i][j] += hgPhaseFunction->eval(incomingRay, scattered);
 				}
@@ -218,7 +218,7 @@ namespace narvalengine {
 
 		result = result / totalSamples;
 
-		EXPECT_TRUE(floatEqEpsilon(result, INV4PI, EPSILON3));
+		EXPECT_TRUE(floatEqualsEpsilon(result, INV4PI, EPSILON3));
 	}
 
 	/**
@@ -267,7 +267,7 @@ namespace narvalengine {
 		//The integral must result in Approx. 4*PI.
 		result = result / totalSamples;
 
-		EXPECT_TRUE(floatEqEpsilon(result, FOUR_PI, EPSILON3));
+		EXPECT_TRUE(floatEqualsEpsilon(result, FOUR_PI, EPSILON3));
 	}
 
 	/**
@@ -333,7 +333,7 @@ namespace narvalengine {
 		//tNear and tFar should be NaN, thus the intersection returns false.
 		ray = { glm::vec3(0, -1, 0), glm::vec3(0, 1, 0) };
 		EXPECT_FALSE(triangle->intersect(ray, rayIntersection)) << testing::PrintToString(ray) << testing::PrintToString(rayIntersection);
-	
+
 		//Shooting in the middle of the triangle.
 		ray = { glm::vec3(0.25f, 0.25f, -1), glm::vec3(0, 0, 1) };
 		EXPECT_TRUE(triangle->intersect(ray, rayIntersection)) << testing::PrintToString(ray) << testing::PrintToString(rayIntersection);
@@ -344,6 +344,63 @@ namespace narvalengine {
 		//Origin behind the triangle and pointing away from it.
 		ray = { glm::vec3(0, 0, 1), glm::vec3(0, 0, 1) };
 		EXPECT_FALSE(triangle->intersect(ray, rayIntersection)) << testing::PrintToString(ray) << testing::PrintToString(rayIntersection);
+	}
+
+	/**
+	 *	Tests for ray-AABB intersection cases.
+	 */
+	TEST(AABB, intersection) {
+		//All tests are perform in Object Coordinate System (OCS).
+		float precision = EPSILON3;
+		//3 elements per vertex: x, y and z.
+		const int elementsPerVertex = 3;
+		//An AABB is defined by 2 vertices: min and max.
+		const int nVertices = 2;
+
+		float vertexData[elementsPerVertex * nVertices] = {
+			-0.5, -0.5, -0.5,
+			0.5, 0.5, 0.5
+		};
+
+		AABB* aabb;
+		aabb = new AABB(&vertexData[0], &vertexData[3]);
+
+		Ray ray;
+		RayIntersection rayIntersection;
+
+		//Shooting in the middle.
+		ray = { glm::vec3(0, 0, -1.0), glm::vec3(0, 0, 1) };
+		EXPECT_TRUE(aabb->intersect(ray, rayIntersection)) << testing::PrintToString(ray) << testing::PrintToString(rayIntersection);
+		EXPECT_TRUE(vec3EqualsEpsilon(rayIntersection.hitPoint, glm::vec3(0, 0, -0.5), precision));
+		EXPECT_TRUE(floatEqualsEpsilon(rayIntersection.tNear, 0.5f, EPSILON3));
+		EXPECT_TRUE(floatEqualsEpsilon(rayIntersection.tFar, 1.5f, EPSILON3));
+
+		//Origin on one of AABB's face.
+		ray = { glm::vec3(0, 0, -0.5), glm::vec3(0, 0, 1) };
+		EXPECT_TRUE(aabb->intersect(ray, rayIntersection)) << testing::PrintToString(ray) << testing::PrintToString(rayIntersection);
+		EXPECT_TRUE(vec3EqualsEpsilon(rayIntersection.hitPoint, glm::vec3(0, 0, -0.5), precision));
+		EXPECT_TRUE(floatEqualsEpsilon(rayIntersection.tNear, 0.0f, EPSILON3));
+		EXPECT_TRUE(floatEqualsEpsilon(rayIntersection.tFar, 1.0f, EPSILON3));
+
+		//Parallel to the bottom.
+		ray = { glm::vec3(0, -0.5, -0.5), glm::vec3(0, 0, 1) };
+		EXPECT_TRUE(aabb->intersect(ray, rayIntersection)) << testing::PrintToString(ray) << testing::PrintToString(rayIntersection);
+		EXPECT_TRUE(vec3EqualsEpsilon(rayIntersection.hitPoint, glm::vec3(0, -0.5, -0.5), precision));
+		EXPECT_TRUE(floatEqualsEpsilon(rayIntersection.tNear, 0.0f, EPSILON3));
+		EXPECT_TRUE(floatEqualsEpsilon(rayIntersection.tFar, 1.0f, EPSILON3));
+
+		//From inside. Returns negative tNear, i.e. "behind" the ray origin.
+		ray = { glm::vec3(0, 0.0, 0.0), glm::vec3(0, 0, 1) };
+		EXPECT_TRUE(aabb->intersect(ray, rayIntersection)) << testing::PrintToString(ray) << testing::PrintToString(rayIntersection);
+		EXPECT_TRUE(vec3EqualsEpsilon(rayIntersection.hitPoint, glm::vec3(0, 0, -0.5), precision));
+		EXPECT_TRUE(floatEqualsEpsilon(rayIntersection.tNear, -0.5f, EPSILON3));
+		EXPECT_TRUE(floatEqualsEpsilon(rayIntersection.tFar, 0.5f, EPSILON3));
+
+		//Miss test.
+		ray = { glm::vec3(0, 0.55, 0.0), glm::vec3(0, 0, 1) };
+		EXPECT_FALSE(aabb->intersect(ray, rayIntersection)) << testing::PrintToString(ray) << testing::PrintToString(rayIntersection);
+		EXPECT_TRUE(rayIntersection.tNear == INFINITY);
+		EXPECT_TRUE(rayIntersection.tFar == -INFINITY);
 	}
 
 	/**
@@ -529,5 +586,304 @@ namespace narvalengine {
 			handleAllocatorB->free(i);
 			ASSERT_FALSE(handleAllocatorB->isValid(i));
 		}
+	}
+
+	TEST(VolumetricPathIntegrator, visibilityTr) {
+		VolumetricPathIntegrator volPath;
+		SceneReader sceneReader;
+		sceneReader.loadScene("scenes/testing/singleVoxelVolume.json", false);
+		Scene *scene = sceneReader.getScene();
+
+		InstancedModel *imLight = scene->lights.at(0);
+		Material *lightMaterial = scene->lights.at(0)->model->materials.at(0);
+		GridMedia* gridMedia = dynamic_cast<GridMedia*>(lightMaterial->medium);
+		//float density = gridMedia->invMaxDensity;
+
+		glm::vec3 lightPoint;
+		glm::vec3 origin;
+		glm::vec3 visibilityTr;
+
+		lightPoint = glm::vec3(-0.4, 2, 0);
+		origin = glm::vec3(-0.4, 0, 0);
+		visibilityTr = volPath.visibilityTr(origin, lightPoint, scene);
+		//Passes through the medium and reaches the light.
+		EXPECT_TRUE(vec3EqualsEpsilon(visibilityTr, glm::vec3(1), EPSILON3));
+
+		lightPoint = glm::vec3(0.4, 2, 0);
+		origin = glm::vec3(0.4, 0, 0);
+		visibilityTr = volPath.visibilityTr(origin, lightPoint, scene);
+		//Passes through the medium and reaches the surface above it.
+		EXPECT_TRUE(vec3EqualsEpsilon(visibilityTr, glm::vec3(0), EPSILON3));
+	}
+
+	TEST(VolumetricPathIntegrator, estimateDirectSurfaceAndLight) {
+		VolumetricPathIntegrator volPath;
+		SceneReader sceneReader;
+		sceneReader.loadScene("scenes/testing/surfaceAndLight.json", false);
+		Scene* scene = sceneReader.getScene();
+
+		Ray incoming;
+		RayIntersection hit;
+		//Instead of randomly, select the light we want to sample from. There is only one in the scene anyway.
+		InstancedModel* lightIM = scene->lights.at(0);
+		Light* light = scene->lights.at(0)->model->materials.at(0)->light;
+		glm::vec3 lightLi = light->Li();
+
+
+		//NOTE that we define the incoming direction pointing TOWARDS the hit point. But when this same incoming direction
+		// is passed to the BxDF and converted to the Spherical Coordiante System (SCS) it is negated in order to be in the same
+		// hemisphere as the normal.
+		// incoming
+		// \   ^
+		//	\  |  normal
+		//	 \ |
+		//    v|
+		//-----x--------------- surface
+		incoming.origin = glm::vec3(0, EPSILON3, 0);
+		incoming.direction = glm::vec3(0, -1, 0);
+		EXPECT_TRUE(scene->intersectScene(incoming, hit, 0, INFINITY));
+		glm::vec3 Li = volPath.estimateDirect(incoming, hit, light, lightIM, scene);
+		EXPECT_TRUE(vec3EqualsEpsilon(Li, lightLi, EPSILON3));
+
+	}
+
+	TEST(Triangle, samplePointOntexture) {
+		glm::vec3 v1 = { 0.00000000, -0.0685599968, -1.00000000 };
+		glm::vec3 v2 = { -0.382234007, 8.78874969, -0.923610985 };
+		glm::vec3 v3 = { -0.194640994, 8.78874969, -0.980517030 };
+		glm::vec2 uv1 = { 0.00396300014, 0.866797984 };
+		glm::vec2 uv2 = { 0.00000000, 0.587139964 };
+		glm::vec2 uv3 = { 0.0143640004, 0.587136030 };
+		float data[3 * 3 * 3 * 2] = {
+			v1[0], v1[1], v1[2], uv1[0], uv1[1],
+			v2[0], v2[1], v2[2], uv2[0], uv2[1],
+			v3[0], v3[1], v3[2], uv3[0], uv3[1]
+		};
+		VertexLayout vertexLayout;
+		vertexLayout.init();
+		vertexLayout.add(VertexAttrib::Position, VertexAttribType::Float, 3);
+		vertexLayout.add(VertexAttrib::TexCoord0, VertexAttribType::Float, 2);
+		vertexLayout.end();
+
+		Triangle* triangle = new Triangle(&data[0], &data[3+2], &data[(3+2)*2]);
+		triangle->vertexLayout = &vertexLayout;
+
+		//Validate if point is in fact over the surface.
+		glm::vec3 pointOnSurface = { -0.151023865, -0.0685615540, 0.108901978 };
+		//EXPECT_TRUE(isPointInsideTriangle(pointOnSurface, v1, v2, v3));
+
+		//Texture UV must be in the range: [0, 1].
+		glm::vec2 uvSampled = triangle->samplePointOnTexture(pointOnSurface);
+		EXPECT_TRUE(uvSampled.x < 1.0f);
+		EXPECT_TRUE(uvSampled.y < 1.0f);
+		EXPECT_TRUE(uvSampled.x >= 0.0f);
+		EXPECT_TRUE(uvSampled.y >= 0.0f);
+	}
+
+	TEST(Triangle, area) {
+		//Triangle Area = 1/2 * base * height
+		//or half the Rectangle Area 
+		float precision = EPSILON3;
+		std::vector<float> data = {
+			0, 0, 0,
+			1, 0, 0,
+			0, 1, 0
+		};
+
+		VertexLayout vertexLayout;
+		vertexLayout.init();
+		vertexLayout.add(VertexAttrib::Position, VertexAttribType::Float, 3);
+		vertexLayout.end();
+
+		Triangle* triangle = new Triangle(&data[0], &data[3], &data[6]);
+		triangle->vertexLayout = &vertexLayout;
+		float calculatedArea;
+
+		calculatedArea = triangle->calculateArea();
+		EXPECT_TRUE(floatEqualsEpsilon(calculatedArea, 1.0/2.0, precision));
+
+		data = {
+			0, 0, 0,
+			0, 2, 0,
+			2, 0, 0
+		};
+		calculatedArea = triangle->calculateArea();
+		EXPECT_TRUE(floatEqualsEpsilon(calculatedArea, 4.0/2.0, precision));
+
+		data = {
+			0, 0, 0,
+			0, 2, 0,
+			0, 0, 2
+		};
+		calculatedArea = triangle->calculateArea();
+		EXPECT_TRUE(floatEqualsEpsilon(calculatedArea, 4.0 / 2.0, precision));
+
+		data = {
+			0, 0, 0,
+			0, 2, 0,
+			-2, 0, 0
+		};
+		calculatedArea = triangle->calculateArea();
+		EXPECT_TRUE(floatEqualsEpsilon(calculatedArea, 4.0 / 2.0, precision));
+
+		data = {
+			0, 0, 0,
+			0, 2, 0,
+			0, 0, -2
+		};
+		calculatedArea = triangle->calculateArea();
+		EXPECT_TRUE(floatEqualsEpsilon(calculatedArea, 4.0 / 2.0, precision));
+
+		data = {
+			15, 0, 15,
+			15, 0, 16,
+			15, 1, 15
+		};
+		calculatedArea = triangle->calculateArea();
+		EXPECT_TRUE(floatEqualsEpsilon(calculatedArea, 1.0 / 2.0, precision));
+
+		data = {
+			-15, 0, -15,
+			-15, 0, -16,
+			-15, -1, -15
+		};
+		calculatedArea = triangle->calculateArea();
+		EXPECT_TRUE(floatEqualsEpsilon(calculatedArea, 1.0 / 2.0, precision));
+	}
+
+	TEST(Math, isPointInsideTriangleRange) {
+		glm::vec3 v1 = {0,0,0};
+		glm::vec3 v2 = {1,0,0};
+		glm::vec3 v3 = {0,1,0};
+		//Inside the triangle.
+		EXPECT_TRUE(isPointInsideTriangleRange(glm::vec3(0.4, 0.4, 0.0), v1, v2, v3));
+		//Test on line segment
+		EXPECT_TRUE(isPointInsideTriangleRange(glm::vec3(0.5, 0.5, 0.0), v1, v2, v3));
+		//Test on vertices.
+		EXPECT_TRUE(isPointInsideTriangleRange(v1, v1, v2, v3));
+		EXPECT_TRUE(isPointInsideTriangleRange(v2, v1, v2, v3));
+		EXPECT_TRUE(isPointInsideTriangleRange(v3, v1, v2, v3));
+		//Just outside.
+		EXPECT_FALSE(isPointInsideTriangleRange(glm::vec3(0.6, 0.6, 0.0), v1, v2, v3));
+		EXPECT_FALSE(isPointInsideTriangleRange(glm::vec3(-0.1, -0.1, 0.0), v1, v2, v3));
+		//Inside the range, but at different depth. Note that the test does not verify if the point is in the triangle's surface.
+		EXPECT_TRUE(isPointInsideTriangleRange(glm::vec3(0.4, 0.4, 0.1), v1, v2, v3));
+	}
+
+	TEST(Triangle, contains) {
+		float precision = EPSILON3;
+		std::vector<float> data = {
+			0, 0, 0,
+			1, 0, 0,
+			0, 1, 0
+		};
+
+		VertexLayout vertexLayout;
+		vertexLayout.init();
+		vertexLayout.add(VertexAttrib::Position, VertexAttribType::Float, 3);
+		vertexLayout.end();
+
+		Triangle* triangle = new Triangle(&data[0], &data[3], &data[6]);
+		triangle->vertexLayout = &vertexLayout;
+
+		EXPECT_TRUE(triangle->contains(glm::vec3(0, 0, 0)));
+		EXPECT_TRUE(triangle->contains(glm::vec3(1, 0, 0)));
+		EXPECT_TRUE(triangle->contains(glm::vec3(0, 1, 0)));
+		EXPECT_TRUE(triangle->contains(glm::vec3(0.3, 0.3, 0)));
+		EXPECT_FALSE(triangle->contains(glm::vec3(0.6, 0.6, 0)));
+		EXPECT_FALSE(triangle->contains(glm::vec3(0.3, 0.3, 0.1)));
+		EXPECT_FALSE(triangle->contains(glm::vec3(-0.3, -0.3, 0.1)));
+		EXPECT_FALSE(triangle->contains(glm::vec3(-0.3, -0.3, 0)));
+
+		data = {
+		   0, 0, 0,
+		   1000, 0, 0,
+		   0, 1000, 0
+		};
+		EXPECT_FALSE(triangle->contains(glm::vec3(0.3, 0.3, 0.1)));
+		EXPECT_FALSE(triangle->contains(glm::vec3(0.3, 0.3, 0.01)));
+		EXPECT_FALSE(triangle->contains(glm::vec3(0.3, 0.3, 0.001)));
+		EXPECT_FALSE(triangle->contains(glm::vec3(0.3, 0.3, 0.0001)));
+	}
+
+	TEST(Triangle, barycentricCoordinates) {
+		float precision = EPSILON3;
+		std::vector<float> data = {
+			0, 0, 0,
+			1, 0, 0,
+			0, 1, 0
+		};
+
+		VertexLayout vertexLayout;
+		vertexLayout.init();
+		vertexLayout.add(VertexAttrib::Position, VertexAttribType::Float, 3);
+		vertexLayout.end();
+
+		Triangle* triangle = new Triangle(&data[0], &data[3], &data[6]);
+		triangle->vertexLayout = &vertexLayout;
+		glm::vec3 barycentricCoords;
+
+		//Weights on each vertex.
+		barycentricCoords = triangle->barycentricCoordinates(glm::vec3(0, 0, 0), triangle->getVertex(0), triangle->getVertex(1), triangle->getVertex(2));
+		EXPECT_TRUE(vec3EqualsEpsilon(barycentricCoords, glm::vec3(1, 0, 0), precision));
+
+		barycentricCoords = triangle->barycentricCoordinates(glm::vec3(1, 0, 0), triangle->getVertex(0), triangle->getVertex(1), triangle->getVertex(2));
+		EXPECT_TRUE(vec3EqualsEpsilon(barycentricCoords, glm::vec3(0, 1, 0), precision));
+
+		barycentricCoords = triangle->barycentricCoordinates(glm::vec3(0, 1, 0), triangle->getVertex(0), triangle->getVertex(1), triangle->getVertex(2));
+		EXPECT_TRUE(vec3EqualsEpsilon(barycentricCoords, glm::vec3(0, 0, 1), precision));
+
+		//Weight for a point outside the triangle.
+		barycentricCoords = triangle->barycentricCoordinates(glm::vec3(1, 1, 0), triangle->getVertex(0), triangle->getVertex(1), triangle->getVertex(2));
+		EXPECT_TRUE(vec3EqualsEpsilon(barycentricCoords, glm::vec3(-1, 1, 1), precision));
+	}
+
+	TEST(Triangle, samplePointOnSurface) {
+		const int nRuns = 10000;
+		std::vector<float> data = {
+			0, 0, 0,
+			1, 0, 0,
+			0, 1, 0
+		};
+
+		VertexLayout vertexLayout;
+		vertexLayout.init();
+		vertexLayout.add(VertexAttrib::Position, VertexAttribType::Float, 3);
+		vertexLayout.end();
+
+		Triangle* triangle = new Triangle(&data[0], &data[3], &data[6]);
+		triangle->vertexLayout = &vertexLayout;
+
+		RayIntersection ri = {};
+		glm::mat4 toWCS = glm::mat4(1);
+
+		for (int i = 0; i < nRuns; i++) {
+			glm::vec3 point = triangle->samplePointOnSurface(ri, toWCS);
+			EXPECT_TRUE(triangle->contains(point));
+		}
+	}
+
+	TEST(BVH, initAndIntersect) {
+		float precision = EPSILON3;
+		//Load cube model with range [-1, 1].
+		ResourceManager::getSelf()->loadModel("cube", "models/", "cube.obj");
+		Model* model = ResourceManager::getSelf()->getModel("cube");
+
+		BVH bvh;
+		bvh.init(model);
+		EXPECT_TRUE(bvh.nodeCount, 5);
+
+		Ray ray;
+		RayIntersection ri;
+		
+		ray = { glm::vec3(0,0,-2), glm::vec3(0,0,1) };
+		EXPECT_TRUE(bvh.intersect(ray, ri));
+		EXPECT_TRUE(floatEqualsEpsilon(ri.tNear, 1, precision));
+		//EXPECT_TRUE(floatEqualsEpsilon(ri.tFar, 1, precision));
+
+		ray = { glm::vec3(0,0,0), glm::vec3(0,0,1) };
+		EXPECT_TRUE(bvh.intersect(ray, ri));
+		EXPECT_TRUE(floatEqualsEpsilon(ri.tNear, 1, precision));
+		//EXPECT_TRUE(floatEqualsEpsilon(ri.tFar, 1, precision));
 	}
 }

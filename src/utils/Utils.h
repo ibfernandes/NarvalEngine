@@ -80,6 +80,10 @@ namespace narvalengine {
 			return &getDensePtr()[maxHandles];
 		}
 
+		~HandleAllocator() {
+			delete getDensePtr();
+		}
+
 		uint16_t nHandles = 0;
 		uint16_t maxHandles;
 	};

@@ -11,7 +11,23 @@ namespace narvalengine {
 		AABB();
 		AABB(float *v1, float *v2);
 		AABB(glm::vec3 v1, glm::vec3 v2);
+		/**
+		 * Calculates the half width, height and depth of this AABB.
+		 * 
+		 * @return size/2.
+		 */
+		glm::vec3 getHalfSize();
+		/**
+		 * Calculates the width, height and depth of this AABB.
+		 * 
+		 * @return size.
+		 */
 		glm::vec3 getSize();
+		/**
+		 * Calculates the center point of this AABB.
+		 * 
+		 * @return point.
+		 */
 		glm::vec3 getCenter();
 		glm::vec3 getVertex(int n);
 
@@ -28,5 +44,6 @@ namespace narvalengine {
 		glm::vec3 samplePointOnSurface(RayIntersection interaction, glm::mat4 transformToWCS);
 		glm::vec2 samplePointOnTexture(glm::vec3 pointOnSurface);
 		float pdf(RayIntersection interaction, glm::mat4 transformToWCS);
+		void calculateAABB(glm::vec3& min, glm::vec3& max);
 	};
 }

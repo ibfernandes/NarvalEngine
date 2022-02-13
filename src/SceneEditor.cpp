@@ -30,7 +30,7 @@ namespace narvalengine {
 		glm::vec3 side = glm::cross(front, up);
 		staticCam = glm::lookAt(position, position + front, up);
 
-		selectedFilePath = "scenes/cornellbox-pbrt.json";
+		selectedFilePath = "scenes/suzanne.json";
 		sceneReader.loadScene(selectedFilePath, false);
 		scene = sceneReader.getScene();
 		sortAndGroup(scene);
@@ -54,6 +54,7 @@ namespace narvalengine {
 		ResourceManager::getSelf()->loadModel("cube", "models/", "cube.obj");
 		ResourceManager::getSelf()->loadTexture("default", "imgs/checkboard.png");
 		ResourceManager::getSelf()->loadTexture("defaultAlt", "imgs/checkboard2.png");
+		ResourceManager::getSelf()->loadTexture("skinLUT", "imgs/skinLUT.png");
 
 		ResourceManager::getSelf()->loadShader("volumeMonteCarlo", "shaders/volumeMonteCarlo.vert", "shaders/volumeMonteCarlo.frag", "");
 		ResourceManager::getSelf()->loadShader("imageDifference", "shaders/imageDifference.vert", "shaders/imageDifference.frag", "");
@@ -72,6 +73,18 @@ namespace narvalengine {
 		ResourceManager::getSelf()->loadShader("postProcessing", "shaders/postProcessing.vert", "shaders/postProcessing.frag", "");
 
 		load();
+
+		standartSurfaceEditor.cam = &cam;
+		standartSurfaceEditor.proj = &proj;
+		standartSurfaceEditor.cameraPosition = camera.getPosition();
+		standartSurfaceEditor.lightView = &lightView[0];
+		standartSurfaceEditor.lightProjection = &lightProjection;
+		standartSurfaceEditor.lightPos[0] = &lightPos[0];
+		standartSurfaceEditor.defaultLightColor = &defaultLightColor;
+		standartSurfaceEditor.numberOfActiveLights = &numberOfActiveLights;
+		standartSurfaceEditor.renderResolution = &settings.resolution;
+		standartSurfaceEditor.init();
+
 	}
 
 	void SceneEditor::initVolumetricShader() {
@@ -511,6 +524,7 @@ namespace narvalengine {
 
 	void SceneEditor::update(float deltaTime) {
 		updateUI();
+		nodeEditor.update();
 		camera.update();
 		time = glfwGetTime();
 
@@ -803,7 +817,7 @@ namespace narvalengine {
 			ImGui::NextColumn();
 
 			ImGui::NextColumn();
-			ImGuiExt::PaddedText("Position: ", ImVec2(0, columnOffset.y / 2));
+			ImGuiExt::PaddedText("Rotate: ", ImVec2(0, columnOffset.y / 2));
 			ImGui::NextColumn();
 			if (ImGui::DragFloat3("##selectObjRotation", &selectObjRotation[0], 0.1, -999, 999, "%.2f")) {
 				if (currentSelectedIM != nullptr) {
@@ -904,7 +918,7 @@ namespace narvalengine {
 
 					ImGui::Columns(1);
 				}else if (currentSelectedIM->model->materials.at(0)->bsdf->bsdfType & BxDF_DIFFUSE) {
-					ImGui::Columns(3, NULL, false);
+					/*ImGui::Columns(3, NULL, false);
 
 					ImGui::SetColumnWidth(0, columnOffset.x);
 					ImGui::SetColumnWidth(1, 150);
@@ -922,7 +936,7 @@ namespace narvalengine {
 					ImGui::NextColumn();
 
 
-					ImGui::Columns(1);
+					ImGui::Columns(1);*/
 				}
 			}
 			ImGui::EndChild();
@@ -1250,13 +1264,13 @@ namespace narvalengine {
 			ImGui::Checkbox("Point to", &pointTo);
 			if (pointTo) {
 				ImGui::Text("Point To: ");
-				ImGui::InputFloat3("##PointTo", &rayDirection[0], 1, 0);
+				ImGui::InputFloat3("##PointTo", &rayDirection[0]);
 			}else {
 				ImGui::Text("Direction: ");
-				ImGui::InputFloat3("##Direction", &rayDirection[0], 1, 0);
+				ImGui::InputFloat3("##Direction", &rayDirection[0]);
 			}
 			ImGui::Text("Origin: ");
-			ImGui::InputFloat3("##Origin", &rayOrigin[0], 1, 0);
+			ImGui::InputFloat3("##Origin", &rayOrigin[0]);
 			ImGui::Text("Number of bounces: %d", numberOfBounces);
 			if (ImGui::Button("Shoot ray", ImVec2(0, 0))) {
 				numberOfShootedRays = 1;
@@ -1363,7 +1377,7 @@ namespace narvalengine {
 		}
 
 		if (ImGui::BeginMenu("About")) {
-			if (ImGui::MenuItem("Narval Engine Alpha. \n Developed by Igor B. Fernandes", "", false, false)) {}
+			if (ImGui::MenuItem("Narval Engine Alpha. Developed by Igor B. Fernandes", "", false, false)) {}
 			ImGui::EndMenu();
 		}
 		ImGui::EndMainMenuBar();
@@ -1413,6 +1427,14 @@ namespace narvalengine {
 			currentRenderingMode = OFFLINE_RENDERING_MODE;
 			startOffEngine();
 		}
+		if (ImGui::MenuItem("Node Editor")) {
+			currentRenderingMode = NODE_EDITOR_MODE;
+			if (currentSelectedIM != nullptr && currentSelectedIM->model->materials.at(0) != nullptr) {
+				nodeEditor = NodeEditor();
+				ModelHandler *p = &rmToRenderAPI.at(currentSelectedIM->modelID);
+				nodeEditor.loadFromMaterial(currentSelectedIM->model->materials.at(0), &rmToRenderAPI.at(currentSelectedIM->modelID).meshes.at(0).material);
+			}
+		}
 		ImGui::EndMenuBar();
 		ImGui::End();
 		ImGui::PopStyleVar();
@@ -1420,16 +1442,18 @@ namespace narvalengine {
 		ImGui::PopStyleColor();
 
 		//ImGui::ShowDemoWindow();
+		//ImGui::ShowStyleEditor();
 
 		//Debug window
 		#ifdef NE_DEBUG_MODE
+			/*ImGui::SetNextWindowCollapsed(true, ImGuiCond_Once);
 			ImGui::SetNextWindowPos(ImVec2(0, menuBarSize.y), ImGuiCond_Once);
 			ImGui::SetNextWindowSize(ImVec2(rightColumnMenuSize.x / 1.5f, 1100), ImGuiCond_Once);
 			ImGui::Begin("Debug", p_open, ImGuiWindowFlags_None);
 			shootRayImGUI();
 			shadowMappingImGUI();
 			newVolRenderImGUI();
-			ImGui::End();
+			ImGui::End();*/
 		#endif
 
 		//Log window
@@ -1439,7 +1463,7 @@ namespace narvalengine {
 		ImGui::SetNextWindowSizeConstraints(logWindowSize, ImVec2(logWindowSize.x, HEIGHT * 0.4f));
 		ImGui::SetNextWindowPos(logWindowPos, ImGuiCond_Once);
 		if (!logWindowOpen) {
-			ImGui::SetNextWindowPos(ImVec2(0, HEIGHT - 60), ImGuiCond_Always);
+			ImGui::SetNextWindowPos(ImVec2(0, HEIGHT - 30), ImGuiCond_Always);
 		}else {
 			if (!logState[0] && logState[1]) {
 				logState[0] = true;
@@ -1450,6 +1474,7 @@ namespace narvalengine {
 		///std::cout << logWindowPos.y << std::endl;
 
 		ImGui::SetNextWindowSize(logWindowSize, ImGuiCond_Once);
+		ImGui::SetNextWindowCollapsed(true, ImGuiCond_Once);
 		if (ImGui::Begin("Log", p_open, ImGuiWindowFlags_NoMove)) {
 			logState[1] = true;
 			logWindowOpen = true;
@@ -1588,6 +1613,8 @@ namespace narvalengine {
 
 			renderCtx->updateUniform(shadowUniforms[1], { &lightProjection[0][0], sizeof(glm::mat4) });
 			renderCtx->updateUniform(shadowUniforms[2], { &lightView[i][0][0], sizeof(glm::mat4) });
+			renderCtx->updateUniform(standartSurfaceEditor.lightUniforms[indexpbr], { &lightPos[i], sizeof(glm::vec3) });
+			renderCtx->updateUniform(standartSurfaceEditor.lightUniforms[indexpbr + 1], { &imLight->model->materials.at(0)->light->li, sizeof(glm::vec3) });
 			renderCtx->updateUniform(pbrLightUniforms[indexpbr], { (uint8_t*)&lightPos[i], sizeof(glm::vec3) });
 			renderCtx->updateUniform(pbrLightUniforms[indexpbr + 1], { (uint8_t*)&imLight->model->materials.at(0)->light->li, sizeof(glm::vec3) });
 
@@ -1638,6 +1665,110 @@ namespace narvalengine {
 			}
 
 			indexpbr += pbrLightsOffset;
+		}
+	}
+
+	void SceneEditor::renderSceneStandartSurface(FrameBufferHandler* fbh, TextureHandler* fbhTex, int currentFrame) {
+		for (InstancedModel* im : scene->lights) {
+
+			if (im == currentSelectedIM) {
+				renderCtx->setStencil(
+					NE_STENCIL_OP_FAIL_S_KEEP | NE_STENCIL_OP_FAIL_Z_KEEP | NE_STENCIL_OP_PASS_Z_REPLACE |
+					NE_STENCIL_TEST_ALWAYS |
+					NE_STENCIL_FUNC_MASK(0xff));
+			}
+
+			standartSurfaceEditor.setAllUniforms(scene->lights.size());
+
+			ModelHandler mh = rmToRenderAPI.at(im->modelID);
+			renderCtx->setTexture(lightTexColorH, standartSurfaceEditor.uniforms[5]); //material.diffuse
+			standartSurfaceEditor.isMaterialSet[0] = true; //materialIsSet.diffuse
+			standartSurfaceEditor.isMaterialSet[7] = true; //materialIsSet.isLight
+
+			renderCtx->updateUniform(standartSurfaceEditor.uniforms[0], { &im->transformToWCS[0][0], sizeof(glm::mat4) });
+			renderCtx->updateUniform(standartSurfaceEditor.uniforms[1], { camera.getCam(), sizeof(glm::mat4) });
+			renderCtx->updateUniform(standartSurfaceEditor.uniforms[19], { camera.getPosition(), sizeof(glm::vec3) });
+			renderCtx->setModel(rmToRenderAPI.at(im->modelID));
+
+			renderCtx->setFrameBuffer(fbh[currentFrame]);
+
+			renderCtx->render(standartSurfaceEditor.programHandler);
+		}
+
+		for (InstancedModel* im : scene->instancedModels) {
+
+			if (im == currentSelectedIM) {
+				renderCtx->setStencil(
+					NE_STENCIL_OP_FAIL_S_KEEP | NE_STENCIL_OP_FAIL_Z_KEEP | NE_STENCIL_OP_PASS_Z_REPLACE |
+					NE_STENCIL_TEST_ALWAYS |
+					NE_STENCIL_FUNC_MASK(0xff));
+			}
+
+			//For each mesh that this model is made of
+			for (int i = 0; i < im->model->meshes.size(); i++) {
+
+				//TODO not correct, either move a pointer inside mesh or... 
+				if (im->model->materials.at(0)->bsdf->bsdfType & BxDF_DIFFUSE) {
+					ModelHandler mh = rmToRenderAPI.at(im->modelID);
+					//TODO: if invalid, should set a "Debug texture", or should LOG FATAL?
+					if (mh.meshes.at(i).material.id == INVALID_HANDLE)
+						continue;
+
+					standartSurfaceEditor.setAllUniforms(scene->lights.size());
+					
+					//Set Skin SSS LUT
+					renderCtx->setTexture(standartSurfaceEditor.preIntegratedSSSBRDFLUTTex, standartSurfaceEditor.uniforms[24]);
+
+					//material.diffuse
+					if (isHandleValid(mh.meshes.at(i).material.textures[ctz(TextureName::ALBEDO)].id)) {
+						standartSurfaceEditor.isMaterialSet[0] = true;
+						renderCtx->setTexture(mh.meshes.at(i).material.textures[ctz(TextureName::ALBEDO)], standartSurfaceEditor.uniforms[5]);
+					} else
+						standartSurfaceEditor.isMaterialSet[0] = false;
+
+					//material.metallic
+					if (isHandleValid(mh.meshes.at(i).material.textures[ctz(TextureName::METALLIC)].id)) {
+						standartSurfaceEditor.isMaterialSet[1] = true;
+						renderCtx->setTexture(mh.meshes.at(i).material.textures[ctz(TextureName::METALLIC)], standartSurfaceEditor.uniforms[6]);
+					} else
+						standartSurfaceEditor.isMaterialSet[1] = false;
+
+					//material.normal
+					if (isHandleValid(mh.meshes.at(i).material.textures[ctz(TextureName::NORMAL)].id)) {
+						standartSurfaceEditor.isMaterialSet[3] = true;
+						renderCtx->setTexture(mh.meshes.at(i).material.textures[ctz(TextureName::NORMAL)], standartSurfaceEditor.uniforms[7]);
+					} else
+						standartSurfaceEditor.isMaterialSet[3] = false;
+
+					//material.roughness
+					if (isHandleValid(mh.meshes.at(i).material.textures[ctz(TextureName::ROUGHNESS)].id)) {
+						standartSurfaceEditor.isMaterialSet[4] = true;
+						renderCtx->setTexture(mh.meshes.at(i).material.textures[ctz(TextureName::ROUGHNESS)], standartSurfaceEditor.uniforms[8]);
+					} else
+						standartSurfaceEditor.isMaterialSet[4] = false;
+
+					renderCtx->setTexture(shadowDepthTex, standartSurfaceEditor.uniforms[20]); //shadowTex
+
+					renderCtx->updateUniform(standartSurfaceEditor.uniforms[0], { &im->transformToWCS[0][0], sizeof(im->transformToWCS) });
+					renderCtx->updateUniform(standartSurfaceEditor.uniforms[1], { camera.getCam(), sizeof(glm::mat4) });
+					renderCtx->updateUniform(standartSurfaceEditor.uniforms[19], { camera.getPosition(), sizeof(glm::vec3) });
+
+					renderCtx->setMesh(mh.meshes.at(i));
+
+					renderCtx->setFrameBuffer(fbh[currentFrame]);
+
+					renderCtx->render(standartSurfaceEditor.programHandler);
+				}
+			}
+
+			if (im->model->materials.at(0)->bsdf->bsdfType & BxDF_TRANSMISSION) {
+				vms->proj = proj;
+				vms->cam = *camera.getCam();
+				if (vms->currentMethod == VolumetricMethod::RAY_MARCHING || vms->currentMethod == VolumetricMethod::LOBE_SAMPLING)
+					vms->prepare(&camera, rmToRenderAPI.at(im->modelID), im, fbh[1], frameCount, fbhTex[1], fbhTex[0], renderFrameDepthTex[0]);
+				else
+					vms->prepare(&camera, rmToRenderAPI.at(im->modelID), im, fbh[currentFrame], frameCount, fbhTex[(currentFrame + 1) % 2], fbhTex[currentFrame], renderFrameDepthTex[currentFrame]);
+			}
 		}
 	}
 
@@ -1794,7 +1925,8 @@ namespace narvalengine {
 			currentFrame = 0;
 
 		maxBounces = settings.bounces;
-		renderScene(&fbRenderFrame[0], &renderFrameTex[0], currentFrame);
+		//renderScene(&fbRenderFrame[0], &renderFrameTex[0], currentFrame);
+		renderSceneStandartSurface(&fbRenderFrame[0], &renderFrameTex[0], currentFrame);
 
 		//Glue scene with volume at 1 on top of the scene at 0.
 		if (vms->currentMethod == VolumetricMethod::RAY_MARCHING || vms->currentMethod == VolumetricMethod::LOBE_SAMPLING) {
@@ -1885,6 +2017,19 @@ namespace narvalengine {
 		else if (currentRenderingMode == REALTIME_RENDERING_MODE) {
 			renderRealTimeShadows();
 			renderRealTimePBR();
+		} else if (currentRenderingMode == NODE_EDITOR_MODE) {
+			ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(1, 0, 0, 1));
+			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+			ImVec2 pos = ImVec2(0, menuBarSize.y);
+			ImGui::SetNextWindowSize(ImVec2(WIDTH - rightColumnMenuSize.x, HEIGHT - menuBarSize.y));
+			ImGui::SetNextWindowPos(pos);
+			ImGui::Begin("ImNodes", p_open, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoBackground);
+			
+			nodeEditor.render();
+			
+			ImGui::End();
+			ImGui::PopStyleVar();
+			ImGui::PopStyleColor();
 		}
 
 		renderImGUI();

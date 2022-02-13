@@ -1,10 +1,10 @@
 #pragma once
 #include "primitives/Ray.h"
 #include "core/RendererAPI.h"
+#include "materials/Material.h"
 #include <glm/glm.hpp>
 
 namespace narvalengine {
-	class Material;
 
 	class Primitive {
 	public:
@@ -54,10 +54,12 @@ namespace narvalengine {
 		 * The Probability Density Function (PDF) of choosing a point in this primitive
 		 * relative to a given {@code interaction}.
 		 * 
-		 * @param interaction in another primitive.
+		 * @param reference intersection in another primitive.
 		 * @param transformToWCS transform matrix for this {@code primitive}.
 		 * @return the PDF.
 		 */
-		virtual float pdf(RayIntersection interaction, glm::mat4 transformToWCS) = 0;
+		virtual float pdf(RayIntersection reference, glm::mat4 transformToWCS) = 0;
+
+		virtual void calculateAABB(glm::vec3& min, glm::vec3& max) = 0;
 	};
 }

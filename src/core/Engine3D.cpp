@@ -52,6 +52,7 @@ namespace narvalengine {
 
 		IMGUI_CHECKVERSION();
 		ImGui::CreateContext();
+		ImNodes::CreateContext();
 		ImGuiIO& io = ImGui::GetIO(); (void)io;
 
 		ImGui_ImplGlfw_InitForOpenGL(window, true);
@@ -61,7 +62,7 @@ namespace narvalengine {
 		ImGui::StyleColorsDark();
 		ImGuiStyle * style = &ImGui::GetStyle();
 
-		style->WindowPadding = ImVec2(15, 15);
+		style->WindowPadding = imGuiStyleDefs.windowPadding;
 		style->WindowRounding = 5.0f;
 		style->FramePadding = ImVec2(5 * resolutionMultiplier, 5 * resolutionMultiplier);
 		style->FrameRounding = 4.0f;
@@ -76,9 +77,10 @@ namespace narvalengine {
 
 		style->Colors[ImGuiCol_Text] = gUIPalette.text;
 
-		style->Colors[ImGuiCol_MenuBarBg] = gUIPalette.iceGrey[0];
-		style->Colors[ImGuiCol_WindowBg] = gUIPalette.iceGrey[0];
-		style->Colors[ImGuiCol_ChildWindowBg] = gUIPalette.iceGrey[0];
+		style->Colors[ImGuiCol_MenuBarBg] = gUIPalette.iceGrey[1];
+		style->Colors[ImGuiCol_WindowBg] = gUIPalette.iceGrey[1];
+		style->Colors[ImGuiCol_ChildBg] = gUIPalette.iceGrey[1];
+		style->Colors[ImGuiCol_PopupBg] = gUIPalette.iceGrey[1];
 		style->Colors[ImGuiCol_TitleBg] = gUIPalette.iceGrey[0];
 		style->Colors[ImGuiCol_TitleBgActive] = gUIPalette.iceGrey[1];
 		style->Colors[ImGuiCol_TitleBgCollapsed] = gUIPalette.iceGrey[2];
@@ -109,21 +111,20 @@ namespace narvalengine {
 		style->Colors[ImGuiCol_ResizeGripActive] = ImGuiExt::add(windowBg, -0.6f);
 
 		style->Colors[ImGuiCol_TextDisabled] = ImVec4(0.24f, 0.23f, 0.29f, 1.00f);
-		style->Colors[ImGuiCol_PopupBg] = gUIPalette.iceGrey[0];
 		style->Colors[ImGuiCol_Border] = ImVec4(0.80f, 0.80f, 0.83f, 0.0f);
 		style->Colors[ImGuiCol_BorderShadow] = ImVec4(0.92f, 0.91f, 0.88f, 0.00f);
 		style->Colors[ImGuiCol_CheckMark] = gUIPalette.text;
 		style->Colors[ImGuiCol_SliderGrab] = ImVec4(0.80f, 0.80f, 0.83f, 0.31f);
 		style->Colors[ImGuiCol_SliderGrabActive] = ImVec4(0.06f, 0.05f, 0.07f, 1.00f);
-		style->Colors[ImGuiCol_Column] = ImVec4(0.56f, 0.56f, 0.58f, 1.00f);
-		style->Colors[ImGuiCol_ColumnHovered] = ImVec4(0.24f, 0.23f, 0.29f, 1.00f);
-		style->Colors[ImGuiCol_ColumnActive] = ImVec4(0.56f, 0.56f, 0.58f, 1.00f);
+		style->Colors[ImGuiCol_Separator] = ImVec4(0.56f, 0.56f, 0.58f, 1.00f);
+		style->Colors[ImGuiCol_SeparatorHovered] = ImVec4(0.24f, 0.23f, 0.29f, 1.00f);
+		style->Colors[ImGuiCol_SeparatorActive] = ImVec4(0.56f, 0.56f, 0.58f, 1.00f);
 		style->Colors[ImGuiCol_PlotLines] = ImVec4(0.40f, 0.39f, 0.38f, 0.63f);
 		style->Colors[ImGuiCol_PlotLinesHovered] = ImVec4(0.25f, 1.00f, 0.00f, 1.00f);
 		style->Colors[ImGuiCol_PlotHistogram] = ImVec4(0.40f, 0.39f, 0.38f, 0.63f);
 		style->Colors[ImGuiCol_PlotHistogramHovered] = ImVec4(0.25f, 1.00f, 0.00f, 1.00f);
 		style->Colors[ImGuiCol_TextSelectedBg] = ImVec4(0.25f, 1.00f, 0.00f, 0.43f);
-		style->Colors[ImGuiCol_ModalWindowDarkening] = ImVec4(1.00f, 0.98f, 0.95f, 0.73f);
+		style->Colors[ImGuiCol_ModalWindowDimBg] = ImVec4(1.00f, 0.98f, 0.95f, 0.73f);
 
 		style->GrabMinSize = 18;
 
@@ -152,6 +153,27 @@ namespace narvalengine {
 
 		path = RESOURCES_DIR "fonts/fontawesome/" FONT_ICON_FILE_NAME_FAR;
 		io.Fonts->AddFontFromFileTTF(path.c_str(), 16.0f * resolutionMultiplier, &icons_config, icons_ranges);
+	
+		ImNodesStyle* nodesStyle = &ImNodes::GetStyle();
+		nodesStyle->Colors[ImNodesCol_NodeBackground] = colorToInt32(gUIPalette.iceGrey[2]);
+		nodesStyle->Colors[ImNodesCol_NodeBackgroundHovered] = colorToInt32(gUIPalette.iceGrey[3]);
+		nodesStyle->Colors[ImNodesCol_NodeBackgroundSelected] = colorToInt32(gUIPalette.iceGrey[4]);
+		nodesStyle->Colors[ImNodesCol_NodeOutline] = colorToInt32(gUIPalette.iceGrey[5]);
+		nodesStyle->Colors[ImNodesCol_TitleBar] = colorToInt32(gUIPalette.iceGrey[0]);
+		nodesStyle->Colors[ImNodesCol_TitleBarHovered] = colorToInt32(gUIPalette.iceGrey[1]);
+		nodesStyle->Colors[ImNodesCol_TitleBarSelected] = colorToInt32(gUIPalette.iceGrey[2]);
+		nodesStyle->Colors[ImNodesCol_Link] = colorToInt32(gUIPalette.blue[2]);
+		nodesStyle->Colors[ImNodesCol_LinkHovered] = colorToInt32(gUIPalette.blue[1]);
+		nodesStyle->Colors[ImNodesCol_LinkSelected] = colorToInt32(gUIPalette.blue[2]);
+		nodesStyle->Colors[ImNodesCol_Pin] = colorToInt32(gUIPalette.blue[0]);
+		nodesStyle->Colors[ImNodesCol_PinHovered] = colorToInt32(gUIPalette.blue[2]);
+		ImVec4 boxSelector = gUIPalette.blueGrey[0];
+		boxSelector.w = 0.2;
+		nodesStyle->Colors[ImNodesCol_BoxSelector] = colorToInt32(boxSelector);
+		boxSelector.w = 0.4;
+		nodesStyle->Colors[ImNodesCol_BoxSelectorOutline] = colorToInt32(boxSelector);
+		nodesStyle->Colors[ImNodesCol_GridBackground] = colorToInt32(gUIPalette.iceGrey[5]);
+		nodesStyle->Colors[ImNodesCol_GridLine] = colorToInt32(gUIPalette.iceGrey[4]);
 	}
 
 	void Engine3D::init(Settings settings, EngineState *state) {
